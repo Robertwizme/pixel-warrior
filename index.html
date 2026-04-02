@@ -176,6 +176,26 @@ input[type=range]{width:120px;accent-color:#48f}
   z-index:25;cursor:pointer;user-select:none;touch-action:none;
   transition:background .1s}
 #skill-btn.pressing{background:rgba(253,212,64,.45)}
+/* ── Coins & Shop ── */
+#menu-coins-bar{font-size:13px;color:#fd4;margin-bottom:10px;letter-spacing:1px}
+.cls-dot.locked{border-color:#555;opacity:.55;cursor:not-allowed;position:relative}
+.cls-dot.locked::after{content:'🔒';position:absolute;bottom:2px;right:2px;font-size:10px}
+/* Shop overlay */
+.shop-item{display:flex;align-items:center;gap:10px;background:#111827;border:1px solid #334;
+  border-radius:6px;padding:10px 12px;margin-bottom:7px;transition:border-color .15s}
+.shop-item.unlocked{border-color:#4f4;opacity:.7}
+.shop-item.locked-item{border-color:#555}
+.shop-icon{font-size:24px;width:32px;text-align:center}
+.shop-info{flex:1;text-align:left}
+.shop-name{font-size:13px;color:#fd4;font-weight:700}
+.shop-cond{font-size:9px;color:#888;margin-top:2px;line-height:1.5}
+.shop-btn{background:#1a1400;border:1px solid #fd4;border-radius:4px;padding:5px 12px;
+  color:#fd4;font-size:11px;cursor:pointer;font-family:'Courier New',monospace;white-space:nowrap;
+  transition:background .15s}
+.shop-btn:hover:not(:disabled){background:#332200}
+.shop-btn:disabled{border-color:#333;color:#444;cursor:default}
+.shop-btn.owned{border-color:#4f4;color:#4f4;cursor:default}
+
 /* Mobile: make overlays scrollable + larger tap targets */
 @media (max-width:600px){
   .panel{padding:16px 14px;width:96vw}
@@ -238,10 +258,12 @@ input[type=range]{width:120px;accent-color:#48f}
   <div class="panel" style="max-width:400px">
     <div class="game-title">像素勇士</div>
     <div class="game-sub">肉 鸽 版</div>
+    <div id="menu-coins-bar">💰 金币: <span id="menu-coins">0</span></div>
     <div style="margin-bottom:18px">
       <button class="btn primary" id="btn-start">⚔ 开始游戏</button><br>
       <button class="btn" id="btn-settings">⚙ 设置</button>
       <button class="btn" id="btn-achieve">🏆 成就</button>
+      <button class="btn" id="btn-shop" style="border-color:#fd4;color:#fd4">🏪 商城</button><br>
       <button class="btn" id="btn-announce" style="border-color:#f84;color:#f84">📢 公告</button>
       <button class="btn" id="btn-mailbox" style="border-color:#4ef;color:#4ef;position:relative">
         📬 邮箱<span id="mail-badge" style="display:none;position:absolute;top:-6px;right:-6px;
@@ -274,6 +296,21 @@ input[type=range]{width:120px;accent-color:#48f}
     <div id="mailbox-list" style="max-height:340px;overflow-y:auto;margin-bottom:14px"></div>
     <div style="text-align:center">
       <button class="btn" id="btn-mailbox-back">← 返回</button>
+    </div>
+  </div>
+</div>
+
+<!-- SHOP -->
+<div class="overlay" id="o-shop">
+  <div class="panel" style="max-width:440px;text-align:left">
+    <div style="font-size:18px;color:#fd4;margin-bottom:2px;text-align:center;letter-spacing:2px">🏪 角色商城</div>
+    <div style="font-size:10px;color:#888;text-align:center;margin-bottom:6px">用金币解锁职业或完成指定条件</div>
+    <div style="font-size:12px;color:#fd4;text-align:center;margin-bottom:12px">
+      💰 当前金币: <b id="shop-coins">0</b>
+    </div>
+    <div id="shop-list" style="max-height:380px;overflow-y:auto;margin-bottom:12px"></div>
+    <div style="text-align:center">
+      <button class="btn" id="btn-shop-back">← 返回</button>
     </div>
   </div>
 </div>
@@ -379,7 +416,8 @@ input[type=range]{width:120px;accent-color:#48f}
   <div class="panel" style="max-width:360px">
     <div class="gover">战 败...</div>
     <div id="dead-stats"></div>
-    <div style="margin-top:18px">
+    <div id="dead-coins" style="margin:10px 0;font-size:13px;color:#fd4"></div>
+    <div style="margin-top:8px">
       <button class="btn primary" id="btn-retry">🔄 再来一次</button>
       <button class="btn" id="btn-dead-menu">🏠 返回主菜单</button>
     </div>
@@ -392,7 +430,8 @@ input[type=range]{width:120px;accent-color:#48f}
     <div style="font-size:48px;margin-bottom:8px">🏆</div>
     <div class="victory-title">胜利！通关！</div>
     <div id="victory-stats"></div>
-    <div style="margin-top:18px">
+    <div id="victory-coins" style="margin:10px 0;font-size:13px;color:#fd4"></div>
+    <div style="margin-top:8px">
       <button class="btn primary" id="btn-victory-retry">🔄 再来一次</button>
       <button class="btn" id="btn-victory-menu">🏠 返回主菜单</button>
     </div>
@@ -629,8 +668,19 @@ function getWavePlan(n) {
 // ═══════════════════════════════════════════════════════
 // §0  版本号 & 更新公告  ← 每次更新只需修改这里
 // ═══════════════════════════════════════════════════════
-const GAME_VERSION = 'v0.1.0';
+const GAME_VERSION = 'v0.2.0';
 const CHANGELOG = [
+  {
+    version: 'v0.2.0',
+    date: '2026-04',
+    items: [
+      '新增金币系统：每局结束按波数获得金币',
+      '新增商城：消耗金币解锁职业角色',
+      '新增角色解锁机制：首次游玩仅开放天选者和医生',
+      '其余角色需在商城购买或完成指定条件解锁',
+      '修复：设置页和成就页无法返回的问题',
+    ]
+  },
   {
     version: 'v0.1.0',
     date: '2025-01',
@@ -3693,6 +3743,10 @@ function showDeadScreen() {
     <div class="stat-row">💀 击杀: <b style="color:#4ef">${gs.kills}</b></div>
     <div class="stat-row">⭐ 得分: <b style="color:#4f4">${gs.score}</b></div>
     <div class="stat-row">🍀 幸运: <b>${p.luck}</b> &nbsp;💨 闪避: <b>${effDodge}%</b> &nbsp;🛡 减伤: <b>${effArm}%</b></div>`;
+  const earned = calcCoinsEarned(gs.wave.num, gs.kills);
+  addCoins(earned);
+  document.getElementById('dead-coins').innerHTML =
+    `💰 获得金币: <b>+${earned}</b> &nbsp;（合计: <b>${getCoins()}</b>）`;
   document.getElementById('o-dead').classList.add('active');
 }
 
@@ -3704,6 +3758,10 @@ function showVictoryScreen() {
     <div class="stat-row">🌊 通关全部 <b style="color:#fd4">30波</b></div>
     <div class="stat-row">💀 击杀: <b style="color:#4ef">${gs.kills}</b></div>
     <div class="stat-row">⭐ 得分: <b style="color:#4f4">${gs.score}</b></div>`;
+  const earned = calcCoinsEarned(30, gs.kills);
+  addCoins(earned);
+  document.getElementById('victory-coins').innerHTML =
+    `💰 获得金币: <b>+${earned}</b> &nbsp;（合计: <b>${getCoins()}</b>）`;
   document.getElementById('o-victory').classList.add('active');
 }
 
@@ -3714,6 +3772,7 @@ document.getElementById('btn-start').addEventListener('click', () => {
   updateClsPreview(0);
   document.getElementById('btn-confirm').disabled = false;
   document.getElementById('btn-confirm').style.opacity = '1';
+  refreshClsGrid();
   showOverlay('o-class');
 });
 document.getElementById('btn-settings').addEventListener('click', ()=>showOverlay('o-settings'));
@@ -3806,27 +3865,27 @@ document.getElementById('btn-announce').addEventListener('click', ()=>showOverla
 document.getElementById('btn-announce-back').addEventListener('click', ()=>showOverlay('o-menu'));
 document.getElementById('btn-mailbox').addEventListener('click', ()=>{ renderMailbox(); showOverlay('o-mailbox'); });
 document.getElementById('btn-mailbox-back').addEventListener('click', ()=>showOverlay('o-menu'));
+document.getElementById('btn-shop').addEventListener('click', ()=>{ renderShop(); showOverlay('o-shop'); });
+document.getElementById('btn-shop-back').addEventListener('click', ()=>{ renderMenuCoins(); showOverlay('o-menu'); });
 updateMailBadge();
-document.getElementById('email-copy').addEventListener('click', () => {
-  const email = 'your@email.com';
-  navigator.clipboard?.writeText(email).then(()=>{
-    const el = document.getElementById('email-copy');
-    const old = el.textContent; el.textContent = '✅ 已复制!'; el.style.color='#4f8';
-    setTimeout(()=>{ el.textContent=old; el.style.color='#f84'; }, 1500);
-  });
-});
 document.getElementById('btn-class-back').addEventListener('click', ()=>showOverlay('o-menu'));
 document.getElementById('btn-settings-back').addEventListener('click', ()=>showOverlay('o-menu'));
 document.getElementById('btn-achieve-back').addEventListener('click', ()=>showOverlay('o-menu'));
-document.getElementById('btn-dead-menu').addEventListener('click', ()=>{ showOverlay('o-menu'); renderBestRun(); });
-document.getElementById('btn-victory-menu').addEventListener('click', ()=>{ showOverlay('o-menu'); renderBestRun(); });
+document.getElementById('btn-dead-menu').addEventListener('click', ()=>{ showOverlay('o-menu'); renderBestRun(); renderMenuCoins(); });
+document.getElementById('btn-victory-menu').addEventListener('click', ()=>{ showOverlay('o-menu'); renderBestRun(); renderMenuCoins(); });
 document.getElementById('btn-retry').addEventListener('click', ()=>{ showGameScreen(); initGame(lastClassIdx); });
 document.getElementById('btn-victory-retry').addEventListener('click', ()=>{ showGameScreen(); initGame(lastClassIdx); });
 document.getElementById('btn-confirm').addEventListener('click', ()=>{
   if (selectedClassIdx<0) return;
-  if (CLASSES[selectedClassIdx]?.id === 'santa') {
+  const cls = CLASSES[selectedClassIdx];
+  if (!cls) return;
+  if (cls.id === 'santa') {
     const d = new Date();
     if (d.getMonth() !== 11 || d.getDate() !== 25) return;
+  }
+  if (!isUnlocked(cls.id)) {
+    alert(`「${cls.name}」尚未解锁！\n请前往商城购买或完成解锁条件。`);
+    return;
   }
   showGameScreen();
   initGame(selectedClassIdx);
@@ -3857,6 +3916,7 @@ function updateClsPreview(idx) {
 selectedClassIdx = 0;
 document.querySelectorAll('.cls-dot').forEach((dot, i) => {
   dot.addEventListener('click', () => {
+    if (dot.classList.contains('locked')) return; // can't select locked
     selectedClassIdx = i;
     document.querySelectorAll('.cls-dot').forEach((d,di) => d.classList.toggle('sel', di===i));
     updateClsPreview(i);
@@ -3871,6 +3931,151 @@ document.getElementById('spd-slider').addEventListener('input', function(){
   settings.gameSpeed=this.value/100;
   document.getElementById('spd-val').textContent='×'+settings.gameSpeed.toFixed(1);
 });
+
+// ═══════════════════════════════════════════════════════
+// §20  Coins + Shop + Character Unlock
+// ═══════════════════════════════════════════════════════
+
+// ── Coin helpers ──
+function getCoins() {
+  try { return parseInt(localStorage.getItem('pw_coins')||'0',10)||0; } catch { return 0; }
+}
+function saveCoins(n) {
+  try { localStorage.setItem('pw_coins', String(Math.max(0,Math.floor(n)))); } catch {}
+}
+function addCoins(n) {
+  saveCoins(getCoins() + n);
+  renderMenuCoins();
+}
+function spendCoins(n) {
+  const c = getCoins();
+  if (c < n) return false;
+  saveCoins(c - n);
+  renderMenuCoins();
+  return true;
+}
+function renderMenuCoins() {
+  const c = getCoins();
+  const el = document.getElementById('menu-coins');
+  if (el) el.textContent = c;
+  const sel = document.getElementById('shop-coins');
+  if (sel) sel.textContent = c;
+}
+
+// Coins earned per game: 10 base + 8 per wave + 1 per 10 kills (bonus)
+function calcCoinsEarned(waveNum, kills) {
+  return Math.floor(10 + waveNum * 8 + Math.floor((kills||0)/10));
+}
+
+// ── Unlock helpers ──
+// Default unlocked: chosen + doctor
+const DEFAULT_UNLOCKED = ['chosen','doctor'];
+
+function getUnlocked() {
+  try {
+    const raw = JSON.parse(localStorage.getItem('pw_unlocked')||'null');
+    if (Array.isArray(raw)) return new Set(raw);
+  } catch {}
+  return new Set(DEFAULT_UNLOCKED);
+}
+function saveUnlocked(set) {
+  try { localStorage.setItem('pw_unlocked', JSON.stringify([...set])); } catch {}
+}
+function unlockClass(id) {
+  const s = getUnlocked();
+  s.add(id);
+  saveUnlocked(s);
+}
+function isUnlocked(id) {
+  return getUnlocked().has(id);
+}
+
+// ── Unlock condition definitions per class ──
+// condition: { price: coins_cost, condDesc: string, condCheck: fn→bool }
+const CLASS_UNLOCK = {
+  chosen:    { price: 0,   condDesc: '默认解锁',                     condCheck: ()=>true },
+  doctor:    { price: 0,   condDesc: '默认解锁',                     condCheck: ()=>true },
+  berserker: { price: 300, condDesc: '或: 在一局中撑过第10波',        condCheck: ()=>{ const b=loadBest(); return b&&b.wave>=10; } },
+  blacksmith:{ price: 400, condDesc: '购买即可解锁',                  condCheck: ()=>false },
+  mage:      { price: 400, condDesc: '购买即可解锁',                  condCheck: ()=>false },
+  scholar:   { price: 500, condDesc: '或: 在一局中撑过第20波',        condCheck: ()=>{ const b=loadBest(); return b&&b.wave>=20; } },
+  reaper:    { price: 600, condDesc: '或: 在一局中撑过第25波',        condCheck: ()=>{ const b=loadBest(); return b&&b.wave>=25; } },
+  kirby:     { price: 500, condDesc: '或: 一局中击杀500个敌人',       condCheck: ()=>{ const b=loadBest(); return b&&b.kills>=500; } },
+  santa:     { price: 0,   condDesc: '仅圣诞节（12月25日）开放',      condCheck: ()=>{ const d=new Date(); return d.getMonth()===11&&d.getDate()===25; } },
+};
+
+// Auto-unlock via conditions (called when opening shop or starting game)
+function autoCheckUnlocks() {
+  const unlocked = getUnlocked();
+  let changed = false;
+  CLASSES.forEach(cls => {
+    if (unlocked.has(cls.id)) return;
+    const def = CLASS_UNLOCK[cls.id];
+    if (def && def.condCheck && def.condCheck()) {
+      unlocked.add(cls.id);
+      changed = true;
+    }
+  });
+  if (changed) saveUnlocked(unlocked);
+}
+
+// ── Class grid: refresh lock states ──
+function refreshClsGrid() {
+  autoCheckUnlocks();
+  document.querySelectorAll('.cls-dot').forEach(dot => {
+    const idx = parseInt(dot.id.replace('cls-',''),10);
+    const cls = CLASSES[idx];
+    if (!cls) return;
+    const locked = !isUnlocked(cls.id);
+    dot.classList.toggle('locked', locked);
+  });
+}
+
+// ── Shop render ──
+const CLS_ICONS = ['⭐','💊','⚔','⚒','🔮','🎓','💀','⭐','🎅'];
+function renderShop() {
+  autoCheckUnlocks();
+  const coins = getCoins();
+  document.getElementById('shop-coins').textContent = coins;
+  const list = document.getElementById('shop-list');
+  list.innerHTML = CLASSES.map((cls,i) => {
+    const def = CLASS_UNLOCK[cls.id] || { price:999, condDesc:'', condCheck:()=>false };
+    const already = isUnlocked(cls.id);
+    const icon = CLS_ICONS[i] || '❓';
+    const isSanta = cls.id === 'santa';
+    let btnHtml;
+    if (already) {
+      btnHtml = `<button class="shop-btn owned" disabled>✓ 已解锁</button>`;
+    } else if (isSanta) {
+      btnHtml = `<button class="shop-btn" disabled>🎄 限定</button>`;
+    } else if (def.price === 0) {
+      btnHtml = `<button class="shop-btn owned" disabled>✓ 已解锁</button>`;
+    } else {
+      const canAfford = coins >= def.price;
+      btnHtml = `<button class="shop-btn" ${canAfford?'':'disabled'} onclick="shopBuy('${cls.id}',${def.price})">
+        💰 ${def.price} 购买</button>`;
+    }
+    return `<div class="shop-item ${already?'unlocked':'locked-item'}">
+      <div class="shop-icon">${icon}</div>
+      <div class="shop-info">
+        <div class="shop-name">${cls.name}</div>
+        <div class="shop-cond">${def.condDesc}</div>
+      </div>
+      ${btnHtml}
+    </div>`;
+  }).join('');
+}
+
+function shopBuy(classId, price) {
+  if (isUnlocked(classId)) return;
+  if (!spendCoins(price)) {
+    alert('金币不足！');
+    return;
+  }
+  unlockClass(classId);
+  renderShop();
+  refreshClsGrid();
+}
 
 // ═══════════════════════════════════════════════════════
 // §21  Achievements
@@ -3948,6 +4153,7 @@ function renderBestRun() {
 // §23  Boot
 // ═══════════════════════════════════════════════════════
 renderBestRun();
+renderMenuCoins();
 requestAnimationFrame(function bootstrap(ts) {
   lastTs = ts;
   requestAnimationFrame(gameLoop);
