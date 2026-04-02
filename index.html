@@ -162,17 +162,17 @@ input[type=range]{width:120px;accent-color:#48f}
 .mail-claim.done{border-color:#333;color:#444;cursor:default}
 .mail-empty{text-align:center;color:#444;font-size:13px;padding:40px 0}
 
-/* ── Mobile touch controls ── */
-#joy-zone{position:fixed;bottom:44px;left:12px;width:110px;height:110px;
+/* ── Mobile touch controls (hidden on desktop/mouse devices) ── */
+#joy-zone{position:fixed;bottom:70px;left:30px;width:140px;height:140px;
   display:none;z-index:25;touch-action:none}
 #joy-bg{position:absolute;inset:5px;border-radius:50%;
-  background:rgba(255,255,255,.07);border:2px solid rgba(255,255,255,.18)}
-#joy-stick{position:absolute;width:42px;height:42px;border-radius:50%;
-  background:rgba(255,255,255,.28);border:2px solid rgba(255,255,255,.55);
+  background:rgba(255,255,255,.09);border:2px solid rgba(255,255,255,.22)}
+#joy-stick{position:absolute;width:54px;height:54px;border-radius:50%;
+  background:rgba(255,255,255,.32);border:2px solid rgba(255,255,255,.6);
   top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;transition:none}
-#skill-btn{position:fixed;bottom:52px;right:16px;width:66px;height:66px;
+#skill-btn{position:fixed;bottom:80px;right:30px;width:76px;height:76px;
   border-radius:50%;background:rgba(253,212,64,.18);border:3px solid rgba(253,212,64,.7);
-  display:none;align-items:center;justify-content:center;font-size:24px;color:#fd4;
+  display:none;align-items:center;justify-content:center;font-size:26px;color:#fd4;
   z-index:25;cursor:pointer;user-select:none;touch-action:none;
   transition:background .1s}
 #skill-btn.pressing{background:rgba(253,212,64,.45)}
@@ -210,6 +210,19 @@ input[type=range]{width:120px;accent-color:#48f}
 </head>
 <body>
 
+<!-- Loading Screen -->
+<div id="loading-screen" style="position:fixed;inset:0;background:#0d0d1a;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;z-index:999;transition:opacity .6s">
+  <div style="font-size:44px;font-weight:900;color:#fd4;letter-spacing:4px;
+    text-shadow:0 0 24px #fd4,0 0 48px #fd48;animation:titlePulse 1.5s ease-in-out infinite">像素勇士</div>
+  <div style="font-size:13px;color:#a4f;letter-spacing:6px;margin:8px 0 30px">肉 鸽 版</div>
+  <div style="width:220px;height:8px;background:#1a1a2e;border-radius:4px;overflow:hidden;border:1px solid #334">
+    <div id="load-bar" style="height:100%;background:linear-gradient(90deg,#48f,#fd4);border-radius:4px;width:0%;transition:width .12s ease"></div>
+  </div>
+  <div id="load-text" style="font-size:10px;color:#555;margin-top:10px;letter-spacing:2px">初始化...</div>
+  <div style="font-size:9px;color:#333;margin-top:24px">${GAME_VERSION}</div>
+</div>
+
 <!-- Canvas -->
 <div id="wrap"><canvas id="gc"></canvas></div>
 
@@ -240,6 +253,33 @@ input[type=range]{width:120px;accent-color:#48f}
       <div id="hud-stat-arm" style="color:#aaa">🛡 减伤: 0%</div>
       <div id="hud-stat-regen" style="color:#6f6;display:none">💖 回复: 0/s</div>
     </div>
+  </div>
+</div>
+
+<!-- In-game top buttons -->
+<div id="hud-ingame-btns" style="position:fixed;top:4px;right:4px;display:none;z-index:12;gap:4px;flex-direction:row">
+  <button id="btn-ingame-char" style="padding:3px 8px;background:rgba(0,0,0,.7);border:1px solid #48f;
+    border-radius:3px;color:#8af;font-size:10px;cursor:pointer;font-family:'Courier New',monospace">👤</button>
+  <button id="btn-ingame-menu" style="padding:3px 8px;background:rgba(0,0,0,.7);border:1px solid #888;
+    border-radius:3px;color:#aaa;font-size:10px;cursor:pointer;font-family:'Courier New',monospace">≡ 菜单</button>
+</div>
+
+<!-- In-game pause overlay -->
+<div class="overlay" id="o-ingame-menu">
+  <div class="panel" style="max-width:300px">
+    <div style="font-size:16px;color:#fd4;margin-bottom:14px">⏸ 游戏暂停</div>
+    <button class="btn primary" id="btn-resume">▶ 继续</button><br>
+    <button class="btn" id="btn-ingame-settings">⚙ 设置</button>
+    <button class="btn" id="btn-quit-run" style="border-color:#f44;color:#f44">✖ 放弃本局</button>
+  </div>
+</div>
+
+<!-- Character detail overlay -->
+<div class="overlay" id="o-char-detail">
+  <div class="panel" style="max-width:360px">
+    <div style="font-size:16px;color:#4ef;margin-bottom:12px">👤 角色详情</div>
+    <div id="char-detail-content" style="font-size:11px;line-height:2;text-align:left"></div>
+    <button class="btn" id="btn-char-detail-back" style="margin-top:12px">← 返回</button>
   </div>
 </div>
 
@@ -348,8 +388,8 @@ input[type=range]{width:120px;accent-color:#48f}
         data-icon="💀" data-name="白色死神"
         data-stat="HP: 100 &nbsp; 速度: 70<br>回血: 1/s &nbsp; 经验: +0%<br>——<br>被动: 枪械伤害+50%·CD-25%<br>狙神: 瞄准7.49秒后秒杀HP最高目标<br>冷却542秒">💀</div>
       <div class="cls-dot" id="cls-6"
-        data-icon="⭐" data-name="模仿者"
-        data-stat="HP: 100 &nbsp; 速度: 70<br>回血: 1/s &nbsp; 经验: +0%<br>——<br>四种模仿形态<br>模仿: 吞下怪物获得随机形态<br>冷却120秒">⭐</div>
+        data-icon="🌀" data-name="模仿者"
+        data-stat="HP: 100 &nbsp; 速度: 70<br>回血: 1/s &nbsp; 经验: +0%<br>——<br>四种模仿形态<br>模仿: 吞下怪物获得随机形态<br>冷却120秒">🌀</div>
       <div class="cls-dot" id="cls-7" style="display:none;border-color:#f44;color:#f44"
         data-icon="🎅" data-name="圣诞老人 🎄"
         data-stat="HP: 100 &nbsp; 速度: 70<br>回血: 1/s &nbsp; 幸运: 5<br>——<br>被动: 0.5%概率召唤超大礼盒<br>圣诞礼物: 随机生成礼盒<br>冷却60秒<br><span style='color:#f44'>仅圣诞节开放</span>">🎅</div>
@@ -368,6 +408,7 @@ input[type=range]{width:120px;accent-color:#48f}
 <div class="overlay" id="o-settings">
   <div class="panel" style="max-width:360px">
     <div style="font-size:18px;color:#fd4;margin-bottom:16px">⚙ 设置</div>
+    <div class="setting-row"><span>🎵 背景音乐</span><div class="toggle on" id="tog-music"></div></div>
     <div class="setting-row"><span>✨ 粒子效果</span><div class="toggle on" id="tog-particles"></div></div>
     <div class="setting-row">
       <span>⏩ 游戏速度 <span id="spd-val">×1.0</span></span>
@@ -443,6 +484,101 @@ input[type=range]{width:120px;accent-color:#48f}
 
 <script>
 'use strict';
+
+// ── §0a  Loading screen ──
+(function(){
+  const scr = document.getElementById('loading-screen');
+  const bar = document.getElementById('load-bar');
+  const txt = document.getElementById('load-text');
+  const steps = ['初始化引擎...','加载地图...','生成怪物...','准备武器...','加载完成！'];
+  let pct = 0, si = 0;
+  const iv = setInterval(()=>{
+    pct = Math.min(100, pct + Math.random()*28 + 8);
+    bar.style.width = pct + '%';
+    txt.textContent = steps[Math.min(si++, steps.length-1)];
+    if (pct >= 100) {
+      clearInterval(iv);
+      setTimeout(()=>{ scr.style.opacity='0'; setTimeout(()=>{ scr.style.display='none'; },600); }, 350);
+    }
+  }, 200);
+})();
+
+// ── §0b  Background Music (Web Audio chiptune) ──
+let _musicEnabled = true;
+let _audioCtx = null;
+let _musicLoopTimer = null;
+let _musicStarted = false;
+
+const _N = { // note frequencies
+  C3:130.81,D3:146.83,E3:164.81,F3:174.61,G3:196.00,A3:220.00,B3:246.94,
+  C4:261.63,D4:293.66,E4:329.63,F4:349.23,G4:392.00,A4:440.00,B4:493.88,
+  C5:523.25,D5:587.33,E5:659.25,G5:783.99,R:0
+};
+// 8-bar pixel RPG melody [note, beats] (120bpm = 0.5s/beat)
+const _MELODY = [
+  ['E5',.5],['D5',.5],['C5',.5],['D5',.5],
+  ['E5',.5],['E5',.5],['E5',1],
+  ['D5',.5],['D5',.5],['D5',1],
+  ['E5',.5],['G5',.5],['G5',1],
+  ['E5',.5],['D5',.5],['C5',.5],['D5',.5],
+  ['E5',.5],['E5',.5],['E5',.5],['E5',.5],
+  ['D5',.5],['D5',.5],['E5',.5],['D5',.5],
+  ['C5',2],
+];
+const _BASS = [
+  ['C3',.5],['G3',.5],['C3',.5],['G3',.5],
+  ['A3',.5],['E3',.5],['A3',.5],['E3',.5],
+  ['F3',.5],['C3',.5],['F3',.5],['C3',.5],
+  ['G3',.5],['D3',.5],['G3',.5],['D3',.5],
+  ['C3',.5],['G3',.5],['C3',.5],['G3',.5],
+  ['A3',.5],['E3',.5],['A3',.5],['E3',.5],
+  ['F3',.5],['C3',.5],['G3',.5],['D3',.5],
+  ['C3',2],
+];
+const _BEAT = 0.5; // seconds per beat at 120bpm
+
+function _playNote(ctx, freq, start, dur, type, vol) {
+  if (!freq) return;
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, start);
+  g.gain.setValueAtTime(vol, start);
+  g.gain.exponentialRampToValueAtTime(0.001, start + dur * 0.85);
+  o.connect(g); g.connect(ctx.destination);
+  o.start(start); o.stop(start + dur);
+}
+
+function _scheduleMusic(ctx, t0) {
+  if (!_musicEnabled) return;
+  _MELODY.forEach(([n,b])=>{ _playNote(ctx, _N[n]||0, t0, b*_BEAT*0.92, 'square', 0.06); t0+=b*_BEAT; });
+  let tb=0; const t1=ctx.currentTime + 0.05;
+  _BASS.forEach(([n,b])=>{ _playNote(ctx, _N[n]||0, t1+tb, b*_BEAT*0.92, 'triangle', 0.09); tb+=b*_BEAT; });
+  const loopLen = _MELODY.reduce((s,[,b])=>s+b,0)*_BEAT;
+  _musicLoopTimer = setTimeout(()=>_scheduleMusic(_audioCtx, _audioCtx.currentTime+0.05), (loopLen-0.35)*1000);
+}
+
+function startMusic() {
+  if (!_musicEnabled) return;
+  stopMusic();
+  _audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+  if (_audioCtx.state==='suspended') _audioCtx.resume();
+  _scheduleMusic(_audioCtx, _audioCtx.currentTime+0.1);
+}
+function stopMusic() {
+  if (_musicLoopTimer) { clearTimeout(_musicLoopTimer); _musicLoopTimer=null; }
+  if (_audioCtx) { try{_audioCtx.close();}catch(e){} _audioCtx=null; }
+}
+function toggleMusic(on) {
+  _musicEnabled = on;
+  try { localStorage.setItem('pw_music', on?'1':'0'); } catch(e){}
+  on ? startMusic() : stopMusic();
+}
+function _tryStartMusic() {
+  if (!_musicStarted && _musicEnabled) { _musicStarted=true; startMusic(); }
+}
+document.addEventListener('click',    _tryStartMusic, {passive:true});
+document.addEventListener('keydown',  _tryStartMusic, {passive:true});
+document.addEventListener('touchstart',_tryStartMusic, {passive:true});
+
 // ═══════════════════════════════════════════════════════
 // §1  Canvas + resize + input
 // ═══════════════════════════════════════════════════════
@@ -515,10 +651,9 @@ _skillBtn.addEventListener('touchstart', e => { e.preventDefault(); keys['Space'
 _skillBtn.addEventListener('touchend',   e => { e.preventDefault(); keys['Space']=false; _skillBtn.classList.remove('pressing'); }, { passive:false });
 _skillBtn.addEventListener('touchcancel',e => { e.preventDefault(); keys['Space']=false; _skillBtn.classList.remove('pressing'); }, { passive:false });
 
-// Auto-detect touch device
-if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
-  _setMobileVisible(false); // only show during gameplay
-}
+// Only show joystick on touch-primary devices (phones/tablets), NOT on desktop with mouse
+const _isTouchDevice = window.matchMedia('(pointer:coarse)').matches;
+// _setMobileVisible called during gameplay only
 
 // ═══════════════════════════════════════════════════════
 // §2  Colour palette + sprites
@@ -612,19 +747,19 @@ const CLASSES = [
 ];
 
 const ENEMY_TYPES = {
-  slime:    { hp:38,  spd:55,  dmg:7,   xp:8,   radius:6,  sprite:'slime',    color:'#4f4', scale:2 },
-  goblin:   { hp:65,  spd:85,  dmg:13,  xp:12,  radius:7,  sprite:'goblin',   color:'#fa4', scale:2 },
-  skeleton: { hp:100, spd:60,  dmg:19,  xp:18,  radius:8,  sprite:'skeleton', color:'#ddd', scale:2 },
-  bat:      { hp:42,  spd:120, dmg:11,  xp:14,  radius:5,  sprite:'bat',      color:'#a4f', scale:2 },
-  orc:      { hp:195, spd:45,  dmg:28,  xp:30,  radius:10, sprite:'orc',      color:'#f84', scale:2 },
-  wolf:     { hp:80,  spd:140, dmg:17,  xp:20,  radius:6,  sprite:'wolf',     color:'#bbb', scale:2 },
-  troll:    { hp:360, spd:35,  dmg:48,  xp:50,  radius:13, sprite:'troll',    color:'#8b5', scale:2 },
-  demon:    { hp:160, spd:95,  dmg:34,  xp:40,  radius:8,  sprite:'demon',    color:'#f4f', scale:2 },
-  boss_10:  { hp:4500,  spd:40, dmg:40, xp:300,  radius:22, sprite:'dragon',  color:'#f44', scale:4, isBoss:true, bossName:'暗影龙王' },
-  boss_10_cat: { hp:5000, spd:58, dmg:28, xp:320, radius:22, sprite:'cat_boss', color:'#f84', scale:4, isBoss:true, bossName:'暴食猫王', bossType:'cat' },
-  boss_10_dog: { hp:5800, spd:65, dmg:58, xp:320, radius:24, sprite:'dog_boss', color:'#8b5e3c', scale:4, isBoss:true, bossName:'狂野犬王', bossType:'dog' },
-  boss_20:  { hp:14000, spd:45, dmg:75, xp:700,  radius:26, sprite:'orc',     color:'#f84', scale:5, isBoss:true, bossName:'熔岩霸主' },
-  boss_30:  { hp:38000, spd:50, dmg:130,xp:1500, radius:30, sprite:'dragon',  color:'#a4f', scale:6, isBoss:true, bossName:'虚空领主' },
+  slime:    { hp:38,  spd:40,  dmg:7,   xp:8,   radius:6,  sprite:'slime',    color:'#4f4', scale:2 },
+  goblin:   { hp:65,  spd:62,  dmg:13,  xp:12,  radius:7,  sprite:'goblin',   color:'#fa4', scale:2 },
+  skeleton: { hp:100, spd:44,  dmg:19,  xp:18,  radius:8,  sprite:'skeleton', color:'#ddd', scale:2 },
+  bat:      { hp:42,  spd:88,  dmg:11,  xp:14,  radius:5,  sprite:'bat',      color:'#a4f', scale:2 },
+  orc:      { hp:195, spd:33,  dmg:28,  xp:30,  radius:10, sprite:'orc',      color:'#f84', scale:2 },
+  wolf:     { hp:80,  spd:105, dmg:17,  xp:20,  radius:6,  sprite:'wolf',     color:'#bbb', scale:2 },
+  troll:    { hp:360, spd:26,  dmg:48,  xp:50,  radius:13, sprite:'troll',    color:'#8b5', scale:2 },
+  demon:    { hp:160, spd:70,  dmg:34,  xp:40,  radius:8,  sprite:'demon',    color:'#f4f', scale:2 },
+  boss_10:  { hp:4500,  spd:30, dmg:40, xp:300,  radius:22, sprite:'dragon',  color:'#f44', scale:4, isBoss:true, bossName:'暗影龙王' },
+  boss_10_cat: { hp:5000, spd:42, dmg:28, xp:320, radius:22, sprite:'cat_boss', color:'#f84', scale:4, isBoss:true, bossName:'暴食猫王', bossType:'cat' },
+  boss_10_dog: { hp:5800, spd:48, dmg:58, xp:320, radius:24, sprite:'dog_boss', color:'#8b5e3c', scale:4, isBoss:true, bossName:'狂野犬王', bossType:'dog' },
+  boss_20:  { hp:14000, spd:34, dmg:75, xp:700,  radius:26, sprite:'orc',     color:'#f84', scale:5, isBoss:true, bossName:'熔岩霸主' },
+  boss_30:  { hp:38000, spd:38, dmg:130,xp:1500, radius:30, sprite:'dragon',  color:'#a4f', scale:6, isBoss:true, bossName:'虚空领主' },
 };
 
 // 30-wave plan. boss_10/20/30 ignore scale factor.
@@ -668,8 +803,26 @@ function getWavePlan(n) {
 // ═══════════════════════════════════════════════════════
 // §0  版本号 & 更新公告  ← 每次更新只需修改这里
 // ═══════════════════════════════════════════════════════
-const GAME_VERSION = 'v0.2.1';
+const GAME_VERSION = 'v0.3.0';
 const CHANGELOG = [
+  {
+    version: 'v0.3.0',
+    date: '2026-04',
+    items: [
+      '新增背景音乐与加载画面',
+      '宝箱系统重做：开宝箱自动获得属性加成，无需选择',
+      '紫宝箱有25%概率附赠随机天赋，彩虹宝箱有75%概率',
+      '新增游戏内菜单按钮与角色详情面板',
+      '初选武器可刷新，每场游戏共5次机会',
+      '成就系统扩充至22个，完成后可领取金币奖励',
+      '修复：电脑端不再显示摇杆和技能键',
+      '调整摇杆大小与位置，操作更舒适',
+      '地图进一步缩小，战斗更紧凑',
+      '怪物移速降低约25%，节奏更友好',
+      '新增官方邮件：开服礼包500金币（限时30天）',
+      '模仿者图标修正，不再与天选者重复',
+    ]
+  },
   {
     version: 'v0.2.1',
     date: '2026-04',
@@ -712,11 +865,19 @@ const CHANGELOG = [
 //         reward:{ icon:'🎁', name:'奖励描述', type:'luck'|'maxhp'|'item', value:数字 } }
 // reward 可省略（纯通知邮件）
 const MAILBOX = [
-  // 暂时没有邮件，以后在这里加
+  {
+    id: 'launch_500coins',
+    from: '官方',
+    date: '2026-04-02',
+    expires: '2026-05-02',
+    title: '🎉 感谢支持！开服礼包',
+    content: '感谢你游玩像素勇士！作为开服回馈，官方送出500金币，快去商城解锁你喜欢的职业或武器吧！\n※ 限时邮件，2026-05-02前领取',
+    reward: { icon:'💰', name:'500 金币', type:'coins', value:500 }
+  },
 ];
 
 const BOSS_WAVES = new Set([10, 20, 30]);
-const WORLD_W = 1400, WORLD_H = 1000; // Player movement bounds (centered at 0,0)
+const WORLD_W = 700, WORLD_H = 480; // Player movement bounds (centered at 0,0)
 
 // ── Mutation definitions ────────────────────────────────
 
@@ -1056,6 +1217,9 @@ function initGame(classIdx) {
     score: 0,
     talents: new Set(),
     wave: { num:0, total:0, spawnQueue:[], spawnTimer:0, spawning:false, timer:0 },
+    weaponRefreshes: 5,
+    _damageTaken: 0,
+    _rainbowChests: 0,
   };
 
   waveCompleteTriggered = false;
@@ -1189,7 +1353,7 @@ function updateSantaGifts(dt) {
         addFloatingText('🎁持续回血', p.x, p.y-16, '#4f6', 1.2);
         if (settings.particles) spawnParticles(p.x, p.y, ['#4f6','#2fa'], 10, 75, 0.5, 3);
       } else if (gift.type === 'rainbow') {
-        if (gs.phase === 'playing') { gs.phase = 'supply'; showDropSupplyScreen('supply_rainbow'); }
+        autoApplyChest('supply_rainbow');
         addFloatingText('🌈彩虹大礼!', p.x, p.y-18, '#fd4', 1.8);
       }
       return false;
@@ -1563,6 +1727,60 @@ function spawnDrop(x, y, type) {
   });
 }
 
+// ── Chest auto-apply stat bonuses ──
+const CHEST_STAT_POOL = [
+  { id:'maxhp',  icon:'❤', name:'+20 最大HP',      apply:p=>{p.maxHp+=20; healPlayer(20);} },
+  { id:'dmg10',  icon:'⚔', name:'+10% 伤害',       apply:p=>{p.dmgMult=+(p.dmgMult*1.10).toFixed(4);} },
+  { id:'spd15',  icon:'💨', name:'+15 移速',        apply:p=>{p.spd+=15;} },
+  { id:'luck5',  icon:'🍀', name:'+5 幸运',         apply:p=>{p.luck+=5;} },
+  { id:'dodge',  icon:'🌀', name:'+4% 闪避',        apply:p=>{p.baseDodge=Math.min(0.6,p.baseDodge+0.04);} },
+  { id:'armor',  icon:'🛡', name:'+4% 减伤',        apply:p=>{p.baseDmgRed=Math.min(0.6,p.baseDmgRed+0.04);} },
+  { id:'regen',  icon:'💖', name:'+2 HP回复/s',    apply:p=>{p.hpRegen+=2;} },
+  { id:'pickup', icon:'🧲', name:'+25 拾取范围',    apply:p=>{p.pickupR+=25;} },
+  { id:'crit',   icon:'⚡', name:'+5% 暴击率',     apply:p=>{p.critRate=Math.min(0.8,(p.critRate||0)+0.05);} },
+  { id:'dmg15',  icon:'💥', name:'+15% 伤害',      apply:p=>{p.dmgMult=+(p.dmgMult*1.15).toFixed(4);} },
+  { id:'hp30',   icon:'💗', name:'+30 最大HP',      apply:p=>{p.maxHp+=30; healPlayer(30);} },
+];
+
+function autoApplyChest(dropType) {
+  const p = gs.player;
+  const def = DROP_DEFS[dropType];
+  if (!def?.rarity) return;
+  const rarity = def.rarity;
+  const statCount = { green:1, blue:2, purple:2, rainbow:3 }[rarity] || 1;
+  const chestColor = { green:'#4f4', blue:'#48f', purple:'#c4f', rainbow:'#fd4' }[rarity] || '#fd4';
+  const chestLabel = { green:'💚绿宝箱', blue:'💙蓝宝箱', purple:'💜紫宝箱', rainbow:'🌈彩虹宝箱' }[rarity] || '宝箱';
+
+  addFloatingText(chestLabel + ' 开启!', p.x, p.y - 30, chestColor, 1.5);
+  if (rarity === 'rainbow') gs._rainbowChests = (gs._rainbowChests||0) + 1;
+
+  const pool = shuffled([...CHEST_STAT_POOL]);
+  pool.slice(0, statCount).forEach((s, i) => {
+    s.apply(p);
+    addFloatingText(s.icon + ' ' + s.name, p.x + (i-1)*18, p.y - 20 - i*14, chestColor, 2.0);
+  });
+
+  // Purple: 25% chance of random talent
+  if (rarity === 'purple' && Math.random() < 0.25) tryGrantRandomTalent(p);
+  // Rainbow: 75% chance of random talent
+  if (rarity === 'rainbow' && Math.random() < 0.75) tryGrantRandomTalent(p);
+
+  if (settings.particles) spawnParticles(p.x, p.y, chestColor, 12, 100, 0.7, 3);
+  updateDerivedStats(p);
+  updateHUD();
+  checkAchievements();
+}
+
+function tryGrantRandomTalent(p) {
+  const available = SUPPLY_TALENTS.filter(t => !gs.talents.has(t.id));
+  if (!available.length) return;
+  const talent = available[Math.floor(Math.random() * available.length)];
+  gs.talents.add(talent.id);
+  talent.apply(p);
+  addFloatingText('✨ 天赋: ' + talent.name, p.x, p.y - 48, '#a4f', 2.5);
+  updateDerivedStats(p);
+}
+
 function healPlayer(amount) {
   const p = gs.player;
   const before = p.hp;
@@ -1711,7 +1929,6 @@ function updatePlayer(dt) {
 
   // Drop pickup (contact range = 14px)
   const PICKUP_R2 = 14*14;
-  let pendingSupply = null;
   gs.drops = gs.drops.filter(drop => {
     const dx2=drop.x-p.x, dy2=drop.y-p.y;
     if (dx2*dx2+dy2*dy2 > PICKUP_R2) return true;
@@ -1719,17 +1936,12 @@ function updatePlayer(dt) {
     if (!def) return false;
     if (def.instant) {
       applyInstantDrop(drop.type);
-    } else {
-      // Queue supply (only one at a time)
-      if (!pendingSupply) pendingSupply = drop;
-      else return true; // keep if can't process now
+    } else if (def.rarity) {
+      // Chest: auto-apply stats (no card selection needed)
+      autoApplyChest(drop.type);
     }
     return false;
   });
-  if (pendingSupply && gs.phase === 'playing') {
-    gs.phase = 'supply';
-    showDropSupplyScreen(pendingSupply.type);
-  }
 
 
   // Recompute derived stats each frame
@@ -1906,6 +2118,7 @@ function updateEnemies(dt) {
         // Damage reduction
         const actualDmg = e.dmg * (1 - p.dmgReduction) * (1 - Math.min(0.8,(e.paralysisStacks||0)*0.08));
         p.hp -= actualDmg;
+        gs._damageTaken = (gs._damageTaken||0) + actualDmg;
         p.invincible = 0.5 * (p.invincMult||1);
         spawnParticles(p.x, p.y, '#f44', 6, 90, 0.4, 2);
         if (p.hp<=0) { p.hp=0; gs.phase='dead'; showDeadScreen(); }
@@ -3002,7 +3215,7 @@ function gameLoop(ts) {
       gs.wave.timer += dt;
       updateHUD();
       checkWaveComplete();
-    } else if (gs.phase==='upgrading'||gs.phase==='supply'||gs.phase==='dead'||gs.phase==='levelup') {
+    } else if (gs.phase==='upgrading'||gs.phase==='supply'||gs.phase==='dead'||gs.phase==='levelup'||gs.phase==='paused') {
       updateParticles(dt);
     }
     render();
@@ -3013,7 +3226,7 @@ function gameLoop(ts) {
 // ═══════════════════════════════════════════════════════
 // §16  Upgrade screen (normal waves)
 // ═══════════════════════════════════════════════════════
-function showUpgradeScreen(options) {
+function showUpgradeScreen(options, extra) {
   document.getElementById('upg-title').textContent =
     gs.wave.num===0 ? '⚔ 选择起始武器' : `🏆 第${gs.wave.num}波清除！`;
   const container = document.getElementById('upg-cards');
@@ -3026,6 +3239,18 @@ function showUpgradeScreen(options) {
     card.addEventListener('click',()=>applyUpgrade(opt));
     container.appendChild(card);
   });
+  // Refresh button (only for start weapon selection)
+  const existingRefresh = document.getElementById('upg-refresh');
+  if (existingRefresh) existingRefresh.remove();
+  if (extra?.showRefresh) {
+    const left = extra.refreshLeft ?? 0;
+    const btn = document.createElement('button');
+    btn.id = 'upg-refresh';
+    btn.style.cssText = 'margin-top:14px;padding:7px 22px;background:#1a1400;border:1px solid '+(left>0?'#fd4':'#444')+';border-radius:4px;color:'+(left>0?'#fd4':'#555')+';font-family:\'Courier New\',monospace;font-size:11px;cursor:'+(left>0?'pointer':'default')+';letter-spacing:1px';
+    btn.textContent = left > 0 ? `🔄 刷新武器 (剩余 ${left} 次)` : '刷新次数已用完';
+    if (left > 0) btn.addEventListener('click', extra.onRefresh);
+    container.parentElement.appendChild(btn);
+  }
   document.getElementById('o-upgrade').classList.add('active');
 }
 
@@ -3036,9 +3261,16 @@ function showStartWeaponScreen() {
              desc: def.startDesc || describeWeapon(id,1) };
   };
   const excluded = new Set(['heal_drone', 'kirby_copy']);
-  const allChoices = shuffled(Object.keys(WEAPON_DEFS).filter(id => !excluded.has(id)));
-  const options = allChoices.slice(0, 4).map(makeOpt);
-  showUpgradeScreen(options);
+  const available = shuffled(Object.keys(WEAPON_DEFS).filter(id => !excluded.has(id)));
+  const options = available.slice(0, 4).map(makeOpt);
+
+  // Show with refresh button
+  const refreshLeft = gs.weaponRefreshes ?? 5;
+  showUpgradeScreen(options, { showRefresh: true, refreshLeft, onRefresh: () => {
+    if ((gs.weaponRefreshes ?? 5) <= 0) return;
+    gs.weaponRefreshes = (gs.weaponRefreshes ?? 5) - 1;
+    showStartWeaponScreen();
+  }});
 }
 
 function applyUpgrade(opt) {
@@ -3738,13 +3970,15 @@ function showGameScreen() {
   document.querySelectorAll('.overlay').forEach(el=>el.classList.remove('active'));
   document.getElementById('hud').style.display='block';
   document.getElementById('hud-bot').style.display='block';
-  if ('ontouchstart' in window || navigator.maxTouchPoints > 0) _setMobileVisible(true);
+  document.getElementById('hud-ingame-btns').style.display='flex';
+  if (_isTouchDevice) _setMobileVisible(true);
 }
 
 function showDeadScreen() {
   saveBest(); checkAchievements();
   document.getElementById('hud').style.display='none';
   document.getElementById('hud-bot').style.display='none';
+  document.getElementById('hud-ingame-btns').style.display='none';
   const p=gs.player;
   const effDodge=(Math.min(0.6,p.baseDodge+p.luck*0.001)*100).toFixed(0);
   const effArm  =(Math.min(0.6,p.baseDmgRed+p.luck*0.0005)*100).toFixed(0);
@@ -3764,6 +3998,7 @@ function showVictoryScreen() {
   saveBest(); checkAchievements();
   document.getElementById('hud').style.display='none';
   document.getElementById('hud-bot').style.display='none';
+  document.getElementById('hud-ingame-btns').style.display='none';
   document.getElementById('victory-stats').innerHTML=`
     <div class="stat-row">🌊 通关全部 <b style="color:#fd4">30波</b></div>
     <div class="stat-row">💀 击杀: <b style="color:#4ef">${gs.kills}</b></div>
@@ -3796,9 +4031,14 @@ function saveClaimedMails(set) {
   localStorage.setItem('pw_claimed_mails', JSON.stringify([...set]));
 }
 
+function getActiveMails() {
+  const now = new Date();
+  return MAILBOX.filter(m => !m.expires || new Date(m.expires) >= now);
+}
+
 function updateMailBadge() {
   const claimed = getClaimedMails();
-  const unclaimed = MAILBOX.filter(m => !claimed.has(m.id) && m.reward).length;
+  const unclaimed = getActiveMails().filter(m => !claimed.has(m.id) && m.reward).length;
   const badge = document.getElementById('mail-badge');
   if (unclaimed > 0) { badge.textContent = unclaimed; badge.style.display = 'block'; }
   else { badge.style.display = 'none'; }
@@ -3807,12 +4047,14 @@ function updateMailBadge() {
 function renderMailbox() {
   const claimed = getClaimedMails();
   const list = document.getElementById('mailbox-list');
-  if (MAILBOX.length === 0) {
+  const active = getActiveMails();
+  if (active.length === 0) {
     list.innerHTML = '<div class="mail-empty">📭 暂无邮件</div>';
     return;
   }
-  list.innerHTML = MAILBOX.map(mail => {
+  list.innerHTML = active.map(mail => {
     const isClaimed = claimed.has(mail.id);
+    const expiryHtml = mail.expires ? `<div style="font-size:9px;color:#666;margin-top:2px">⏰ 到期: ${mail.expires}</div>` : '';
     const rewardHtml = mail.reward ? `
       <div class="mail-reward">
         <div class="mail-reward-info">${mail.reward.icon} ${mail.reward.name}</div>
@@ -3826,6 +4068,7 @@ function renderMailbox() {
         <div class="mail-from">📨 ${mail.from || '官方'} · ${mail.date || ''}</div>
         <div class="mail-title">${mail.title}</div>
         <div class="mail-content">${mail.content || ''}</div>
+        ${expiryHtml}
         ${rewardHtml}
       </div>`;
   }).join('');
@@ -3835,18 +4078,22 @@ function renderMailbox() {
       const id = btn.dataset.id;
       const mail = MAILBOX.find(m => m.id === id);
       if (!mail?.reward) return;
-      // 存储待领取奖励（下次开局生效）
       try {
-        const pending = JSON.parse(localStorage.getItem('pw_pending_rewards')||'[]');
-        pending.push({ icon:mail.reward.icon, name:mail.reward.name,
-                        type:mail.reward.type, value:mail.reward.value });
-        localStorage.setItem('pw_pending_rewards', JSON.stringify(pending));
+        if (mail.reward.type === 'coins') {
+          addCoins(mail.reward.value || 0);
+        } else {
+          const pending = JSON.parse(localStorage.getItem('pw_pending_rewards')||'[]');
+          pending.push({ icon:mail.reward.icon, name:mail.reward.name,
+                          type:mail.reward.type, value:mail.reward.value });
+          localStorage.setItem('pw_pending_rewards', JSON.stringify(pending));
+        }
       } catch(e){}
       const c = getClaimedMails(); c.add(id); saveClaimedMails(c);
       btn.textContent = '已领取'; btn.classList.add('done'); btn.disabled = true;
       const item = document.getElementById(`mailitem-${id}`);
       if (item) { item.classList.remove('unclaimed'); item.classList.add('claimed'); }
       updateMailBadge();
+      renderMenuCoins();
     });
   });
 }
@@ -3885,6 +4132,65 @@ document.getElementById('btn-dead-menu').addEventListener('click', ()=>{ showOve
 document.getElementById('btn-victory-menu').addEventListener('click', ()=>{ showOverlay('o-menu'); renderBestRun(); renderMenuCoins(); });
 document.getElementById('btn-retry').addEventListener('click', ()=>{ showGameScreen(); initGame(lastClassIdx); });
 document.getElementById('btn-victory-retry').addEventListener('click', ()=>{ showGameScreen(); initGame(lastClassIdx); });
+
+// In-game menu buttons
+document.getElementById('btn-ingame-menu').addEventListener('click', ()=>{
+  if (!gs || gs.phase==='dead') return;
+  gs._prePausePhase = gs.phase;
+  gs.phase = 'paused';
+  document.getElementById('o-ingame-menu').classList.add('active');
+});
+document.getElementById('btn-resume').addEventListener('click', ()=>{
+  document.getElementById('o-ingame-menu').classList.remove('active');
+  gs.phase = gs._prePausePhase || 'playing';
+});
+document.getElementById('btn-ingame-settings').addEventListener('click', ()=>{
+  document.getElementById('o-ingame-menu').classList.remove('active');
+  showOverlay('o-settings');
+  document.getElementById('btn-settings-back').onclick = ()=>{
+    document.getElementById('o-settings').classList.remove('active');
+    gs.phase = gs._prePausePhase || 'playing';
+  };
+});
+document.getElementById('btn-quit-run').addEventListener('click', ()=>{
+  document.getElementById('o-ingame-menu').classList.remove('active');
+  document.getElementById('hud-ingame-btns').style.display='none';
+  gs.phase = 'dead';
+  showDeadScreen();
+});
+document.getElementById('btn-ingame-char').addEventListener('click', ()=>{
+  if (!gs) return;
+  gs._prePausePhase = gs.phase;
+  gs.phase = 'paused';
+  renderCharDetail();
+  document.getElementById('o-char-detail').classList.add('active');
+});
+document.getElementById('btn-char-detail-back').addEventListener('click', ()=>{
+  document.getElementById('o-char-detail').classList.remove('active');
+  gs.phase = gs._prePausePhase || 'playing';
+});
+
+function renderCharDetail() {
+  if (!gs) return;
+  const p = gs.player;
+  const cls = CLASSES[p.classIdx];
+  const effDodge = (Math.min(0.6, p.baseDodge) * 100).toFixed(1);
+  const effArm   = (Math.min(0.6, p.baseDmgRed) * 100).toFixed(1);
+  document.getElementById('char-detail-content').innerHTML = `
+    <div style="font-size:14px;color:#fd4;font-weight:700;margin-bottom:8px">${cls?.name||'?'} &nbsp; Lv.${p.level}</div>
+    <div>❤ HP: <b style="color:#f44">${Math.ceil(p.hp)} / ${p.maxHp}</b></div>
+    <div>⚔ 伤害倍率: <b style="color:#fd4">${(p.dmgMult*100).toFixed(0)}%</b></div>
+    <div>💨 移速: <b>${p.spd}</b></div>
+    <div>🍀 幸运: <b style="color:#4f4">${p.luck}</b></div>
+    <div>💖 回复: <b style="color:#6f6">${p.hpRegen}/s</b></div>
+    <div>🌀 闪避: <b style="color:#8af">${effDodge}%</b></div>
+    <div>🛡 减伤: <b style="color:#aaa">${effArm}%</b></div>
+    <div>⚡ 暴击率: <b style="color:#fd4">${((p.critRate||0)*100).toFixed(0)}%</b> &nbsp; 暴击伤害: <b>${((p.critDmgMult||1.5)*100).toFixed(0)}%</b></div>
+    <div>🧲 拾取范围: <b>${p.pickupR}</b></div>
+    <div style="margin-top:8px;color:#555">— 天赋 (${gs.talents.size}) —</div>
+    ${[...gs.talents].map(id=>{const t=SUPPLY_TALENTS.find(x=>x.id===id);return t?`<div>${t.icon} ${t.name}</div>`:''}).join('')||'<div style="color:#444">暂无</div>'}
+  `;
+}
 document.getElementById('btn-confirm').addEventListener('click', ()=>{
   if (selectedClassIdx<0) return;
   const cls = CLASSES[selectedClassIdx];
@@ -3936,6 +4242,13 @@ document.querySelectorAll('.cls-dot').forEach((dot, i) => {
 document.getElementById('tog-particles').addEventListener('click', ()=>{
   settings.particles=!settings.particles;
   document.getElementById('tog-particles').classList.toggle('on',settings.particles);
+});
+// Music toggle
+try { const m=localStorage.getItem('pw_music'); if(m==='0'){_musicEnabled=false;document.getElementById('tog-music').classList.remove('on');} }catch(e){}
+document.getElementById('tog-music').addEventListener('click', ()=>{
+  _musicEnabled = !_musicEnabled;
+  document.getElementById('tog-music').classList.toggle('on', _musicEnabled);
+  toggleMusic(_musicEnabled);
 });
 document.getElementById('spd-slider').addEventListener('input', function(){
   settings.gameSpeed=this.value/100;
@@ -4042,7 +4355,7 @@ function refreshClsGrid() {
 }
 
 // ── Shop render ──
-const CLS_ICONS = ['💊','⚔','⚒','🔮','🎓','💀','⭐','🎅','⭐'];
+const CLS_ICONS = ['💊','⚔','⚒','🔮','🎓','💀','🌀','🎅','⭐'];
 function renderShop() {
   autoCheckUnlocks();
   const coins = getCoins();
@@ -4090,19 +4403,30 @@ function shopBuy(classId, price) {
 // ═══════════════════════════════════════════════════════
 // §21  Achievements
 // ═══════════════════════════════════════════════════════
+// reward: { type:'coins', value:N }
 const ACHIEVEMENTS = [
-  { id:'first_kill', name:'初次击杀',  desc:'击败第一个敌人',           icon:'⚔',  check:()=>gs&&gs.kills>=1 },
-  { id:'wave5',      name:'生存大师',  desc:'到达第5波',                icon:'🌊', check:()=>gs&&gs.wave.num>=5 },
-  { id:'wave10',     name:'Boss猎手',  desc:'击败第一个Boss（第10波）', icon:'🔥', check:()=>gs&&gs.wave.num>=10 },
-  { id:'wave20',     name:'传奇勇士',  desc:'击败第二个Boss（第20波）', icon:'⚡', check:()=>gs&&gs.wave.num>=20 },
-  { id:'wave30',     name:'传奇终结者',desc:'通关全30波',               icon:'👑', check:()=>gs&&gs.wave.num>=30 },
-  { id:'kill100',    name:'大屠杀',    desc:'本局击杀100个敌人',        icon:'💀', check:()=>gs&&gs.kills>=100 },
-  { id:'kill500',    name:'死神降临',  desc:'本局击杀500个敌人',        icon:'☠',  check:()=>gs&&gs.kills>=500 },
-  { id:'lucky100',   name:'幸运儿',    desc:'幸运值达到100',            icon:'🍀', check:()=>gs&&gs.player.luck>=100 },
-  { id:'dodgemax',   name:'无影幻形',  desc:'闪避率达到50%',            icon:'👻', check:()=>gs&&gs.player.dodgeChance>=0.5 },
-  { id:'armmax',     name:'钢铁意志',  desc:'减伤率达到50%',            icon:'🛡', check:()=>gs&&gs.player.dmgReduction>=0.5 },
-  { id:'talents3',   name:'天赋满载',  desc:'获得3个补给天赋',          icon:'✨', check:()=>gs&&gs.talents&&gs.talents.size>=3 },
-  { id:'allweapons', name:'武器大师',  desc:'同时装备5种武器',           icon:'🗡', check:()=>gs&&gs.weapons.length>=5 },
+  { id:'first_kill', name:'初次击杀',   desc:'击败第一个敌人',                icon:'⚔',  reward:{type:'coins',value:20},  check:()=>gs&&gs.kills>=1 },
+  { id:'wave3',      name:'初露锋芒',   desc:'到达第3波',                     icon:'🌱', reward:{type:'coins',value:30},  check:()=>gs&&gs.wave.num>=3 },
+  { id:'wave5',      name:'生存大师',   desc:'到达第5波',                     icon:'🌊', reward:{type:'coins',value:50},  check:()=>gs&&gs.wave.num>=5 },
+  { id:'wave10',     name:'Boss猎手',   desc:'击败第一个Boss（第10波）',      icon:'🔥', reward:{type:'coins',value:100}, check:()=>gs&&gs.wave.num>=10 },
+  { id:'wave15',     name:'无惧先锋',   desc:'到达第15波',                    icon:'⚡', reward:{type:'coins',value:150}, check:()=>gs&&gs.wave.num>=15 },
+  { id:'wave20',     name:'传奇勇士',   desc:'击败第二个Boss（第20波）',      icon:'💎', reward:{type:'coins',value:200}, check:()=>gs&&gs.wave.num>=20 },
+  { id:'wave25',     name:'末日骑士',   desc:'到达第25波',                    icon:'🌑', reward:{type:'coins',value:300}, check:()=>gs&&gs.wave.num>=25 },
+  { id:'wave30',     name:'传奇终结者', desc:'通关全30波',                    icon:'👑', reward:{type:'coins',value:500}, check:()=>gs&&gs.wave.num>=30 },
+  { id:'kill50',     name:'小有斩获',   desc:'本局击杀50个敌人',              icon:'🗡', reward:{type:'coins',value:25},  check:()=>gs&&gs.kills>=50 },
+  { id:'kill100',    name:'大屠杀',     desc:'本局击杀100个敌人',             icon:'💀', reward:{type:'coins',value:50},  check:()=>gs&&gs.kills>=100 },
+  { id:'kill300',    name:'战场霸主',   desc:'本局击杀300个敌人',             icon:'⚰', reward:{type:'coins',value:100}, check:()=>gs&&gs.kills>=300 },
+  { id:'kill500',    name:'死神降临',   desc:'本局击杀500个敌人',             icon:'☠',  reward:{type:'coins',value:200}, check:()=>gs&&gs.kills>=500 },
+  { id:'lucky100',   name:'幸运儿',     desc:'幸运值达到100',                 icon:'🍀', reward:{type:'coins',value:80},  check:()=>gs&&gs.player.luck>=100 },
+  { id:'lucky300',   name:'命运之子',   desc:'幸运值达到300',                 icon:'🌈', reward:{type:'coins',value:200}, check:()=>gs&&gs.player.luck>=300 },
+  { id:'dodgemax',   name:'无影幻形',   desc:'闪避率达到50%',                 icon:'👻', reward:{type:'coins',value:100}, check:()=>gs&&gs.player.dodgeChance>=0.5 },
+  { id:'armmax',     name:'钢铁意志',   desc:'减伤率达到50%',                 icon:'🛡', reward:{type:'coins',value:100}, check:()=>gs&&gs.player.dmgReduction>=0.5 },
+  { id:'talents3',   name:'天赋满载',   desc:'获得3个补给天赋',               icon:'✨', reward:{type:'coins',value:80},  check:()=>gs&&gs.talents&&gs.talents.size>=3 },
+  { id:'talents6',   name:'天赋大师',   desc:'获得6个补给天赋',               icon:'🌟', reward:{type:'coins',value:200}, check:()=>gs&&gs.talents&&gs.talents.size>=6 },
+  { id:'allweapons', name:'武器大师',   desc:'同时装备5种武器',               icon:'🗡', reward:{type:'coins',value:150}, check:()=>gs&&gs.weapons.length>=5 },
+  { id:'level20',    name:'经验老兵',   desc:'达到20级',                      icon:'🎓', reward:{type:'coins',value:120}, check:()=>gs&&gs.player.level>=20 },
+  { id:'rainbow',    name:'彩虹收藏家', desc:'本局获得1个彩虹宝箱',           icon:'🌈', reward:{type:'coins',value:60},  check:()=>gs&&(gs._rainbowChests||0)>=1 },
+  { id:'nodmg5',     name:'无伤过关',   desc:'前5波不受伤',                   icon:'🛡', reward:{type:'coins',value:80},  check:()=>gs&&gs.wave.num>=5&&(gs._damageTaken||0)===0 },
 ];
 
 function loadAchievements() {
@@ -4111,22 +4435,52 @@ function loadAchievements() {
 function saveAchievements(data) {
   try { localStorage.setItem('pixelwarrior_ach', JSON.stringify(data)); } catch {}
 }
+function loadAchievementRewards() {
+  try { return new Set(JSON.parse(localStorage.getItem('pw_ach_rewards')||'[]')); } catch { return new Set(); }
+}
+function saveAchievementRewards(set) {
+  try { localStorage.setItem('pw_ach_rewards', JSON.stringify([...set])); } catch {}
+}
 function checkAchievements() {
   const data=loadAchievements(); let changed=false;
   ACHIEVEMENTS.forEach(a=>{ if (!data[a.id]&&a.check()) { data[a.id]=true; changed=true; } });
   if (changed) saveAchievements(data);
 }
 function renderAchievements() {
-  const data=loadAchievements();
-  document.getElementById('ach-list').innerHTML=ACHIEVEMENTS.map(a=>`
-    <div class="ach-item ${data[a.id]?'done':''}">
+  const data = loadAchievements();
+  const claimed = loadAchievementRewards();
+  document.getElementById('ach-list').innerHTML = ACHIEVEMENTS.map(a => {
+    const done = !!data[a.id];
+    const rewarded = claimed.has(a.id);
+    const rewardStr = a.reward ? `💰 ${a.reward.value} 金币` : '';
+    const claimBtn = done && !rewarded && a.reward
+      ? `<button class="ach-claim-btn" data-id="${a.id}" style="margin-left:auto;padding:2px 10px;
+          background:#1a1400;border:1px solid #fd4;border-radius:3px;color:#fd4;
+          font-size:10px;cursor:pointer;font-family:'Courier New',monospace">领取</button>`
+      : done && rewarded ? '<span style="margin-left:auto;color:#4f4;font-size:16px">✓</span>'
+      : '';
+    return `<div class="ach-item ${done?'done':''}">
       <span class="ach-icon">${a.icon}</span>
-      <div>
-        <div style="font-weight:700;color:${data[a.id]?'#fd4':'#666'}">${a.name}</div>
+      <div style="flex:1">
+        <div style="font-weight:700;color:${done?'#fd4':'#666'}">${a.name}</div>
         <div class="ach-text">${a.desc}</div>
+        ${rewardStr ? `<div style="font-size:9px;color:#a81;margin-top:1px">🏅 奖励: ${rewardStr}</div>` : ''}
       </div>
-      ${data[a.id]?'<span style="margin-left:auto;color:#4f4;font-size:16px">✓</span>':''}
-    </div>`).join('');
+      ${claimBtn}
+    </div>`;
+  }).join('');
+  // Wire claim buttons
+  document.querySelectorAll('.ach-claim-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      const ach = ACHIEVEMENTS.find(a => a.id === id);
+      if (!ach?.reward) return;
+      const c = loadAchievementRewards(); c.add(id); saveAchievementRewards(c);
+      if (ach.reward.type === 'coins') addCoins(ach.reward.value);
+      renderAchievements();
+      renderMenuCoins();
+    });
+  });
 }
 
 // ═══════════════════════════════════════════════════════
