@@ -146,6 +146,22 @@ input[type=range]{width:120px;accent-color:#48f}
            font-family:'Courier New',monospace;text-shadow:0 0 6px currentColor;
            transition:opacity .1s}
 
+/* ── Mailbox ── */
+.mail-item{background:#111827;border:1px solid #334;border-radius:5px;padding:12px 14px;margin-bottom:8px;transition:border-color .15s}
+.mail-item.unclaimed{border-color:#4ef4}
+.mail-item.claimed{opacity:.5}
+.mail-from{font-size:9px;color:#555;margin-bottom:2px}
+.mail-title{font-size:13px;color:#eee;font-weight:700;margin-bottom:4px}
+.mail-content{font-size:10px;color:#aaa;line-height:1.7;margin-bottom:8px}
+.mail-reward{display:flex;align-items:center;justify-content:space-between;
+  background:#1a1400;border:1px solid #fd44;border-radius:4px;padding:6px 10px;margin-bottom:6px}
+.mail-reward-info{font-size:11px;color:#fd4}
+.mail-claim{background:#1a1400;border:1px solid #4ef;border-radius:3px;padding:4px 12px;
+  color:#4ef;font-size:11px;cursor:pointer;font-family:'Courier New',monospace;transition:background .15s}
+.mail-claim:hover{background:#0a2030}
+.mail-claim.done{border-color:#333;color:#444;cursor:default}
+.mail-empty{text-align:center;color:#444;font-size:13px;padding:40px 0}
+
 /* ── Mobile touch controls ── */
 #joy-zone{position:fixed;bottom:44px;left:12px;width:110px;height:110px;
   display:none;z-index:25;touch-action:none}
@@ -227,6 +243,11 @@ input[type=range]{width:120px;accent-color:#48f}
       <button class="btn" id="btn-settings">⚙ 设置</button>
       <button class="btn" id="btn-achieve">🏆 成就</button>
       <button class="btn" id="btn-announce" style="border-color:#f84;color:#f84">📢 公告</button>
+      <button class="btn" id="btn-mailbox" style="border-color:#4ef;color:#4ef;position:relative">
+        📬 邮箱<span id="mail-badge" style="display:none;position:absolute;top:-6px;right:-6px;
+          background:#f44;color:#fff;font-size:9px;border-radius:50%;width:16px;height:16px;
+          line-height:16px;text-align:center">0</span>
+      </button>
     </div>
     <div id="best-run" style="font-size:10px;color:#666;border-top:1px solid #222;padding-top:10px"></div>
     <div id="menu-version" style="font-size:9px;color:#444;margin-top:8px;letter-spacing:1px"></div>
@@ -238,19 +259,21 @@ input[type=range]{width:120px;accent-color:#48f}
   <div class="panel" style="max-width:420px;text-align:left">
     <div style="font-size:18px;color:#f84;margin-bottom:4px;text-align:center;letter-spacing:2px">📢 更新公告</div>
     <div id="announce-version" style="font-size:10px;color:#555;text-align:center;margin-bottom:14px"></div>
-    <div id="announce-log" style="max-height:280px;overflow-y:auto;margin-bottom:14px"></div>
-    <div style="font-size:12px;color:#fd4;margin-bottom:6px;letter-spacing:1px">🎁 官方活动 &amp; 礼包</div>
-    <div style="font-size:11px;color:#aaa;line-height:1.9;margin-bottom:6px">
-      参与官方活动可获得游戏内专属礼包，发送邮件至：
-    </div>
-    <div style="background:#111;border:1px solid #f844;border-radius:4px;padding:10px 14px;
-      font-size:13px;color:#f84;letter-spacing:1px;text-align:center;margin-bottom:4px;
-      cursor:pointer;user-select:all" id="email-copy" title="点击复制">
-      📧 your@email.com
-    </div>
-    <div style="font-size:9px;color:#444;text-align:center;margin-bottom:14px">点击复制邮箱</div>
+    <div id="announce-log" style="max-height:320px;overflow-y:auto;margin-bottom:14px"></div>
     <div style="text-align:center">
       <button class="btn" id="btn-announce-back">← 返回</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAILBOX -->
+<div class="overlay" id="o-mailbox">
+  <div class="panel" style="max-width:420px;text-align:left">
+    <div style="font-size:18px;color:#4ef;margin-bottom:4px;text-align:center;letter-spacing:2px">📬 邮箱</div>
+    <div style="font-size:10px;color:#555;text-align:center;margin-bottom:14px">官方礼包 · 活动奖励</div>
+    <div id="mailbox-list" style="max-height:340px;overflow-y:auto;margin-bottom:14px"></div>
+    <div style="text-align:center">
+      <button class="btn" id="btn-mailbox-back">← 返回</button>
     </div>
   </div>
 </div>
@@ -624,6 +647,14 @@ const CHANGELOG = [
   // 新版本在这里往上插入，格式同上
 ];
 
+// 邮箱列表 ← 新增邮件在此数组加入即可，自动显示在游戏内邮箱
+// 格式：{ id:'唯一ID', from:'发件人', date:'日期', title:'标题', content:'正文',
+//         reward:{ icon:'🎁', name:'奖励描述', type:'luck'|'maxhp'|'item', value:数字 } }
+// reward 可省略（纯通知邮件）
+const MAILBOX = [
+  // 暂时没有邮件，以后在这里加
+];
+
 const BOSS_WAVES = new Set([10, 20, 30]);
 const WORLD_W = 1400, WORLD_H = 1000; // Player movement bounds (centered at 0,0)
 
@@ -929,6 +960,18 @@ function initGame(classIdx) {
 
   // Apply class bonus
   cls.bonus(p);
+  // Apply pending mail rewards
+  try {
+    const pending = JSON.parse(localStorage.getItem('pw_pending_rewards')||'[]');
+    pending.forEach(r => {
+      if (r.type === 'luck')  p.luck  = (p.luck||0)  + (r.value||0);
+      if (r.type === 'maxhp') { p.maxHp += (r.value||0); p.hp += (r.value||0); }
+    });
+    if (pending.length) {
+      localStorage.removeItem('pw_pending_rewards');
+      addFloatingText?.('📬 邮件奖励已生效!', 0, -30, '#4ef', 2.0);
+    }
+  } catch(e){}
   // Recompute derived stats
   updateDerivedStats(p);
 
@@ -3675,6 +3718,70 @@ document.getElementById('btn-start').addEventListener('click', () => {
 });
 document.getElementById('btn-settings').addEventListener('click', ()=>showOverlay('o-settings'));
 document.getElementById('btn-achieve').addEventListener('click', ()=>{ renderAchievements(); showOverlay('o-achieve'); });
+// ── 邮箱系统 ──
+function getClaimedMails() {
+  try { return new Set(JSON.parse(localStorage.getItem('pw_claimed_mails')||'[]')); }
+  catch(e) { return new Set(); }
+}
+function saveClaimedMails(set) {
+  localStorage.setItem('pw_claimed_mails', JSON.stringify([...set]));
+}
+
+function updateMailBadge() {
+  const claimed = getClaimedMails();
+  const unclaimed = MAILBOX.filter(m => !claimed.has(m.id) && m.reward).length;
+  const badge = document.getElementById('mail-badge');
+  if (unclaimed > 0) { badge.textContent = unclaimed; badge.style.display = 'block'; }
+  else { badge.style.display = 'none'; }
+}
+
+function renderMailbox() {
+  const claimed = getClaimedMails();
+  const list = document.getElementById('mailbox-list');
+  if (MAILBOX.length === 0) {
+    list.innerHTML = '<div class="mail-empty">📭 暂无邮件</div>';
+    return;
+  }
+  list.innerHTML = MAILBOX.map(mail => {
+    const isClaimed = claimed.has(mail.id);
+    const rewardHtml = mail.reward ? `
+      <div class="mail-reward">
+        <div class="mail-reward-info">${mail.reward.icon} ${mail.reward.name}</div>
+        <button class="mail-claim${isClaimed?' done':''}" data-id="${mail.id}"
+          ${isClaimed?'disabled':''}>
+          ${isClaimed ? '已领取' : '领取'}
+        </button>
+      </div>` : '';
+    return `
+      <div class="mail-item ${isClaimed?'claimed':'unclaimed'}" id="mailitem-${mail.id}">
+        <div class="mail-from">📨 ${mail.from || '官方'} · ${mail.date || ''}</div>
+        <div class="mail-title">${mail.title}</div>
+        <div class="mail-content">${mail.content || ''}</div>
+        ${rewardHtml}
+      </div>`;
+  }).join('');
+
+  list.querySelectorAll('.mail-claim:not(.done)').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      const mail = MAILBOX.find(m => m.id === id);
+      if (!mail?.reward) return;
+      // 存储待领取奖励（下次开局生效）
+      try {
+        const pending = JSON.parse(localStorage.getItem('pw_pending_rewards')||'[]');
+        pending.push({ icon:mail.reward.icon, name:mail.reward.name,
+                        type:mail.reward.type, value:mail.reward.value });
+        localStorage.setItem('pw_pending_rewards', JSON.stringify(pending));
+      } catch(e){}
+      const c = getClaimedMails(); c.add(id); saveClaimedMails(c);
+      btn.textContent = '已领取'; btn.classList.add('done'); btn.disabled = true;
+      const item = document.getElementById(`mailitem-${id}`);
+      if (item) { item.classList.remove('unclaimed'); item.classList.add('claimed'); }
+      updateMailBadge();
+    });
+  });
+}
+
 // 版本号 & 公告渲染（读自 CHANGELOG 常量）
 function renderAnnounce() {
   document.getElementById('menu-version').textContent = GAME_VERSION;
@@ -3697,6 +3804,9 @@ renderAnnounce();
 
 document.getElementById('btn-announce').addEventListener('click', ()=>showOverlay('o-announce'));
 document.getElementById('btn-announce-back').addEventListener('click', ()=>showOverlay('o-menu'));
+document.getElementById('btn-mailbox').addEventListener('click', ()=>{ renderMailbox(); showOverlay('o-mailbox'); });
+document.getElementById('btn-mailbox-back').addEventListener('click', ()=>showOverlay('o-menu'));
+updateMailBadge();
 document.getElementById('email-copy').addEventListener('click', () => {
   const email = 'your@email.com';
   navigator.clipboard?.writeText(email).then(()=>{
