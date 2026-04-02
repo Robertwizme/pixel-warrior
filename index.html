@@ -48,15 +48,20 @@ body{background:#0d0d1a;color:#eee;font-family:'Courier New',monospace;overflow:
 .btn.primary{border-color:#fd4;color:#fd4}
 .btn.primary:hover{background:#fd42;border-color:#ffa;box-shadow:0 0 12px #fd48}
 
-/* ── Class cards ── */
-#o-class .cards{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:14px 0}
-.cls-card{width:144px;background:#111827;border:2px solid #334;border-radius:5px;padding:14px 10px;cursor:pointer;
-          transition:border-color .15s,box-shadow .15s,transform .1s}
-.cls-card:hover,.cls-card.sel{border-color:#48f;box-shadow:0 0 16px #48f6;transform:translateY(-3px)}
-.cls-card.sel{border-color:#fd4;box-shadow:0 0 16px #fd46}
-.cls-icon{font-size:30px;margin-bottom:6px}
-.cls-name{font-size:15px;font-weight:700;color:#fd4;margin-bottom:4px}
-.cls-stat{font-size:10px;color:#aaa;line-height:1.7}
+/* ── Class select (new grid layout) ── */
+#cls-preview{background:#111827;border:2px solid #48f;border-radius:8px;padding:16px 20px;
+  margin-bottom:14px;min-height:110px;display:flex;flex-direction:column;align-items:center;gap:5px;
+  animation:previewFade .18s ease}
+@keyframes previewFade{from{opacity:.4;transform:scale(.97)}to{opacity:1;transform:scale(1)}}
+#cls-prev-icon{font-size:38px;line-height:1.1}
+#cls-prev-name{font-size:16px;font-weight:700;color:#fd4}
+#cls-prev-stat{font-size:10px;color:#aaa;line-height:1.75;text-align:center}
+#cls-grid{display:grid;grid-template-columns:repeat(5,52px);gap:8px;justify-content:center;margin:4px 0 14px}
+.cls-dot{width:52px;height:52px;background:#111827;border:2px solid #334;border-radius:6px;
+  display:flex;align-items:center;justify-content:center;font-size:22px;cursor:pointer;
+  transition:border-color .15s,box-shadow .15s,transform .1s}
+.cls-dot:hover{border-color:#48f;box-shadow:0 0 10px #48f7;transform:scale(1.1)}
+.cls-dot.sel{border-color:#fd4;box-shadow:0 0 14px #fd46;transform:scale(1.1)}
 
 /* ── Upgrade cards (normal wave) ── */
 #o-upgrade .upg-title{font-size:19px;color:#fd4;margin-bottom:16px;font-weight:900;letter-spacing:2px;text-shadow:0 0 12px #fd48}
@@ -140,12 +145,41 @@ input[type=range]{width:120px;accent-color:#48f}
 .float-txt{position:absolute;pointer-events:none;font-size:11px;font-weight:700;
            font-family:'Courier New',monospace;text-shadow:0 0 6px currentColor;
            transition:opacity .1s}
+
+/* ── Mobile touch controls ── */
+#joy-zone{position:fixed;bottom:44px;left:12px;width:110px;height:110px;
+  display:none;z-index:25;touch-action:none}
+#joy-bg{position:absolute;inset:5px;border-radius:50%;
+  background:rgba(255,255,255,.07);border:2px solid rgba(255,255,255,.18)}
+#joy-stick{position:absolute;width:42px;height:42px;border-radius:50%;
+  background:rgba(255,255,255,.28);border:2px solid rgba(255,255,255,.55);
+  top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;transition:none}
+#skill-btn{position:fixed;bottom:52px;right:16px;width:66px;height:66px;
+  border-radius:50%;background:rgba(253,212,64,.18);border:3px solid rgba(253,212,64,.7);
+  display:none;align-items:center;justify-content:center;font-size:24px;color:#fd4;
+  z-index:25;cursor:pointer;user-select:none;touch-action:none;
+  transition:background .1s}
+#skill-btn.pressing{background:rgba(253,212,64,.45)}
+/* Mobile: make overlays scrollable + larger tap targets */
+@media (max-width:600px){
+  .panel{padding:16px 14px;width:96vw}
+  .btn{padding:10px 16px;font-size:14px}
+  #o-class .panel{max-width:98vw}
+  #cls-grid{grid-template-columns:repeat(5,48px);gap:6px}
+  .cls-dot{width:48px;height:48px;font-size:20px}
+  .upg-card{width:140px}
+  .sup-card{width:150px}
+}
 </style>
 </head>
 <body>
 
 <!-- Canvas -->
 <div id="wrap"><canvas id="gc"></canvas></div>
+
+<!-- Mobile controls -->
+<div id="joy-zone"><div id="joy-bg"></div><div id="joy-stick"></div></div>
+<div id="skill-btn">技能</div>
 
 <!-- HUD top -->
 <div id="hud">
@@ -199,56 +233,48 @@ input[type=range]{width:120px;accent-color:#48f}
 
 <!-- CLASS SELECT -->
 <div class="overlay" id="o-class">
-  <div class="panel" style="max-width:580px">
-    <div style="font-size:19px;color:#fd4;margin-bottom:14px">⭐ 选择职业</div>
-    <div style="font-size:10px;color:#888;margin-bottom:12px">起始武器通过首次选择获得</div>
-    <div class="cards">
-      <div class="cls-card sel" id="cls-0">
-        <div class="cls-icon">⭐</div>
-        <div class="cls-name">天选者</div>
-        <div class="cls-stat">HP: 120 &nbsp; 速度: 140<br>——<br>初始幸运+50<br>天选之星技能<br>幸运决定星星大小</div>
-      </div>
-      <div class="cls-card" id="cls-1">
-        <div class="cls-icon">💊</div>
-        <div class="cls-name">医生</div>
-        <div class="cls-stat">HP: 120 &nbsp; 速度: 70<br>回血: 5/s &nbsp; 经验: 0%<br>——<br>被动: 每回复100HP 伤害+5%<br>妙手回春: 立刻回复100HP<br>冷却30秒</div>
-      </div>
-      <div class="cls-card" id="cls-2">
-        <div class="cls-icon">⚔</div>
-        <div class="cls-name">狂战士</div>
-        <div class="cls-stat">HP: 100 &nbsp; 速度: 70<br>回血: 2/s &nbsp; 经验: 0%<br>——<br>被动: 每升一级最大HP+5<br>狂暴: 20秒内伤害×2<br>冷却50秒</div>
-      </div>
-      <div class="cls-card" id="cls-3">
-        <div class="cls-icon">⚒</div>
-        <div class="cls-name">铁匠</div>
-        <div class="cls-stat">HP: 100 &nbsp; 速度: 70<br>回血: 1/s &nbsp; 经验: 0%<br>——<br>被动: 物理伤害+50%<br>临阵磨枪: 10秒内CD-40%<br>冷却50秒</div>
-      </div>
-      <div class="cls-card" id="cls-4">
-        <div class="cls-icon">🔮</div>
-        <div class="cls-name">法师</div>
-        <div class="cls-stat">HP: 100 &nbsp; 速度: 70<br>回血: 1/s &nbsp; 经验: 0%<br>——<br>被动: 法术伤害+50%<br>法力无天: 10秒内范围+30%<br>冷却45秒</div>
-      </div>
-      <div class="cls-card" id="cls-5">
-        <div class="cls-icon">🎓</div>
-        <div class="cls-name">博士</div>
-        <div class="cls-stat">HP: 100 &nbsp; 速度: 62<br>回血: 1/s &nbsp; 经验: +50%<br>——<br>被动: 无法获得移速加成<br>经验老道: 吸取全场经验<br>冷却50秒</div>
-      </div>
-      <div class="cls-card" id="cls-6">
-        <div class="cls-icon">💀</div>
-        <div class="cls-name">白色死神</div>
-        <div class="cls-stat">HP: 100 &nbsp; 速度: 70<br>回血: 1/s &nbsp; 经验: 0%<br>——<br>被动: 枪械伤害+50%·CD-25%<br>狙神: 瞄准7.49秒后秒杀HP最高目标<br>冷却542秒</div>
-      </div>
-      <div class="cls-card" id="cls-7">
-        <div class="cls-icon">⭐</div>
-        <div class="cls-name">模仿者</div>
-        <div class="cls-stat">HP: 100 &nbsp; 速度: 70<br>回血: 1/s &nbsp; 经验: 0%<br>——<br>四种模仿形态<br>模仿: 吞下怪物获得随机形态<br>冷却120秒</div>
-      </div>
-      <div class="cls-card" id="cls-8" style="display:none;border-color:#f44">
-        <div class="cls-icon">🎅</div>
-        <div class="cls-name" style="color:#f44">圣诞老人</div>
-        <div class="cls-stat">HP: 100 &nbsp; 速度: 70<br>回血: 1/s &nbsp; 幸运: 5<br>——<br>被动: 0.5%概率召唤超大礼盒<br>圣诞礼物: 随机生成礼盒<br>冷却60秒 🎄仅圣诞节开放</div>
-      </div>
+  <div class="panel" style="max-width:420px;padding:20px 24px">
+    <div style="font-size:17px;color:#fd4;margin-bottom:12px;letter-spacing:2px">⚔ 选择职业</div>
+
+    <!-- 上方预览区 -->
+    <div id="cls-preview">
+      <div id="cls-prev-icon">⭐</div>
+      <div id="cls-prev-name">天选者</div>
+      <div id="cls-prev-stat">HP: 120 &nbsp; 速度: 140<br>——<br>初始幸运+50<br>天选之星技能<br>幸运决定星星大小</div>
     </div>
+
+    <!-- 下方格子 -->
+    <div id="cls-grid">
+      <div class="cls-dot sel" id="cls-0"
+        data-icon="⭐" data-name="天选者"
+        data-stat="HP: 120 &nbsp; 速度: 140<br>——<br>初始幸运+50<br>天选之星技能<br>幸运决定星星大小">⭐</div>
+      <div class="cls-dot" id="cls-1"
+        data-icon="💊" data-name="医生"
+        data-stat="HP: 120 &nbsp; 速度: 70<br>回血: 5/s &nbsp; 经验: +0%<br>——<br>被动: 每回复100HP 伤害+5%<br>妙手回春: 立刻回复100HP<br>冷却30秒">💊</div>
+      <div class="cls-dot" id="cls-2"
+        data-icon="⚔" data-name="狂战士"
+        data-stat="HP: 100 &nbsp; 速度: 70<br>回血: 2/s &nbsp; 经验: +0%<br>——<br>被动: 每升一级最大HP+5<br>狂暴: 20秒内伤害×2<br>冷却50秒">⚔</div>
+      <div class="cls-dot" id="cls-3"
+        data-icon="⚒" data-name="铁匠"
+        data-stat="HP: 100 &nbsp; 速度: 70<br>回血: 1/s &nbsp; 经验: +0%<br>——<br>被动: 物理伤害+50%<br>临阵磨枪: 10秒内CD-40%<br>冷却50秒">⚒</div>
+      <div class="cls-dot" id="cls-4"
+        data-icon="🔮" data-name="法师"
+        data-stat="HP: 100 &nbsp; 速度: 70<br>回血: 1/s &nbsp; 经验: +0%<br>——<br>被动: 法术伤害+50%<br>法力无天: 10秒内范围+30%<br>冷却45秒">🔮</div>
+      <div class="cls-dot" id="cls-5"
+        data-icon="🎓" data-name="博士"
+        data-stat="HP: 100 &nbsp; 速度: 62<br>回血: 1/s &nbsp; 经验: +50%<br>——<br>被动: 无法获得移速加成<br>经验老道: 吸取全场经验<br>冷却50秒">🎓</div>
+      <div class="cls-dot" id="cls-6"
+        data-icon="💀" data-name="白色死神"
+        data-stat="HP: 100 &nbsp; 速度: 70<br>回血: 1/s &nbsp; 经验: +0%<br>——<br>被动: 枪械伤害+50%·CD-25%<br>狙神: 瞄准7.49秒后秒杀HP最高目标<br>冷却542秒">💀</div>
+      <div class="cls-dot" id="cls-7"
+        data-icon="⭐" data-name="模仿者"
+        data-stat="HP: 100 &nbsp; 速度: 70<br>回血: 1/s &nbsp; 经验: +0%<br>——<br>四种模仿形态<br>模仿: 吞下怪物获得随机形态<br>冷却120秒">⭐</div>
+      <div class="cls-dot" id="cls-8" style="display:none;border-color:#f44;color:#f44"
+        data-icon="🎅" data-name="圣诞老人 🎄"
+        data-stat="HP: 100 &nbsp; 速度: 70<br>回血: 1/s &nbsp; 幸运: 5<br>——<br>被动: 0.5%概率召唤超大礼盒<br>圣诞礼物: 随机生成礼盒<br>冷却60秒<br><span style='color:#f44'>仅圣诞节开放</span>">🎅</div>
+    </div>
+
+    <div style="font-size:9px;color:#555;margin-bottom:10px">起始武器通过首次选择获得</div>
     <button class="btn primary" id="btn-confirm">确认出击</button>
     <button class="btn" id="btn-class-back">← 返回</button>
   </div>
@@ -353,6 +379,60 @@ window.addEventListener('keydown', e => {
   if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
 });
 window.addEventListener('keyup', e => { keys[e.code] = false; });
+
+// ── Mobile touch controls ──
+const _joyZone  = document.getElementById('joy-zone');
+const _joyStick = document.getElementById('joy-stick');
+const _joyBg    = document.getElementById('joy-bg');
+const _skillBtn = document.getElementById('skill-btn');
+let _joyTouchId = null;
+const JOY_R = 36;
+
+function _setMobileVisible(v) {
+  _joyZone.style.display  = v ? 'block' : 'none';
+  _skillBtn.style.display = v ? 'flex'  : 'none';
+}
+
+function _updateJoy(touch) {
+  const r = _joyBg.getBoundingClientRect();
+  const cx = r.left + r.width/2, cy = r.top + r.height/2;
+  let dx = touch.clientX - cx, dy = touch.clientY - cy;
+  const d = Math.sqrt(dx*dx+dy*dy);
+  if (d > JOY_R) { dx = dx/d*JOY_R; dy = dy/d*JOY_R; }
+  _joyStick.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+  const t = JOY_R * 0.28;
+  keys['KeyW'] = keys['ArrowUp']    = dy < -t;
+  keys['KeyS'] = keys['ArrowDown']  = dy >  t;
+  keys['KeyA'] = keys['ArrowLeft']  = dx < -t;
+  keys['KeyD'] = keys['ArrowRight'] = dx >  t;
+}
+
+function _clearJoy() {
+  _joyTouchId = null;
+  _joyStick.style.transform = 'translate(-50%,-50%)';
+  keys['KeyW']=keys['KeyS']=keys['KeyA']=keys['KeyD']=false;
+  keys['ArrowUp']=keys['ArrowDown']=keys['ArrowLeft']=keys['ArrowRight']=false;
+}
+
+_joyZone.addEventListener('touchstart', e => {
+  e.preventDefault();
+  if (_joyTouchId == null) { _joyTouchId = e.changedTouches[0].identifier; _updateJoy(e.changedTouches[0]); }
+}, { passive:false });
+_joyZone.addEventListener('touchmove', e => {
+  e.preventDefault();
+  for (const t of e.changedTouches) if (t.identifier === _joyTouchId) { _updateJoy(t); break; }
+}, { passive:false });
+_joyZone.addEventListener('touchend',   e => { e.preventDefault(); _clearJoy(); }, { passive:false });
+_joyZone.addEventListener('touchcancel',e => { e.preventDefault(); _clearJoy(); }, { passive:false });
+
+_skillBtn.addEventListener('touchstart', e => { e.preventDefault(); keys['Space']=true;  _skillBtn.classList.add('pressing'); },    { passive:false });
+_skillBtn.addEventListener('touchend',   e => { e.preventDefault(); keys['Space']=false; _skillBtn.classList.remove('pressing'); }, { passive:false });
+_skillBtn.addEventListener('touchcancel',e => { e.preventDefault(); keys['Space']=false; _skillBtn.classList.remove('pressing'); }, { passive:false });
+
+// Auto-detect touch device
+if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+  _setMobileVisible(false); // only show during gameplay
+}
 
 // ═══════════════════════════════════════════════════════
 // §2  Colour palette + sprites
@@ -3503,12 +3583,14 @@ function showOverlay(id) {
   document.getElementById(id).classList.add('active');
   document.getElementById('hud').style.display='none';
   document.getElementById('hud-bot').style.display='none';
+  _setMobileVisible(false);
 }
 
 function showGameScreen() {
   document.querySelectorAll('.overlay').forEach(el=>el.classList.remove('active'));
   document.getElementById('hud').style.display='block';
   document.getElementById('hud-bot').style.display='block';
+  if ('ontouchstart' in window || navigator.maxTouchPoints > 0) _setMobileVisible(true);
 }
 
 function showDeadScreen() {
@@ -3540,7 +3622,8 @@ function showVictoryScreen() {
 // Button wiring
 document.getElementById('btn-start').addEventListener('click', () => {
   selectedClassIdx = 0;
-  document.querySelectorAll('.cls-card').forEach((c,i)=>c.classList.toggle('sel',i===0));
+  document.querySelectorAll('.cls-dot').forEach((c,i)=>c.classList.toggle('sel',i===0));
+  updateClsPreview(0);
   document.getElementById('btn-confirm').disabled = false;
   document.getElementById('btn-confirm').style.opacity = '1';
   showOverlay('o-class');
@@ -3564,21 +3647,34 @@ document.getElementById('btn-confirm').addEventListener('click', ()=>{
   initGame(selectedClassIdx);
 });
 
-// Christmas check: show Santa card only on December 25
+// Christmas check: show Santa dot only on December 25
 (function() {
   const d = new Date();
   if (d.getMonth() === 11 && d.getDate() === 25) {
-    const santaCard = document.getElementById('cls-8');
-    if (santaCard) santaCard.style.display = '';
+    const santaDot = document.getElementById('cls-8');
+    if (santaDot) santaDot.style.display = '';
   }
 })();
 
-// Pre-select the only class
+// Preview updater
+function updateClsPreview(idx) {
+  const dots = document.querySelectorAll('.cls-dot');
+  const dot = dots[idx];
+  if (!dot) return;
+  const anim = document.getElementById('cls-preview');
+  anim.style.animation = 'none'; anim.offsetHeight; anim.style.animation = '';
+  document.getElementById('cls-prev-icon').textContent = dot.dataset.icon || '';
+  document.getElementById('cls-prev-name').textContent = dot.dataset.name || '';
+  document.getElementById('cls-prev-stat').innerHTML  = dot.dataset.stat || '';
+}
+
+// Pre-select class 0
 selectedClassIdx = 0;
-document.querySelectorAll('.cls-card').forEach((card, i) => {
-  card.addEventListener('click', () => {
+document.querySelectorAll('.cls-dot').forEach((dot, i) => {
+  dot.addEventListener('click', () => {
     selectedClassIdx = i;
-    document.querySelectorAll('.cls-card').forEach((c,ci) => c.classList.toggle('sel', ci===i));
+    document.querySelectorAll('.cls-dot').forEach((d,di) => d.classList.toggle('sel', di===i));
+    updateClsPreview(i);
   });
 });
 
