@@ -1,0 +1,3677 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>像素勇士 – 肉鸽版</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0d0d1a;color:#eee;font-family:'Courier New',monospace;overflow:hidden;user-select:none}
+#wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+#gc{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
+
+/* ── HUD top ── */
+#hud{position:fixed;top:0;left:0;width:100%;pointer-events:none;display:none;z-index:10}
+#hud-inner{display:flex;justify-content:space-between;align-items:flex-start;padding:5px 8px;gap:6px}
+.hud-box{background:rgba(0,0,0,.6);border:1px solid #333;border-radius:3px;padding:4px 8px;font-size:11px;min-width:90px}
+#hud-hp .bar-bg{background:#300;height:7px;border-radius:2px;margin-top:3px}
+#hud-hp .bar-fill{background:#f44;height:7px;border-radius:2px;transition:width .1s}
+#hud-center{text-align:center;flex:1}
+#hud-right{text-align:right}
+#hud-stats{font-size:9px;line-height:1.8;min-width:110px}
+
+/* ── HUD bottom bar (weapons + talents) ── */
+#hud-bot{position:fixed;bottom:0;left:0;width:100%;display:none;z-index:10;pointer-events:none}
+#hud-bot-inner{background:rgba(0,0,0,.65);border-top:1px solid #333;padding:3px 10px;
+  display:flex;justify-content:space-between;align-items:center;font-size:10px}
+#hud-weapons-bar{display:flex;gap:8px;align-items:center}
+#hud-talents-bar{display:flex;gap:5px;align-items:center;color:#fd4}
+#hud-skill{font-size:10px;display:flex;align-items:center;gap:4px;padding:2px 8px;
+  border:1px solid #fd4;border-radius:12px;background:rgba(0,0,0,.6);color:#fd4;white-space:nowrap}
+#hud-skill.cd-active{border-color:#888;color:#888}
+
+/* ── Overlays ── */
+.overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:20;background:rgba(0,0,0,.78)}
+.overlay.active{display:flex}
+.panel{background:#0d0d1a;border:2px solid #48f;border-radius:6px;padding:26px 30px;max-width:520px;width:90%;text-align:center;box-shadow:0 0 40px #48f4}
+
+/* ── Title ── */
+.game-title{font-size:42px;font-weight:900;letter-spacing:4px;color:#fd4;animation:titlePulse 2.5s ease-in-out infinite}
+.game-sub{font-size:14px;color:#a4f;letter-spacing:6px;margin-bottom:22px}
+@keyframes titlePulse{0%,100%{text-shadow:0 0 8px #fd4,0 0 24px #a810}50%{text-shadow:0 0 18px #fd4,0 0 48px #fd44}}
+
+/* ── Buttons ── */
+.btn{display:inline-block;padding:9px 22px;margin:5px;background:#1a1a2e;border:2px solid #48f;border-radius:3px;
+     color:#eee;font-family:'Courier New',monospace;font-size:13px;cursor:pointer;letter-spacing:1px;
+     transition:background .15s,border-color .15s,box-shadow .15s}
+.btn:hover{background:#48f3;border-color:#8af;box-shadow:0 0 12px #48f8}
+.btn.primary{border-color:#fd4;color:#fd4}
+.btn.primary:hover{background:#fd42;border-color:#ffa;box-shadow:0 0 12px #fd48}
+
+/* ── Class cards ── */
+#o-class .cards{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:14px 0}
+.cls-card{width:144px;background:#111827;border:2px solid #334;border-radius:5px;padding:14px 10px;cursor:pointer;
+          transition:border-color .15s,box-shadow .15s,transform .1s}
+.cls-card:hover,.cls-card.sel{border-color:#48f;box-shadow:0 0 16px #48f6;transform:translateY(-3px)}
+.cls-card.sel{border-color:#fd4;box-shadow:0 0 16px #fd46}
+.cls-icon{font-size:30px;margin-bottom:6px}
+.cls-name{font-size:15px;font-weight:700;color:#fd4;margin-bottom:4px}
+.cls-stat{font-size:10px;color:#aaa;line-height:1.7}
+
+/* ── Upgrade cards (normal wave) ── */
+#o-upgrade .upg-title{font-size:19px;color:#fd4;margin-bottom:16px;font-weight:900;letter-spacing:2px;text-shadow:0 0 12px #fd48}
+#o-upgrade .upg-cards{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.upg-card{width:155px;background:#111827;border:2px solid #334;border-radius:6px;padding:18px 12px;cursor:pointer;
+          animation:cardIn .25s ease both;transition:border-color .15s,box-shadow .15s,transform .12s}
+.upg-card:hover{border-color:#48f;box-shadow:0 0 22px #48fc;transform:translateY(-6px) scale(1.04)}
+.upg-card .u-icon{font-size:34px;margin-bottom:8px;display:block}
+.upg-card .u-name{font-size:12px;font-weight:700;color:#fd4;margin-bottom:5px;line-height:1.3}
+.upg-card .u-desc{font-size:9px;color:#99a;line-height:1.6}
+.upg-card:nth-child(1){animation-delay:.00s}
+.upg-card:nth-child(2){animation-delay:.08s}
+.upg-card:nth-child(3){animation-delay:.16s}
+.upg-card:nth-child(4){animation-delay:.24s}
+@keyframes cardIn{from{opacity:0;transform:translateY(22px) scale(.9)}to{opacity:1;transform:translateY(0) scale(1)}}
+
+/* ── Supply / super supply cards ── */
+#o-supply .sup-title,#o-ssupply .sup-title{font-size:22px;color:#fd4;margin-bottom:6px;font-weight:900;letter-spacing:3px;text-shadow:0 0 20px #fd4}
+#o-supply .sup-sub,#o-ssupply .sup-sub{font-size:11px;color:#aa8;margin-bottom:18px;letter-spacing:1px}
+#o-supply .sup-cards{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+.ssup-cards{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-top:4px}
+.ssup-slot{display:inline-flex;flex-direction:column;align-items:center;gap:7px}
+.ssup-card{border-color:#fd4 !important}
+.ssup-refresh{background:#1a1400;color:#fd4;border:1px solid #655;border-radius:5px;padding:5px 14px;cursor:pointer;font-size:11px;transition:background .15s}
+.ssup-refresh:hover:not(.used){background:#332200}
+.ssup-refresh.used{color:#555;border-color:#333;cursor:default}
+#hud-skill.berserk-on{color:#f44;text-shadow:0 0 8px #f44}
+.sup-card{width:175px;background:#110d00;border:2px solid #fd4;border-radius:7px;padding:22px 14px;cursor:pointer;
+          animation:cardIn .3s ease both;transition:border-color .15s,box-shadow .15s,transform .12s}
+.sup-card:hover{border-color:#fff;box-shadow:0 0 30px #fd4a;transform:translateY(-7px) scale(1.05)}
+.sup-card .u-icon{font-size:38px;margin-bottom:10px;display:block}
+.sup-card .u-name{font-size:13px;font-weight:700;color:#fd4;margin-bottom:7px;line-height:1.3}
+.sup-card .u-desc{font-size:10px;color:#cc9;line-height:1.7}
+
+/* ── Settings ── */
+.setting-row{display:flex;align-items:center;justify-content:space-between;margin:10px 0;font-size:13px}
+.toggle{width:44px;height:22px;background:#333;border-radius:11px;cursor:pointer;position:relative;transition:background .2s}
+.toggle.on{background:#48f}
+.toggle::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;background:#eee;border-radius:50%;transition:left .2s}
+.toggle.on::after{left:25px}
+input[type=range]{width:120px;accent-color:#48f}
+
+/* ── Achievements ── */
+.ach-list{text-align:left;margin:12px 0;max-height:320px;overflow-y:auto}
+.ach-item{padding:7px 10px;margin:4px 0;border:1px solid #223;border-radius:3px;font-size:11px;display:flex;align-items:center;gap:8px}
+.ach-item.done{border-color:#4f4;background:#0a1a0a}
+.ach-item .ach-icon{font-size:18px;width:24px;text-align:center}
+.ach-item .ach-text{color:#aaa}
+.ach-item.done .ach-text{color:#eee}
+
+/* ── Dead / Victory ── */
+.gover{font-size:36px;color:#f44;margin-bottom:14px;text-shadow:0 0 16px #f44}
+.victory-title{font-size:36px;color:#fd4;margin-bottom:14px;text-shadow:0 0 20px #fd4}
+.stat-row{font-size:13px;margin:5px 0;color:#ccc}
+
+/* ── Wave clear flash ── */
+#wave-clear{position:fixed;top:40%;left:50%;transform:translate(-50%,-50%);
+            font-size:26px;color:#fd4;font-weight:900;letter-spacing:4px;pointer-events:none;
+            display:none;z-index:30;text-shadow:0 0 20px #fd4}
+@keyframes waveClear{0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}
+  30%{opacity:1;transform:translate(-50%,-50%) scale(1.15)}
+  70%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) scale(1.05)}}
+
+/* ── XP bar ── */
+#hud-xp-wrap{margin-top:3px}
+#hud-xp-bg{background:#222;height:3px;border-radius:2px;margin-top:2px}
+#hud-xp-fill{background:#4ef;height:3px;border-radius:2px;width:0%;transition:width .1s}
+
+/* ── Level-up overlay (reuses upg-card classes) ── */
+#o-levelup .lvlup-title{font-size:22px;color:#4ef;margin-bottom:16px;font-weight:900;
+  letter-spacing:3px;text-shadow:0 0 18px #4ef8}
+
+/* ── Mutation bar ── */
+#hud-mut{font-size:11px;color:#eee;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.mut-chip{display:inline-flex;align-items:center;gap:3px;padding:2px 6px;border-radius:12px;
+          border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.5);font-size:10px;
+          animation:mutIn .3s ease both}
+@keyframes mutIn{from{opacity:0;transform:scale(.5)}to{opacity:1;transform:scale(1)}}
+
+/* ── Floating text ── */
+.float-txt{position:absolute;pointer-events:none;font-size:11px;font-weight:700;
+           font-family:'Courier New',monospace;text-shadow:0 0 6px currentColor;
+           transition:opacity .1s}
+</style>
+</head>
+<body>
+
+<!-- Canvas -->
+<div id="wrap"><canvas id="gc"></canvas></div>
+
+<!-- HUD top -->
+<div id="hud">
+  <div id="hud-inner">
+    <div class="hud-box" id="hud-hp">
+      <span id="hud-hp-txt">❤ 150/150</span>
+      <div class="bar-bg"><div class="bar-fill" id="hud-hp-bar" style="width:100%"></div></div>
+      <div id="hud-xp-wrap" style="font-size:9px;color:#4ef">Lv.<span id="hud-level">1</span> &nbsp;<span id="hud-xp-txt">0/50 XP</span></div>
+      <div id="hud-xp-bg"><div id="hud-xp-fill"></div></div>
+    </div>
+    <div class="hud-box" id="hud-center" style="text-align:center;flex:1">
+      <div id="hud-wave" style="font-weight:700">Wave 1/30</div>
+      <div id="hud-enemies" style="font-size:10px;color:#aaa">敌人: 0</div>
+    </div>
+    <div class="hud-box" id="hud-right" style="text-align:right">
+      <div id="hud-kills">💀 0</div>
+      <div id="hud-score" style="font-size:10px;color:#aaa">得分: 0</div>
+    </div>
+    <div class="hud-box" id="hud-stats">
+      <div id="hud-stat-lck" style="color:#fd4">🍀 LCK: 0</div>
+      <div id="hud-stat-eva" style="color:#8af">💨 闪避: 0%</div>
+      <div id="hud-stat-arm" style="color:#aaa">🛡 减伤: 0%</div>
+      <div id="hud-stat-regen" style="color:#6f6;display:none">💖 回复: 0/s</div>
+    </div>
+  </div>
+</div>
+
+<!-- HUD bottom -->
+<div id="hud-bot">
+  <div id="hud-bot-inner">
+    <div id="hud-weapons-bar">⚔ 武器: —</div>
+    <div id="hud-mut"></div>
+    <div id="hud-skill">⭐ 天选之星 READY</div>
+    <div id="hud-talents-bar"></div>
+  </div>
+</div>
+
+<!-- MAIN MENU -->
+<div class="overlay active" id="o-menu">
+  <div class="panel" style="max-width:400px">
+    <div class="game-title">像素勇士</div>
+    <div class="game-sub">肉 鸽 版</div>
+    <div style="margin-bottom:18px">
+      <button class="btn primary" id="btn-start">⚔ 开始游戏</button><br>
+      <button class="btn" id="btn-settings">⚙ 设置</button>
+      <button class="btn" id="btn-achieve">🏆 成就</button>
+    </div>
+    <div id="best-run" style="font-size:10px;color:#666;border-top:1px solid #222;padding-top:10px"></div>
+  </div>
+</div>
+
+<!-- CLASS SELECT -->
+<div class="overlay" id="o-class">
+  <div class="panel" style="max-width:580px">
+    <div style="font-size:19px;color:#fd4;margin-bottom:14px">⭐ 选择职业</div>
+    <div style="font-size:10px;color:#888;margin-bottom:12px">起始武器通过首次选择获得</div>
+    <div class="cards">
+      <div class="cls-card sel" id="cls-0">
+        <div class="cls-icon">⭐</div>
+        <div class="cls-name">天选者</div>
+        <div class="cls-stat">HP: 120 &nbsp; 速度: 140<br>——<br>初始幸运+50<br>天选之星技能<br>幸运决定星星大小</div>
+      </div>
+      <div class="cls-card" id="cls-1">
+        <div class="cls-icon">💊</div>
+        <div class="cls-name">医生</div>
+        <div class="cls-stat">HP: 120 &nbsp; 速度: 70<br>回血: 5/s &nbsp; 经验: 0%<br>——<br>被动: 每回复100HP 伤害+5%<br>妙手回春: 立刻回复100HP<br>冷却30秒</div>
+      </div>
+      <div class="cls-card" id="cls-2">
+        <div class="cls-icon">⚔</div>
+        <div class="cls-name">狂战士</div>
+        <div class="cls-stat">HP: 100 &nbsp; 速度: 70<br>回血: 2/s &nbsp; 经验: 0%<br>——<br>被动: 每升一级最大HP+5<br>狂暴: 20秒内伤害×2<br>冷却50秒</div>
+      </div>
+      <div class="cls-card" id="cls-3">
+        <div class="cls-icon">⚒</div>
+        <div class="cls-name">铁匠</div>
+        <div class="cls-stat">HP: 100 &nbsp; 速度: 70<br>回血: 1/s &nbsp; 经验: 0%<br>——<br>被动: 物理伤害+50%<br>临阵磨枪: 10秒内CD-40%<br>冷却50秒</div>
+      </div>
+      <div class="cls-card" id="cls-4">
+        <div class="cls-icon">🔮</div>
+        <div class="cls-name">法师</div>
+        <div class="cls-stat">HP: 100 &nbsp; 速度: 70<br>回血: 1/s &nbsp; 经验: 0%<br>——<br>被动: 法术伤害+50%<br>法力无天: 10秒内范围+30%<br>冷却45秒</div>
+      </div>
+      <div class="cls-card" id="cls-5">
+        <div class="cls-icon">🎓</div>
+        <div class="cls-name">博士</div>
+        <div class="cls-stat">HP: 100 &nbsp; 速度: 62<br>回血: 1/s &nbsp; 经验: +50%<br>——<br>被动: 无法获得移速加成<br>经验老道: 吸取全场经验<br>冷却50秒</div>
+      </div>
+      <div class="cls-card" id="cls-6">
+        <div class="cls-icon">💀</div>
+        <div class="cls-name">白色死神</div>
+        <div class="cls-stat">HP: 100 &nbsp; 速度: 70<br>回血: 1/s &nbsp; 经验: 0%<br>——<br>被动: 枪械伤害+50%·CD-25%<br>狙神: 瞄准7.49秒后秒杀HP最高目标<br>冷却542秒</div>
+      </div>
+      <div class="cls-card" id="cls-7">
+        <div class="cls-icon">⭐</div>
+        <div class="cls-name">模仿者</div>
+        <div class="cls-stat">HP: 100 &nbsp; 速度: 70<br>回血: 1/s &nbsp; 经验: 0%<br>——<br>四种模仿形态<br>模仿: 吞下怪物获得随机形态<br>冷却120秒</div>
+      </div>
+      <div class="cls-card" id="cls-8" style="display:none;border-color:#f44">
+        <div class="cls-icon">🎅</div>
+        <div class="cls-name" style="color:#f44">圣诞老人</div>
+        <div class="cls-stat">HP: 100 &nbsp; 速度: 70<br>回血: 1/s &nbsp; 幸运: 5<br>——<br>被动: 0.5%概率召唤超大礼盒<br>圣诞礼物: 随机生成礼盒<br>冷却60秒 🎄仅圣诞节开放</div>
+      </div>
+    </div>
+    <button class="btn primary" id="btn-confirm">确认出击</button>
+    <button class="btn" id="btn-class-back">← 返回</button>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div class="overlay" id="o-settings">
+  <div class="panel" style="max-width:360px">
+    <div style="font-size:18px;color:#fd4;margin-bottom:16px">⚙ 设置</div>
+    <div class="setting-row"><span>✨ 粒子效果</span><div class="toggle on" id="tog-particles"></div></div>
+    <div class="setting-row">
+      <span>⏩ 游戏速度 <span id="spd-val">×1.0</span></span>
+      <input type="range" id="spd-slider" min="50" max="200" value="100" step="10">
+    </div>
+    <button class="btn" id="btn-settings-back" style="margin-top:14px">← 返回</button>
+  </div>
+</div>
+
+<!-- ACHIEVEMENTS -->
+<div class="overlay" id="o-achieve">
+  <div class="panel" style="max-width:440px">
+    <div style="font-size:18px;color:#fd4;margin-bottom:12px">🏆 成就</div>
+    <div class="ach-list" id="ach-list"></div>
+    <button class="btn" id="btn-achieve-back" style="margin-top:10px">← 返回</button>
+  </div>
+</div>
+
+<!-- UPGRADE (normal wave) -->
+<div class="overlay" id="o-upgrade">
+  <div style="text-align:center">
+    <div class="upg-title" id="upg-title">🏆 第1波清除！</div>
+    <div class="upg-cards" id="upg-cards"></div>
+  </div>
+</div>
+
+<!-- SUPER SUPPLY (every 5th wave) -->
+<div class="overlay" id="o-ssupply">
+  <div style="text-align:center">
+    <div class="sup-title">🌟 超级补给</div>
+    <div class="sup-sub" id="ssup-sub">选择一项强力奖励</div>
+    <div class="ssup-cards" id="ssup-cards"></div>
+  </div>
+</div>
+
+<!-- LEVEL UP -->
+<div class="overlay" id="o-levelup">
+  <div style="text-align:center">
+    <div class="lvlup-title upg-title" id="lvlup-title">⬆ 升级了！</div>
+    <div class="upg-cards" id="lvlup-cards"></div>
+  </div>
+</div>
+
+<!-- GAME OVER -->
+<div class="overlay" id="o-dead">
+  <div class="panel" style="max-width:360px">
+    <div class="gover">战 败...</div>
+    <div id="dead-stats"></div>
+    <div style="margin-top:18px">
+      <button class="btn primary" id="btn-retry">🔄 再来一次</button>
+      <button class="btn" id="btn-dead-menu">🏠 返回主菜单</button>
+    </div>
+  </div>
+</div>
+
+<!-- VICTORY -->
+<div class="overlay" id="o-victory">
+  <div class="panel" style="max-width:380px;border-color:#fd4">
+    <div style="font-size:48px;margin-bottom:8px">🏆</div>
+    <div class="victory-title">胜利！通关！</div>
+    <div id="victory-stats"></div>
+    <div style="margin-top:18px">
+      <button class="btn primary" id="btn-victory-retry">🔄 再来一次</button>
+      <button class="btn" id="btn-victory-menu">🏠 返回主菜单</button>
+    </div>
+  </div>
+</div>
+
+<!-- Wave clear flash -->
+<div id="wave-clear">🏆 WAVE CLEAR!</div>
+
+<script>
+'use strict';
+// ═══════════════════════════════════════════════════════
+// §1  Canvas + resize + input
+// ═══════════════════════════════════════════════════════
+const canvas = document.getElementById('gc');
+const ctx    = canvas.getContext('2d');
+const GW = 480, GH = 270;
+canvas.width = GW; canvas.height = GH;
+
+function resizeCanvas() {
+  const s = Math.min(window.innerWidth/GW, window.innerHeight/GH);
+  canvas.style.width  = (GW*s)+'px';
+  canvas.style.height = (GH*s)+'px';
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+const keys = {};
+window.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
+});
+window.addEventListener('keyup', e => { keys[e.code] = false; });
+
+// ═══════════════════════════════════════════════════════
+// §2  Colour palette + sprites
+// ═══════════════════════════════════════════════════════
+const P = {
+  ' ':null, k:'#111', w:'#eee', r:'#f44', R:'#a22', g:'#4f4', G:'#2a2',
+  b:'#48f', B:'#248', y:'#fd4', Y:'#a81', p:'#a4f', Q:'#62a',
+  s:'#bbb', S:'#888', n:'#ca7', o:'#f84', O:'#a42', c:'#4ef',
+  m:'#f4f', D:'#444', l:'#6cf', W:'#fff', K:'#000',
+  T:'#5c3a1e', t:'#8b5e3c', Z:'#cc44cc', z:'#661166',
+};
+
+const SPRITES = {
+  player_warrior:[' yy ','yyyy',' nn ','nnnn','sRns','rrrr','Rkrr',' k k'],
+  player_mage:   [' pp ','pppp',' ww ','wwww','wbww','bbbb','bQpb',' b b'],
+  player_ranger: [' gg ','gggg',' nn ','nnnn','nGnn','GGGG','GnGG',' G G'],
+  slime:  [' gg ','gggg','gWgW','gggg',' GG ',' GG '],
+  goblin: [' kk ','nknk','nnnn',' oo ','oooo',' n n'],
+  skeleton:[' ww ','wKwK','wwww',' ss ','ssss',' s s'],
+  bat:    ['p pp p','pppppp','p pW p','  pp  '],
+  orc:    [' OO ','OoOO','oooo',' Yn ','YYYY',' Y Y'],
+  wolf:   [' ss ','sSss','SSSS',' Ss ','s  s','s  s'],
+  troll:  ['TTTT','TtTT','tttt',' Yn ','YYYY','Y  Y'],
+  demon:  [' rr ','rRrr','rrrr',' zz ','ZzZz',' Z Z'],
+  dragon: ['  rr  ','rrRRrr','rRrrRr','rRRRRr',' rrrr ',' r  r ','rR  Rr','R    R'],
+  gem:    ['cc','cc'],
+  // ── Wave-10 bosses ──
+  cat_boss: [
+    'o    o',
+    'oooooo',
+    'oWoWoo',
+    'oKoKoo',
+    'oWWWoo',
+    'OoOooo',
+    'oooooo',
+    ' o  o ',
+  ],
+  dog_boss: [
+    'T    T',
+    'tttttt',
+    'tntntt',
+    'tKtKtt',
+    'nnnnnn',
+    'TtttTt',
+    'tttttt',
+    ' t  t ',
+  ],
+};
+
+// ═══════════════════════════════════════════════════════
+// §3  drawSprite
+// ═══════════════════════════════════════════════════════
+function drawSprite(name, sx, sy, scale) {
+  const rows = SPRITES[name];
+  if (!rows) return;
+  const px = Math.round(scale||2);
+  for (let ry=0; ry<rows.length; ry++) {
+    const row = rows[ry];
+    for (let cx=0; cx<row.length; cx++) {
+      const col = P[row[cx]];
+      if (!col) continue;
+      ctx.fillStyle = col;
+      ctx.fillRect(Math.floor(sx+cx*px), Math.floor(sy+ry*px), px, px);
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// §4  Game constants
+// ═══════════════════════════════════════════════════════
+
+const CLASSES = [
+  { id:'chosen', name:'天选者', hp:120, spd:140, dmgMult:1.0, areaMult:1.0, cdMult:1.0,
+    bonus: p => { p.luck += 50; } },
+  { id:'doctor', name:'医生',   hp:120, spd:70,  dmgMult:1.0, areaMult:1.0, cdMult:1.0,
+    bonus: p => { p.hpRegen = 5; p.pickupR = 4; p.xpMult = 1; p.healAccum = 0; } },
+  { id:'berserker', name:'狂战士', hp:100, spd:70,  dmgMult:1.0, areaMult:1.0, cdMult:1.0,
+    bonus: p => { p.hpRegen = 2; p.pickupR = 6; p.xpMult = 1; } },
+  { id:'blacksmith', name:'铁匠',  hp:100, spd:70,  dmgMult:1.0, areaMult:1.0, cdMult:1.0,
+    bonus: p => { p.hpRegen = 1; p.pickupR = 4; p.xpMult = 1; p.physDmgMult = 1.5; } },
+  { id:'mage', name:'法师', hp:100, spd:70, dmgMult:1.0, areaMult:1.0, cdMult:1.0,
+    bonus: p => { p.hpRegen = 1; p.pickupR = 4; p.xpMult = 1; p.magicDmgMult = 1.5; } },
+  { id:'scholar', name:'博士', hp:100, spd:62, dmgMult:1.0, areaMult:1.0, cdMult:1.0,
+    bonus: p => { p.hpRegen = 1; p.pickupR = 4; p.xpMult = 1.5; } },
+  { id:'reaper', name:'白色死神', hp:100, spd:70, dmgMult:1.0, areaMult:1.0, cdMult:0.75,
+    bonus: p => { p.hpRegen = 1; p.pickupR = 4; p.xpMult = 1; p.reaperGunMult = 1.5; } },
+  { id:'kirby', name:'模仿者', hp:100, spd:70, dmgMult:1.0, areaMult:1.0, cdMult:1.0,
+    bonus: p => { p.hpRegen = 1; p.pickupR = 4; p.xpMult = 1; } },
+  { id:'santa', name:'圣诞老人', hp:100, spd:70, dmgMult:1.0, areaMult:1.0, cdMult:1.0,
+    bonus: p => { p.hpRegen = 1; p.pickupR = 4; p.xpMult = 1; p.luck = 5; } },
+];
+
+const ENEMY_TYPES = {
+  slime:    { hp:38,  spd:55,  dmg:7,   xp:8,   radius:6,  sprite:'slime',    color:'#4f4', scale:2 },
+  goblin:   { hp:65,  spd:85,  dmg:13,  xp:12,  radius:7,  sprite:'goblin',   color:'#fa4', scale:2 },
+  skeleton: { hp:100, spd:60,  dmg:19,  xp:18,  radius:8,  sprite:'skeleton', color:'#ddd', scale:2 },
+  bat:      { hp:42,  spd:120, dmg:11,  xp:14,  radius:5,  sprite:'bat',      color:'#a4f', scale:2 },
+  orc:      { hp:195, spd:45,  dmg:28,  xp:30,  radius:10, sprite:'orc',      color:'#f84', scale:2 },
+  wolf:     { hp:80,  spd:140, dmg:17,  xp:20,  radius:6,  sprite:'wolf',     color:'#bbb', scale:2 },
+  troll:    { hp:360, spd:35,  dmg:48,  xp:50,  radius:13, sprite:'troll',    color:'#8b5', scale:2 },
+  demon:    { hp:160, spd:95,  dmg:34,  xp:40,  radius:8,  sprite:'demon',    color:'#f4f', scale:2 },
+  boss_10:  { hp:4500,  spd:40, dmg:40, xp:300,  radius:22, sprite:'dragon',  color:'#f44', scale:4, isBoss:true, bossName:'暗影龙王' },
+  boss_10_cat: { hp:5000, spd:58, dmg:28, xp:320, radius:22, sprite:'cat_boss', color:'#f84', scale:4, isBoss:true, bossName:'暴食猫王', bossType:'cat' },
+  boss_10_dog: { hp:5800, spd:65, dmg:58, xp:320, radius:24, sprite:'dog_boss', color:'#8b5e3c', scale:4, isBoss:true, bossName:'狂野犬王', bossType:'dog' },
+  boss_20:  { hp:14000, spd:45, dmg:75, xp:700,  radius:26, sprite:'orc',     color:'#f84', scale:5, isBoss:true, bossName:'熔岩霸主' },
+  boss_30:  { hp:38000, spd:50, dmg:130,xp:1500, radius:30, sprite:'dragon',  color:'#a4f', scale:6, isBoss:true, bossName:'虚空领主' },
+};
+
+// 30-wave plan. boss_10/20/30 ignore scale factor.
+function getWavePlan(n) {
+  const plans = [
+    null, // index 0 unused
+    [{type:'slime',count:15}],
+    [{type:'slime',count:15},{type:'goblin',count:8}],
+    [{type:'slime',count:12},{type:'goblin',count:12}],
+    [{type:'goblin',count:15},{type:'skeleton',count:8}],
+    [{type:'goblin',count:12},{type:'skeleton',count:12},{type:'bat',count:8}],
+    [{type:'skeleton',count:15},{type:'bat',count:12},{type:'orc',count:4}],
+    [{type:'orc',count:10},{type:'skeleton',count:12},{type:'bat',count:10}],
+    [{type:'orc',count:12},{type:'wolf',count:10},{type:'bat',count:12}],
+    [{type:'orc',count:15},{type:'wolf',count:15},{type:'skeleton',count:10}],
+    [{type: Math.random()<0.5 ? 'boss_10_cat' : 'boss_10_dog', count:1}], // wave 10 BOSS
+    [{type:'wolf',count:15},{type:'orc',count:12}],
+    [{type:'wolf',count:18},{type:'troll',count:5},{type:'orc',count:10}],
+    [{type:'troll',count:8},{type:'wolf',count:15},{type:'demon',count:8}],
+    [{type:'demon',count:12},{type:'troll',count:8},{type:'wolf',count:12}],
+    [{type:'demon',count:15},{type:'troll',count:10},{type:'orc',count:12}],
+    [{type:'demon',count:18},{type:'troll',count:12},{type:'wolf',count:15}],
+    [{type:'demon',count:20},{type:'troll',count:14},{type:'wolf',count:18}],
+    [{type:'demon',count:22},{type:'troll',count:16},{type:'wolf',count:20}],
+    [{type:'demon',count:25},{type:'troll',count:18},{type:'wolf',count:22}],
+    [{type:'boss_20',count:1}], // wave 20 BOSS
+    [{type:'demon',count:25},{type:'troll',count:20},{type:'wolf',count:20}],
+    [{type:'demon',count:28},{type:'troll',count:22},{type:'wolf',count:22}],
+    [{type:'demon',count:30},{type:'troll',count:24},{type:'wolf',count:25}],
+    [{type:'demon',count:32},{type:'troll',count:26},{type:'wolf',count:28}],
+    [{type:'demon',count:35},{type:'troll',count:28},{type:'wolf',count:30}],
+    [{type:'demon',count:38},{type:'troll',count:30},{type:'wolf',count:32}],
+    [{type:'demon',count:40},{type:'troll',count:32},{type:'wolf',count:35}],
+    [{type:'demon',count:44},{type:'troll',count:34},{type:'wolf',count:38}],
+    [{type:'demon',count:48},{type:'troll',count:36},{type:'wolf',count:40}],
+    [{type:'boss_30',count:1}], // wave 30 BOSS (FINAL)
+  ];
+  return plans[Math.min(n, 30)] || plans[30];
+}
+
+const BOSS_WAVES = new Set([10, 20, 30]);
+const WORLD_W = 1400, WORLD_H = 1000; // Player movement bounds (centered at 0,0)
+
+// ── Mutation definitions ────────────────────────────────
+
+// ── WEAPON DEFS ───────────────────────────────────────────────────────────
+const WEAPON_DEFS = {
+  shotgun: {
+    name:'散弹枪', icon:'💥', maxLv:8, type:'normal', fire: fireShotgun,
+    startDesc: '扇形5颗子弹·近战强势',
+    levels: [
+      {dmg:10, cd:1400, count:5},
+      {dmg:13, cd:1350, count:5},
+      {dmg:16, cd:1300, count:5},
+      {dmg:20, cd:1250, count:6},
+      {dmg:25, cd:1200, count:6},
+      {dmg:31, cd:1150, count:7},
+      {dmg:38, cd:1100, count:7},
+      {dmg:38, cd:1100, count:7}, // Lv8: dual fire
+    ],
+    describe: lv => {
+      const s = WEAPON_DEFS.shotgun.levels[lv-1];
+      const w = gs?.weapons?.find(x=>x.id==='shotgun');
+      const parts = [`×${s.count}弹 伤害${s.dmg}`];
+      if (w?.bulletEffect) parts.push({bounce:'弹射',pierce:'穿透',split:'分裂'}[w.bulletEffect]);
+      if (w?.element)      parts.push({flame:'🔥炽焰',frost:'❄冰霜',poison:'☠淬毒'}[w.element]);
+      if (w?.extraGun)     parts.push('双枪');
+      return parts.join(' · ');
+    }
+  },
+  gatling: {
+    name:'加特林', icon:'🔴', maxLv:8, type:'normal', fire: fireGatling,
+    startDesc: '8连发弹幕后短暂休息',
+    levels: [
+      {dmg:10, cd:900},
+      {dmg:13, cd:880},
+      {dmg:16, cd:860},
+      {dmg:20, cd:840},
+      {dmg:25, cd:820},
+      {dmg:31, cd:800},
+      {dmg:38, cd:780},
+      {dmg:38, cd:780}, // Lv8: dual fire
+    ],
+    describe: lv => {
+      const s = WEAPON_DEFS.gatling.levels[lv-1];
+      const w = gs?.weapons?.find(x=>x.id==='gatling');
+      const parts = [`8连发 伤害${s.dmg}`];
+      if (w?.variantMods?.includes('dual_bullet')) parts.push('双发');
+      if (w?.element) parts.push({flame:'🔥炽焰',frost:'❄冰霜',poison:'☠淬毒'}[w.element]);
+      if (w?.extraGun) parts.push('双枪');
+      return parts.join(' · ');
+    }
+  },
+  sword: {
+    name:'剑阵', icon:'⚔', maxLv:7, type:'orbit',
+    levels: [
+      {orbs:2, dmg:10, radius:40, rotSpeed:2.2, color:'#fd4'},
+      {orbs:2, dmg:14, radius:42, rotSpeed:2.4, color:'#fd4'},
+      {orbs:3, dmg:17, radius:44, rotSpeed:2.5, color:'#fd4'},
+      {orbs:3, dmg:22, radius:46, rotSpeed:2.6, color:'#ff8'},
+      {orbs:4, dmg:27, radius:48, rotSpeed:2.8, color:'#ff8'},
+      {orbs:4, dmg:34, radius:50, rotSpeed:3.0, color:'#fff'},
+      {orbs:5, dmg:42, radius:52, rotSpeed:3.3, color:'#fff'},
+    ],
+    describe: lv => { const s=WEAPON_DEFS.sword.levels[lv-1]; return `${s.orbs}轨道 | 伤害${s.dmg} | 半径${s.radius}`; }
+  },
+  arrow_rain: {
+    name:'箭雨', icon:'🏹', maxLv:7, type:'normal', fire: fireArrowRain,
+    levels: [
+      {dmg:20, cd:2400, count:4,  radius:50},
+      {dmg:25, cd:2200, count:5,  radius:54},
+      {dmg:30, cd:2000, count:6,  radius:58},
+      {dmg:36, cd:1800, count:7,  radius:62},
+      {dmg:44, cd:1600, count:8,  radius:66},
+      {dmg:54, cd:1450, count:10, radius:70},
+      {dmg:66, cd:1300, count:12, radius:75},
+    ],
+    describe: lv => { const s=WEAPON_DEFS.arrow_rain.levels[lv-1]; return `伤害${s.dmg} | ×${s.count}箭 | CD${s.cd}ms`; }
+  },
+  heal_drone: {
+    name:'治疗无人机', icon:'💚', maxLv:8, type:'drone', fire: fireHealDrone,
+    startDesc: '定期在脚下生成治疗光圈',
+    levels: [
+      {healPs:4,  circleCd:10, circleR:38, circleDur:5.5},
+      {healPs:5,  circleCd:9,  circleR:38, circleDur:5.5},
+      {healPs:6,  circleCd:8,  circleR:38, circleDur:5.5},
+      {healPs:7,  circleCd:8,  circleR:42, circleDur:5.5},
+      {healPs:9,  circleCd:7,  circleR:42, circleDur:5.5},
+      {healPs:11, circleCd:6,  circleR:42, circleDur:5.5},
+      {healPs:13, circleCd:6,  circleR:46, circleDur:5.5},
+      {healPs:16, circleCd:5,  circleR:50, circleDur:6},
+    ],
+    describe: lv => {
+      const s = WEAPON_DEFS.heal_drone.levels[lv-1];
+      const w = gs?.weapons?.find(x=>x.id==='heal_drone');
+      const hp = (s.healPs * (w?.healMult||1)).toFixed(1);
+      const r  = Math.round(s.circleR * (w?.rangeMult||1));
+      const cd = (s.circleCd * (w?.cdMultLocal||1)).toFixed(0);
+      return `${hp}HP/s | 范围${r} | CD${cd}s`;
+    }
+  },
+  missile_drone: {
+    name:'导弹无人机', icon:'🚀', maxLv:8, type:'drone', fire: fireMissileDrone,
+    startDesc: '每5秒发射6枚导弹·范围爆炸',
+    levels: [
+      {cd:5000},{cd:5000},{cd:5000},{cd:5000},
+      {cd:5000},{cd:5000},{cd:5000},{cd:5000},
+    ],
+    describe: lv => {
+      const w = gs?.weapons?.find(x=>x.id==='missile_drone');
+      const dmg = Math.round(50 * (w?.missileDmgMult||1));
+      const r   = Math.round(20 * (w?.missileRadMult||1));
+      const cd  = ((5000 * (w?.missileCdMult||1)) / 1000).toFixed(1);
+      const parts = [`×6导弹 伤害${dmg} 半径${r} CD${cd}s`];
+      if (w?.missileMode==='ground')  parts.push('原地爆炸');
+      if (w?.missileMode==='forward') parts.push('导弹开路');
+      if (w?.missileMode==='scatter') parts.push('狂轰乱炸');
+      if (w?.warhead==='stun')   parts.push('⚡眩晕');
+      if (w?.warhead==='flame')  parts.push('🔥灼烧');
+      if (w?.warhead==='double') parts.push('💣双爆');
+      if (w?.deathMissile)       parts.push('☠死神');
+      return parts.join(' · ');
+    }
+  },
+  summon_book: {
+    name:'召唤书', icon:'📖', maxLv:7, type:'orbit_book',
+    levels: [
+      {orbs:1, dmg:8,  shotDmg:14, radius:46, rotSpeed:1.8, shotCd:1800, color:'#a4f'},
+      {orbs:1, dmg:10, shotDmg:18, radius:48, rotSpeed:1.9, shotCd:1600, color:'#a4f'},
+      {orbs:2, dmg:12, shotDmg:22, radius:50, rotSpeed:2.0, shotCd:1500, color:'#b4f'},
+      {orbs:2, dmg:15, shotDmg:28, radius:52, rotSpeed:2.1, shotCd:1300, color:'#b4f'},
+      {orbs:3, dmg:18, shotDmg:35, radius:55, rotSpeed:2.2, shotCd:1200, color:'#c4f'},
+      {orbs:3, dmg:22, shotDmg:44, radius:58, rotSpeed:2.3, shotCd:1000, color:'#d4f'},
+      {orbs:4, dmg:28, shotDmg:55, radius:62, rotSpeed:2.5, shotCd:900,  color:'#f4f'},
+    ],
+    describe: lv => { const s=WEAPON_DEFS.summon_book.levels[lv-1]; return `${s.orbs}书 | 碰撞${s.dmg} | 射击${s.shotDmg}`; }
+  },
+  sniper: {
+    name:'狙击枪', icon:'🔭', maxLv:8, type:'normal', fire:fireSniper,
+    startDesc:'每5秒狙击最近敌人·穿透1次',
+    levels: [
+      {cd:5000,dmg:120},{cd:5000,dmg:120},{cd:5000,dmg:120},{cd:5000,dmg:120},
+      {cd:5000,dmg:120},{cd:5000,dmg:120},{cd:5000,dmg:120},{cd:4000,dmg:120},
+    ],
+    describe: lv => {
+      const w = gs?.weapons?.find(x=>x.id==='sniper');
+      const parts = [];
+      const dmg = Math.round(120*(1+(w?.sniperDmgBonus||0))*(w?.heavySniper?3:1)*(1+(w?.growingBonus||0)/100)*(w?.alloyBullet?1.5:1));
+      parts.push(`伤害${dmg}`);
+      const cd = lv>=8 ? 4 : 5;
+      parts.push(`${cd}秒/发`);
+      const extras = [];
+      if (w?.sniperExtraBullets) extras.push(`×${1+w.sniperExtraBullets}连狙`);
+      if (w?.heavySniper)         extras.push('重狙');
+      if (w?.growingSniper)       extras.push(`成长+${(w.growingBonus||0).toFixed(0)}%`);
+      if (w?.dragonSniper)        extras.push('大龙');
+      if (w?.tacticalSniper)      extras.push('烟雾弹');
+      if (w?.alloyBullet)         extras.push('合金·∞穿透');
+      if (w?.splitBullet)         extras.push('分裂');
+      if (w?.lvl8Bounce)          extras.push('弹墙');
+      if (w?.reaperKill)          extras.push('0.5%秒杀');
+      const critR = Math.round((w?.sniperCritRate||0)*100);
+      const critD = Math.round(50+(w?.sniperCritDmg||0)*100);
+      if (critR>0) extras.push(`暴击${critR}%·${critD}%`);
+      if (extras.length) parts.push(extras.join(' '));
+      return parts.join(' · ');
+    }
+  },
+  kirby_copy: {
+    name:'模仿', icon:'⭐', maxLv:8, type:'kirby',
+    startDesc: '技能使用后随机切换四种能力形态',
+    levels: [
+      {fireDmg:8,  swordDmg:10, lightDmg:6,  orbRadius:36, rotSpeed:2.4},
+      {fireDmg:11, swordDmg:14, lightDmg:8,  orbRadius:37, rotSpeed:2.5},
+      {fireDmg:14, swordDmg:18, lightDmg:10, orbRadius:38, rotSpeed:2.6},
+      {fireDmg:18, swordDmg:23, lightDmg:13, orbRadius:39, rotSpeed:2.7},
+      {fireDmg:23, swordDmg:29, lightDmg:17, orbRadius:40, rotSpeed:2.8},
+      {fireDmg:29, swordDmg:36, lightDmg:21, orbRadius:41, rotSpeed:2.9},
+      {fireDmg:36, swordDmg:45, lightDmg:27, orbRadius:42, rotSpeed:3.0},
+      {fireDmg:45, swordDmg:55, lightDmg:33, orbRadius:43, rotSpeed:3.1},
+    ],
+    describe: lv => {
+      const w = gs?.weapons?.find(x=>x.id==='kirby_copy');
+      const formNames = {fire:'🔥火焰', sword:'⚔剑士', thunder:'⚡雷电', ice:'❄冰冻'};
+      const form = w?.kirbyForm ? formNames[w.kirbyForm] : '无形态';
+      return `当前: ${form} | Lv${lv}`;
+    }
+  },
+};
+
+// ── STAT UPGRADES ──────────────────────────────────────
+const STAT_UPGRADES = [
+  { id:'maxhp',  icon:'❤',  name:'强化体魄',  desc:'+30 最大HP，恢复30HP' },
+  { id:'speed',  icon:'👟', name:'疾风步法',  desc:'+20 移动速度' },
+  { id:'dmg',    icon:'⚔',  name:'力量强化',  desc:'+15% 伤害倍率' },
+  { id:'area',   icon:'💥', name:'扩展攻击',  desc:'+15% AoE范围倍率' },
+  { id:'cd',     icon:'⚡', name:'急速出手',  desc:'-12% 冷却 (最低0.2)' },
+  { id:'heal',   icon:'💊', name:'即时治愈',  desc:'立刻恢复60%最大HP' },
+  { id:'pickup', icon:'🧲', name:'磁力场',    desc:'+40 拾取半径' },
+  { id:'luck',   icon:'🍀', name:'幸运加成',  desc:'+25 幸运值 (无上限)' },
+  { id:'dodge',  icon:'💨', name:'闪避训练',  desc:'+6% 基础闪避 (上限60%)' },
+  { id:'dmgred', icon:'🛡', name:'硬化皮肤',  desc:'+5% 基础减伤 (上限60%)' },
+];
+
+// ── SUPPLY TALENTS (boss wave rewards) ─────────────────
+const SUPPLY_TALENTS = [
+  { id:'blood_pact',    icon:'🩸', name:'血之誓约',   desc:'最大HP×1.4，伤害+30%',
+    apply: p => { p.maxHp=Math.floor(p.maxHp*1.4); healPlayer(80); p.dmgMult*=1.3; } },
+  { id:'time_rift',     icon:'⌛', name:'时间裂隙',   desc:'所有武器冷却-35%',
+    apply: p => { p.cdMult=Math.max(0.2,p.cdMult*0.65); } },
+  { id:'chaos_force',   icon:'💥', name:'混沌之力',   desc:'伤害倍率×1.6',
+    apply: p => { p.dmgMult*=1.6; } },
+  { id:'iron_fortress', icon:'🛡', name:'钢铁之身',   desc:'最大HP+120，减伤+15%',
+    apply: p => { p.maxHp+=120; healPlayer(120); p.baseDmgRed=Math.min(0.6,p.baseDmgRed+0.15); } },
+  { id:'death_wish',    icon:'☠', name:'死亡祈祷',   desc:'HP低于25%时伤害×3',
+    apply: () => {} }, // handled in hitEnemy
+  { id:'ghost_walk',    icon:'👻', name:'幽灵步伐',   desc:'速度+90，闪避+20%',
+    apply: p => { p.spd+=90; p.baseDodge=Math.min(0.6,p.baseDodge+0.20); } },
+  { id:'forge_master',  icon:'⚒', name:'武器工匠',   desc:'所有武器+2等级',
+    apply: () => { for(const w of gs.weapons) w.level=Math.min(WEAPON_DEFS[w.id].maxLv,w.level+2); } },
+  { id:'alchemy',       icon:'⚗', name:'炼金术',     desc:'拾取范围×2，幸运+40',
+    apply: p => { p.pickupR*=2; p.luck+=40; } },
+  { id:'elemental',     icon:'✨', name:'元素共鸣',   desc:'所有AoE范围×1.6',
+    apply: p => { p.areaMult*=1.6; } },
+  { id:'berserker',     icon:'🔥', name:'狂战士',     desc:'每次击杀永久+0.3%伤害',
+    apply: () => {} }, // handled in killEnemy
+  { id:'vampire',       icon:'🧛', name:'吸血',       desc:'攻击回复造成伤害6%生命',
+    apply: () => {} }, // handled in hitEnemy
+  { id:'multishot',     icon:'🎯', name:'多重射击',   desc:'投射物弹数+2',
+    apply: p => { p.multishotBonus=(p.multishotBonus||0)+2; } },
+  { id:'chain_surge',   icon:'⚡', name:'连锁反应',   desc:'闪电/链式效果+4',
+    apply: p => { p.chainBonus=(p.chainBonus||0)+4; } },
+  { id:'lucky_star',    icon:'⭐', name:'幸运星',     desc:'+60幸运，闪避+10%，减伤+8%',
+    apply: p => { p.luck+=60; p.baseDodge=Math.min(0.6,p.baseDodge+0.10); p.baseDmgRed=Math.min(0.6,p.baseDmgRed+0.08); } },
+  { id:'second_wind',   icon:'💨', name:'第二春',     desc:'恢复全部HP，速度+50',
+    apply: p => { healPlayer(p.maxHp); p.spd+=50; } },
+];
+
+// ═══════════════════════════════════════════════════════
+// §5  Game state + initGame
+// ═══════════════════════════════════════════════════════
+let settings = { particles:true, gameSpeed:1.0 };
+let gs   = null;
+let cam  = { x:0, y:0 };
+let selectedClassIdx = -1;
+let lastClassIdx = 0;
+let tutorialTimer = 5.0;
+
+function initGame(classIdx) {
+  const cls = CLASSES[classIdx];
+  lastClassIdx = classIdx;
+  cam = { x:-GW/2, y:-GH/2 };
+  tutorialTimer = 5.0;
+
+  const p = {
+    x:0, y:0,
+    hp: cls.hp, maxHp: cls.hp,
+    spd: cls.spd,
+    dmgMult:  cls.dmgMult,
+    areaMult: cls.areaMult,
+    cdMult:   cls.cdMult,
+    pickupR:  45,
+    healAccum: 0,
+    berserkTimer: 0, berserkActive: false,
+    sharpenTimer: 0, sharpenActive: false,
+    manaTimer: 0, manaActive: false,
+    reaperChanneling: false, reaperChannel: 0,
+    physDmgMult: 1.0,
+    magicDmgMult: 1.0,
+    reaperGunMult: 1.0,
+    kirbyForm: null,
+    santaAtkTimer: 0,
+    santaCdTimer: 0,
+    santaHealTimer: 0,
+    critRate: 0,
+    critDmgMult: 1.5,
+    lastMoveAngle: null,
+    invincible: 0,
+    invincMult: 1,
+    classIdx: classIdx,
+    // Stats
+    luck:        0,   // 只影响掉落率和稀有度，无上限
+    baseDodge:   0,   // 闪避：来自升级/天赋，上限60%
+    baseDmgRed:  0,   // 减伤：来自升级/天赋，上限60%
+    // Talent flags
+    multishotBonus: 0,
+    chainBonus:     0,
+    berserkerKills: 0,
+    dodgeChance:    0,
+    dmgReduction:   0,
+    // Magnet timer
+    magnetTimer: 0,
+    berserkerMutBonus: 0,
+    // Level / XP
+    level: 1,
+    xp: 0,
+    xpToNext: 100,
+    hpRegen: 0,
+    levelUpQueue: 0,
+    xpMult: 1.0,
+    skillCd: 0, skillKeyHeld: false,
+  };
+
+  // Apply class bonus
+  cls.bonus(p);
+  // Recompute derived stats
+  updateDerivedStats(p);
+
+  gs = {
+    phase: 'playing',
+    player: p,
+    weapons: [],
+    enemies: [],
+    projectiles: [],
+    gems: [],
+    drops: [],       // ground drop items
+    particles: [],
+    lightningBolts: [],
+    swordOrbs: [],
+    floatingTexts: [],
+    healCircles: [],
+    pendingExplosions: [],
+    smokeClouds: [],
+    santaGifts: [],
+    fallingGifts: [],
+    kills: 0,
+    score: 0,
+    talents: new Set(),
+    wave: { num:0, total:0, spawnQueue:[], spawnTimer:0, spawning:false, timer:0 },
+  };
+
+  waveCompleteTriggered = false;
+
+  // If weapons are defined → show weapon selection before wave 1
+  // If no weapons defined → start wave 1 directly
+  if (Object.keys(WEAPON_DEFS).length > 0) {
+    gs.phase = 'upgrading';
+    showStartWeaponScreen();
+  } else {
+    startWave(1);
+  }
+}
+
+function updateDerivedStats(p) {
+  // 幸运值不影响闪避/减伤，只影响掉落率和稀有度
+  p.dodgeChance  = Math.min(0.6, p.baseDodge);
+  p.dmgReduction = Math.min(0.6, p.baseDmgRed);
+}
+
+// ═══════════════════════════════════════════════════════
+// §6  Weapon helpers
+// ═══════════════════════════════════════════════════════
+function castChosenStar(p) {
+  p.skillCd = 120;
+  const tgt = nearestEnemy(p.x, p.y);
+  const ang = tgt ? Math.atan2(tgt.y - p.y, tgt.x - p.x) : -Math.PI / 2;
+  gs.projectiles.push({
+    x: p.x, y: p.y,
+    vx: Math.cos(ang) * 320, vy: Math.sin(ang) * 320,
+    dmg: 999999, radius: Math.max(4, Math.floor(4 + p.luck * 0.18)), color: '#fd4',
+    life: 4.0, type: 'star_skill',
+    pierce: true, oneshot: true,
+  });
+  if (settings.particles)
+    spawnParticles(p.x, p.y, ['#fd4', '#fff', '#ff0'], 24, 110, 0.9, 4);
+}
+
+
+function getAreaMult(p) {
+  return p.areaMult * ((CLASSES[p.classIdx]?.id === 'mage' && p.manaActive) ? 1.3 : 1);
+}
+
+const REAPER_CHANNEL_TIME = 7.49;
+
+function castReaperSnipe(p) {
+  if (gs.enemies.filter(e=>!e.dead).length === 0) return;
+  p.skillCd = 542;
+  p.reaperChanneling = true;
+  p.reaperChannel = 0;
+  if (settings.particles)
+    spawnParticles(p.x, p.y, ['#fff','#ddd','#aaa'], 12, 70, 0.7, 3);
+  addFloatingText('🎯 瞄准中…', p.x, p.y - 15, '#fff', 1.2);
+}
+
+const KIRBY_FORMS = ['fire','sword','thunder','ice'];
+
+function castKirbyCopy(p) {
+  // Find nearest non-boss enemy to swallow
+  let best = null, bestD = Infinity;
+  for (const e of gs.enemies) {
+    if (e.dead || e.isBoss) continue;
+    const d = (e.x-p.x)**2 + (e.y-p.y)**2;
+    if (d < bestD) { bestD=d; best=e; }
+  }
+  if (!best) return; // no valid target
+
+  p.skillCd = 120;
+
+  // Swallow
+  if (settings.particles)
+    spawnParticles(best.x, best.y, ['#fd4','#f84','#fff'], 18, 100, 0.8, 4);
+  killEnemy(best);
+
+  // Pick random form (avoid repeating current)
+  const kirbyW = getWeapon('kirby_copy') || (() => { addWeapon('kirby_copy'); return getWeapon('kirby_copy'); })();
+  const available = KIRBY_FORMS.filter(f => f !== (kirbyW?.kirbyForm));
+  const newForm = available[Math.floor(Math.random()*available.length)];
+  if (kirbyW) kirbyW.kirbyForm = newForm;
+  p.kirbyForm = newForm;
+
+  const formColors = {fire:['#f64','#f84','#fd4'], sword:['#fd4','#fff','#ff8'], thunder:['#88f','#4af','#fff'], ice:['#aff','#4ef','#fff']};
+  const formNames  = {fire:'🔥 火焰能力!', sword:'⚔ 剑士能力!', thunder:'⚡ 雷电能力!', ice:'❄ 冰冻能力!'};
+  if (settings.particles) spawnParticles(p.x, p.y, formColors[newForm]||['#fff'], 30, 130, 1.0, 5);
+  addFloatingText(formNames[newForm]||'复制!', p.x, p.y-15, '#fd4', 1.5);
+}
+
+function castSantaGift(p) {
+  p.skillCd = 60;
+  const types = ['red','blue','green'];
+  const count = 5 + Math.floor(Math.random()*4); // 5–8 gifts
+  for (let i = 0; i < count; i++) {
+    const type = Math.random() < 0.04 ? 'rainbow' : types[Math.floor(Math.random()*3)];
+    const ang = Math.random()*Math.PI*2, dist = 40 + Math.random()*180;
+    const gx = Math.max(-WORLD_W/2+15, Math.min(WORLD_W/2-15, p.x + Math.cos(ang)*dist));
+    const gy = Math.max(-WORLD_H/2+15, Math.min(WORLD_H/2-15, p.y + Math.sin(ang)*dist));
+    gs.santaGifts.push({ x:gx, y:gy, type, timer:20, bobTimer:Math.random()*Math.PI*2 });
+  }
+  if (settings.particles)
+    spawnParticles(p.x, p.y, ['#f44','#4f6','#4af','#fd4','#fff'], 20, 110, 0.9, 4);
+  addFloatingText('🎁 礼物!', p.x, p.y-18, '#fd4', 1.5);
+}
+
+function updateSantaGifts(dt) {
+  const p = gs.player;
+  const clsId = CLASSES[p.classIdx]?.id;
+  // Tick buff timers
+  if (p.santaAtkTimer > 0) p.santaAtkTimer = Math.max(0, p.santaAtkTimer - dt);
+  if (p.santaCdTimer  > 0) p.santaCdTimer  = Math.max(0, p.santaCdTimer  - dt);
+  if (p.santaHealTimer > 0) {
+    healPlayer(p.maxHp * (0.25/10) * dt); // 25% HP over 10s
+    p.santaHealTimer = Math.max(0, p.santaHealTimer - dt);
+  }
+  if (clsId !== 'santa') return;
+  const pr2 = p.pickupR * p.pickupR;
+  gs.santaGifts = gs.santaGifts.filter(gift => {
+    gift.timer -= dt;
+    if (gift.timer <= 0) return false;
+    const dx = gift.x-p.x, dy = gift.y-p.y;
+    if (dx*dx+dy*dy < pr2) {
+      if (gift.type === 'red') {
+        p.santaAtkTimer = 10;
+        addFloatingText('🎁+25%攻', p.x, p.y-16, '#f55', 1.2);
+        if (settings.particles) spawnParticles(p.x, p.y, ['#f44','#f84'], 10, 75, 0.5, 3);
+      } else if (gift.type === 'blue') {
+        p.santaCdTimer = 10;
+        addFloatingText('🎁CD-25%', p.x, p.y-16, '#4af', 1.2);
+        if (settings.particles) spawnParticles(p.x, p.y, ['#4af','#48f'], 10, 75, 0.5, 3);
+      } else if (gift.type === 'green') {
+        p.santaHealTimer = 10;
+        addFloatingText('🎁持续回血', p.x, p.y-16, '#4f6', 1.2);
+        if (settings.particles) spawnParticles(p.x, p.y, ['#4f6','#2fa'], 10, 75, 0.5, 3);
+      } else if (gift.type === 'rainbow') {
+        if (gs.phase === 'playing') { gs.phase = 'supply'; showDropSupplyScreen('supply_rainbow'); }
+        addFloatingText('🌈彩虹大礼!', p.x, p.y-18, '#fd4', 1.8);
+      }
+      return false;
+    }
+    return true;
+  });
+}
+
+function updateFallingGifts(dt) {
+  gs.fallingGifts = gs.fallingGifts.filter(fg => {
+    fg.fallTimer += dt;
+    if (fg.fallTimer >= fg.totalTime) {
+      const r2 = fg.radius * fg.radius;
+      gs.enemies.forEach(e => {
+        if (e.dead || e.isBoss) return;
+        const dx=e.x-fg.x, dy=e.y-fg.y;
+        if (dx*dx+dy*dy < r2) killEnemy(e);
+      });
+      if (settings.particles)
+        spawnParticles(fg.x, fg.y, ['#f44','#4f6','#4af','#fd4','#fff'], 22, 130, 0.9, 5);
+      addFloatingText('🎁 砸!', fg.x, fg.y-12, '#fd4', 1.1);
+      return false;
+    }
+    return true;
+  });
+}
+
+function updateKirbyWeapon(dt) {
+  const w = getWeapon('kirby_copy');
+  if (!w || !w.kirbyForm) return;
+  const p = gs.player;
+  const def = WEAPON_DEFS.kirby_copy;
+  const stats = def.levels[Math.min(p.level-1, def.levels.length-1)];
+
+  // ── 火焰形态: fire backward every 0.65s ──
+  if (w.kirbyForm === 'fire') {
+    w.timer = (w.timer||0) - dt;
+    if (w.timer <= 0) {
+      w.timer = 0.65 * p.cdMult * ((p.santaCdTimer||0) > 0 ? 0.75 : 1);
+      const ang = (p.lastMoveAngle != null ? p.lastMoveAngle : -Math.PI/2) + Math.PI;
+      for (let i=0; i<3; i++) {
+        const a = ang + (Math.random()-0.5)*0.45;
+        gs.projectiles.push({
+          x:p.x, y:p.y, vx:Math.cos(a)*170, vy:Math.sin(a)*170,
+          dmg:stats.fireDmg, radius:5, color:'#f64', life:0.55,
+          type:'bullet', element:'flame', pierce:false,
+        });
+      }
+    }
+  }
+
+  // ── 剑士形态: 2 orbiting swords ──
+  if (w.kirbyForm === 'sword') {
+    w.swordAngle = (w.swordAngle||0) + dt * stats.rotSpeed;
+    const r = stats.orbRadius;
+    for (let i=0; i<2; i++) {
+      const a = w.swordAngle + (i/2)*Math.PI*2;
+      const ox=p.x+Math.cos(a)*r, oy=p.y+Math.sin(a)*r;
+      gs.swordOrbs.push({ x:ox, y:oy, color:'#fd4', isBook:false });
+      for (let ei=0; ei<gs.enemies.length; ei++) {
+        const e = gs.enemies[ei];
+        if (e.dead) continue;
+        const dx=ox-e.x, dy=oy-e.y;
+        if (dx*dx+dy*dy < (8+e.radius)**2) {
+          const key=`kirby_sw_${i}_${ei}`;
+          if (!w.swordHitTimers) w.swordHitTimers={};
+          if (!(w.swordHitTimers[key]>0)) {
+            hitEnemy(e, stats.swordDmg);
+            w.swordHitTimers[key]=0.4;
+          }
+        }
+      }
+    }
+    if (w.swordHitTimers) for (const k in w.swordHitTimers) w.swordHitTimers[k]-=dt;
+  }
+}
+
+function updateSniperEffects(dt) {
+  const sw = getWeapon('sniper');
+  if (sw?.tacticalSniper) {
+    sw.smokeTimer = (sw.smokeTimer||20) - dt;
+    if (sw.smokeTimer <= 0) {
+      sw.smokeTimer = 20;
+      const p = gs.player;
+      const ang = Math.random() * Math.PI * 2;
+      const dist = 60 + Math.random() * 80;
+      const gx = p.x + Math.cos(ang)*dist;
+      const gy = p.y + Math.sin(ang)*dist;
+      gs.smokeClouds = gs.smokeClouds || [];
+      gs.smokeClouds.push({ x:gx, y:gy, radius:55, delayTimer:1.0, phase:'delay' });
+    }
+  }
+  // Update smoke clouds
+  gs.smokeClouds = (gs.smokeClouds||[]).filter(sc => {
+    if (sc.phase === 'delay') {
+      sc.delayTimer -= dt;
+      if (sc.delayTimer <= 0) sc.phase = 'active';
+      return true;
+    }
+    sc.timer = (sc.timer||5.0) - dt;
+    return sc.timer > 0;
+  });
+}
+
+function castScholarVacuum(p) {
+  p.skillCd = 50;
+  let total = 0;
+  gs.gems = gs.gems.filter(g => { total += g.xp; awardXp(g.xp); return false; });
+  if (settings.particles)
+    spawnParticles(p.x, p.y, ['#4ef','#0dd','#8ff','#fff'], 28, 115, 1.0, 4);
+  if (total > 0) addFloatingText(`+${total}XP`, p.x, p.y - 15, '#4ef', 1.5);
+}
+
+function castMageSurge(p) {
+  p.skillCd = 45;
+  p.manaTimer = 10;
+  p.manaActive = true;
+  if (settings.particles)
+    spawnParticles(p.x, p.y, ['#a4f','#c4f','#f4f','#88f','#fff'], 30, 120, 1.0, 4);
+  addFloatingText('✨ 法力无天!', p.x, p.y - 15, '#c4f', 1.5);
+}
+
+function castBlacksmithSharpen(p) {
+  p.skillCd = 50;
+  p.sharpenTimer = 10;
+  p.sharpenActive = true;
+  if (settings.particles)
+    spawnParticles(p.x, p.y, ['#f84','#fd4','#fa4','#fff'], 28, 110, 0.9, 4);
+  addFloatingText('⚒ 临阵磨枪!', p.x, p.y - 15, '#fd4', 1.5);
+}
+
+function castBerserkerRage(p) {
+  p.skillCd = 50;
+  p.berserkTimer = 20;
+  p.berserkActive = true;
+  if (settings.particles)
+    spawnParticles(p.x, p.y, ['#f44','#f84','#fd4','#fff'], 35, 130, 1.2, 5);
+  addFloatingText('⚡ 狂暴!', p.x, p.y - 15, '#f44', 1.5);
+}
+
+function castDoctorHeal(p) {
+  p.skillCd = 30;
+  healPlayer(100);
+  if (settings.particles)
+    spawnParticles(p.x, p.y, ['#4f4', '#8f8', '#aff', '#fff'], 22, 90, 0.8, 3);
+  addFloatingText('+100', p.x, p.y - 12, '#4f4', 1.2);
+}
+
+function addFloatingText(text, x, y, color, duration) {
+  gs.floatingTexts.push({ text, x, y, color: color||'#fff', timer: duration||1.2, maxTimer: duration||1.2 });
+}
+
+function addWeapon(id) {
+  if (!WEAPON_DEFS[id]) return;
+  gs.weapons.push({ id, level:1, timer:0, angle:0, swordHitTimers:{}, shotTimer:0,
+    variant:null, variantMods:[], bulletEffect:null, element:null, extraGun:false,
+    burstCount:0, burstPhase:'rest',
+    healMult:1, rangeMult:1, cdMultLocal:1, follows:false });
+}
+function getWeapon(id)     { return gs.weapons.find(w=>w.id===id); }
+function weaponStats(w)    { return WEAPON_DEFS[w.id].levels[w.level-1]; }
+
+function startWave(num) {
+  gs.wave.num = num;
+  const isBoss = BOSS_WAVES.has(num);
+  const plan = getWavePlan(num);
+  const sf = isBoss ? 1 : Math.pow(1.12, num-1);
+  const queue = [];
+  plan.forEach(entry => {
+    for (let i=0; i<entry.count; i++) queue.push({ type:entry.type, scale:sf, waveNum:num });
+  });
+  // Shuffle
+  for (let i=queue.length-1; i>0; i--) {
+    const j = Math.floor(Math.random()*(i+1));
+    [queue[i],queue[j]] = [queue[j],queue[i]];
+  }
+  gs.wave.total    = queue.length;
+  gs.wave.spawnQueue = queue;
+  gs.wave.spawnTimer = 0;
+  gs.wave.spawning   = true;
+  gs.wave.timer      = 0;
+  gs.enemies      = [];
+  gs.projectiles  = [];
+  gs.healCircles  = [];
+  updateHUD();
+}
+
+// ═══════════════════════════════════════════════════════
+// §7  Spawn / hit / heal / particles
+// ═══════════════════════════════════════════════════════
+function spawnNextEnemy() {
+  if (!gs.wave.spawnQueue.length) return;
+  const entry = gs.wave.spawnQueue.shift();
+  const def = ENEMY_TYPES[entry.type];
+  if (!def) return;
+  const sf = entry.scale;
+  const margin = 50;
+  let ex, ey;
+  const edge = Math.floor(Math.random()*4);
+  if      (edge===0){ ex=cam.x-margin+Math.random()*(GW+margin*2); ey=cam.y-margin; }
+  else if (edge===1){ ex=cam.x-margin+Math.random()*(GW+margin*2); ey=cam.y+GH+margin; }
+  else if (edge===2){ ex=cam.x-margin;      ey=cam.y-margin+Math.random()*(GH+margin*2); }
+  else              { ex=cam.x+GW+margin;   ey=cam.y-margin+Math.random()*(GH+margin*2); }
+
+  gs.enemies.push({
+    type: entry.type,
+    name: def.bossName || '',
+    x:ex, y:ey,
+    hp: Math.round(def.hp*sf), maxHp: Math.round(def.hp*sf),
+    spd: def.spd,
+    dmg: Math.round(def.dmg*sf),
+    xp:  Math.round(def.xp * Math.sqrt(sf)),
+    radius: def.radius,
+    sprite: def.sprite,
+    color:  def.color,
+    scale:  def.isBoss ? def.scale : def.scale,
+    isBoss: !!def.isBoss,
+    bossType: def.bossType || null,
+    dead:   false,
+    attackTimer: 0,
+    slowTimer:   0,
+    stunStacks: 0, stunTimer: 0,
+    flameStacks: 0, flameTick: 0,
+    frostStacks: 0, frozenTimer: 0,
+    poisonStacks: 0, poisonTick: 0,
+    paralysisStacks: 0, paralysisTimer: 3,
+  });
+}
+
+function hitEnemy(enemy, rawDmg, _noProc) {
+  if (enemy.dead) return;
+  const p = gs.player;
+  let mult = p.dmgMult;
+  if (gs.talents.has('death_wish') && p.hp < p.maxHp*0.25) mult *= 3;
+  if (gs.talents.has('berserker'))  mult *= (1 + p.berserkerKills*0.003);
+  if (CLASSES[p.classIdx]?.id === 'berserker' && p.berserkActive) mult *= 2;
+  if ((p.physDmgMult||1) !== 1) mult *= p.physDmgMult;
+  if ((p.magicDmgMult||1) !== 1) mult *= p.magicDmgMult;
+  if ((p.reaperGunMult||1) !== 1) mult *= p.reaperGunMult;
+  if ((p.santaAtkTimer||0) > 0) mult *= 1.25;
+  // Kirby thunder/ice procs
+  if (!_noProc && CLASSES[p.classIdx]?.id === 'kirby') {
+    const kirbyW = getWeapon('kirby_copy');
+    if (kirbyW) {
+      const procChance = p.level * 0.01;
+      if (kirbyW.kirbyForm === 'thunder' && Math.random() < procChance) {
+        const ldmg = Math.round(p.level * 6);
+        gs.enemies.forEach(ne => {
+          if (ne.dead) return;
+          const dx2=ne.x-enemy.x, dy2=ne.y-enemy.y;
+          if (dx2*dx2+dy2*dy2 < 80*80) {
+            hitEnemy(ne, ldmg, true);
+            ne.paralysisStacks = Math.min(10,(ne.paralysisStacks||0)+1);
+          }
+        });
+        enemy.paralysisStacks = Math.min(10,(enemy.paralysisStacks||0)+1);
+        if (settings.particles) spawnParticles(enemy.x,enemy.y,['#88f','#4af','#fff'],8,80,0.4,3);
+      }
+      if (kirbyW.kirbyForm === 'ice' && Math.random() < procChance) {
+        enemy.frostStacks = Math.min(10,(enemy.frostStacks||0)+1);
+      }
+    }
+  }
+  // Santa passive: 0.5% chance to drop giant falling gift on nearest enemy
+  if (!_noProc && CLASSES[p.classIdx]?.id === 'santa' && Math.random() < 0.005) {
+    const tgt = nearestEnemy(p.x, p.y);
+    const fx = tgt ? tgt.x + (Math.random()-0.5)*30 : p.x + (Math.random()-0.5)*80;
+    const fy = tgt ? tgt.y + (Math.random()-0.5)*30 : p.y + (Math.random()-0.5)*80;
+    gs.fallingGifts.push({ x:fx, y:fy, fallTimer:0, totalTime:0.8, radius:40 });
+  }
+  const dmg = rawDmg * mult;
+  enemy.hp -= dmg;
+  if (gs.talents.has('vampire') && dmg>0) healPlayer(dmg*0.06);
+  if (settings.particles) spawnParticles(enemy.x, enemy.y, '#f84', 4, 80, 0.3, 2);
+  if (enemy.hp<=0) killEnemy(enemy);
+}
+
+function killEnemy(enemy) {
+  enemy.dead = true;
+  gs.kills++;
+  gs.score += Math.floor(enemy.xp * (1 + gs.player.luck*0.002));
+  // Growing sniper: track kill count
+  const sw = getWeapon('sniper');
+  if (sw?.growingSniper) {
+    sw.growingKillCount = (sw.growingKillCount||0) + 1;
+    if (sw.growingKillCount >= 20) { sw.growingKillCount -= 20; sw.growingBonus = (sw.growingBonus||0) + 1; }
+  }
+  gs.gems.push({ x:enemy.x, y:enemy.y, xp:enemy.xp });
+  if (gs.talents.has('berserker')) gs.player.berserkerKills++;
+  if (settings.particles) {
+    const cols = enemy.isBoss ? ['#f44','#fd4','#f84','#fff'] : [enemy.color,'#fd4'];
+    spawnParticles(enemy.x, enemy.y, cols, enemy.isBoss?24:8, enemy.isBoss?140:80,
+      enemy.isBoss?1.1:0.7, enemy.isBoss?4:2);
+  }
+  // Boss always drops a purple supply; others roll normally
+  if (enemy.isBoss) {
+    spawnDrop(enemy.x, enemy.y, 'supply_purple');
+  } else {
+    tryDrop(enemy.x, enemy.y);
+  }
+  checkAchievements();
+  updateHUD();
+}
+
+// ── Drop system ────────────────────────────────────────
+// 掉落率：基础10% + 幸运*0.08%（每100点幸运+8%）
+function dropChance(luck) {
+  return Math.min(0.60, 0.10 + luck * 0.0008);
+}
+
+// 补给稀有度权重（幸运提升紫色/彩色概率）
+function supplyRarityWeights(luck) {
+  const lb = luck * 0.002;         // luck bonus
+  const green   = Math.max(0.08, 0.60 - lb * 2);
+  const blue    = Math.max(0.08, 0.25 - lb * 0.5);
+  const purple  = Math.min(0.50, 0.12 + lb);
+  const rainbow = Math.min(0.30, 0.03 + lb * 0.5);
+  const total = green + blue + purple + rainbow;
+  return { green:green/total, blue:blue/total, purple:purple/total, rainbow:rainbow/total };
+}
+
+function pickRarity(luck) {
+  const w = supplyRarityWeights(luck);
+  const r = Math.random();
+  if (r < w.rainbow) return 'supply_rainbow';
+  if (r < w.rainbow + w.purple) return 'supply_purple';
+  if (r < w.rainbow + w.purple + w.blue) return 'supply_blue';
+  return 'supply_green';
+}
+
+// 掉落物定义
+const DROP_DEFS = {
+  health:         { label:'血包',   color:'#e33', border:'#f88', size:14, instant:true,  shape:'diamond' },
+  bomb_item:      { label:'炸弹',   color:'#333', border:'#888', size:12, instant:true,  shape:'circle'  },
+  xp_bottle:      { label:'经验瓶', color:'#0dd', border:'#8ff', size:10, instant:true,  shape:'star'    },
+  magnet:         { label:'磁铁',   color:'#f60', border:'#fca', size:12, instant:true,  shape:'rect'    },
+  supply_green:   { label:'绿宝箱', color:'#2a4', border:'#4f4', size:14, rarity:'green',   cards:1, shape:'chest' },
+  supply_blue:    { label:'蓝宝箱', color:'#148', border:'#48f', size:16, rarity:'blue',    cards:2, shape:'chest' },
+  supply_purple:  { label:'紫宝箱', color:'#52a', border:'#c4f', size:18, rarity:'purple',  cards:3, shape:'chest' },
+  supply_rainbow: { label:'彩虹宝箱', color:'#a81', border:'#fd4', size:20, rarity:'rainbow', cards:3, shape:'chest' },
+};
+
+// 掉落类型权重（与稀有度无关）
+const DROP_TYPE_POOL = [
+  { type:'health',    w:28 },
+  { type:'bomb_item', w:10 },
+  { type:'xp_bottle', w:22 },
+  { type:'magnet',    w:8  },
+  { type:'supply',    w:32 },
+];
+
+function pickDropType() {
+  const total = DROP_TYPE_POOL.reduce((s,e)=>s+e.w, 0);
+  let r = Math.random() * total;
+  for (const e of DROP_TYPE_POOL) { r-=e.w; if (r<=0) return e.type; }
+  return 'health';
+}
+
+function tryDrop(x, y) {
+  if (Math.random() > dropChance(gs.player.luck)) return;
+  let type = pickDropType();
+  if (type === 'supply') type = pickRarity(gs.player.luck);
+  spawnDrop(x, y, type);
+}
+
+function spawnDrop(x, y, type) {
+  // Scatter slightly
+  gs.drops.push({
+    type, x: x + (Math.random()-.5)*20, y: y + (Math.random()-.5)*20,
+    bobTimer: Math.random()*Math.PI*2,  // for bob animation
+  });
+}
+
+function healPlayer(amount) {
+  const p = gs.player;
+  const before = p.hp;
+  p.hp = Math.min(p.maxHp, p.hp + amount);
+  const actual = p.hp - before;
+  // Doctor passive: every 100 HP healed → dmgMult +5%
+  if (actual > 0 && CLASSES[p.classIdx]?.id === 'doctor') {
+    p.healAccum += actual;
+    while (p.healAccum >= 100) {
+      p.healAccum -= 100;
+      p.dmgMult = +(p.dmgMult * 1.05).toFixed(4);
+    }
+  }
+}
+
+function awardXp(amount) {
+  if (!gs) return;
+  const p = gs.player;
+  gs.score += amount;
+  const gained = Math.floor(amount * (p.xpMult != null ? p.xpMult : 1));
+  p.xp += gained;
+  while (p.xp >= p.xpToNext) {
+    p.xp -= p.xpToNext;
+    p.level++;
+    p.xpToNext = Math.floor(100 + p.level * 40);
+    p.levelUpQueue++;
+    if (CLASSES[p.classIdx]?.id === 'berserker') p.maxHp += 5;
+  }
+}
+
+function spawnParticles(x, y, colorOrArr, count, speed, life, size) {
+  for (let i=0; i<count; i++) {
+    const angle = Math.random()*Math.PI*2;
+    const spd   = speed*(0.5+Math.random()*0.8);
+    const col   = Array.isArray(colorOrArr)
+      ? colorOrArr[Math.floor(Math.random()*colorOrArr.length)]
+      : colorOrArr;
+    gs.particles.push({ x, y, vx:Math.cos(angle)*spd, vy:Math.sin(angle)*spd,
+      color:col, life:life, maxLife:life, size });
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// §8  Update player
+// ═══════════════════════════════════════════════════════
+function updatePlayer(dt) {
+  const p = gs.player;
+  let dx=0, dy=0;
+  if (keys['KeyW']||keys['ArrowUp'])    { dy-=1; tutorialTimer=0; }
+  if (keys['KeyS']||keys['ArrowDown'])  { dy+=1; tutorialTimer=0; }
+  if (keys['KeyA']||keys['ArrowLeft'])  { dx-=1; tutorialTimer=0; }
+  if (keys['KeyD']||keys['ArrowRight']) { dx+=1; tutorialTimer=0; }
+  if (dx&&dy) { dx*=0.7071; dy*=0.7071; }
+  // Track last movement direction for Kirby fire form
+  if (dx !== 0 || dy !== 0) gs.player.lastMoveAngle = Math.atan2(dy, dx);
+
+  // ── 技能 (Space / J) ──
+  const skillPressed = keys['Space'] || keys['KeyJ'];
+  if (skillPressed && !p.skillKeyHeld) {
+    if (p.skillCd <= 0) {
+      const clsId = CLASSES[p.classIdx]?.id;
+      if (clsId === 'doctor')      castDoctorHeal(p);
+      else if (clsId === 'berserker')   castBerserkerRage(p);
+      else if (clsId === 'blacksmith')  castBlacksmithSharpen(p);
+      else if (clsId === 'mage')        castMageSurge(p);
+      else if (clsId === 'scholar')     castScholarVacuum(p);
+      else if (clsId === 'reaper' && !p.reaperChanneling) castReaperSnipe(p);
+      else if (clsId === 'kirby')  castKirbyCopy(p);
+      else if (clsId === 'santa') castSantaGift(p);
+      else castChosenStar(p);
+    }
+  }
+  p.skillKeyHeld = !!skillPressed;
+  if (p.skillCd > 0) p.skillCd = Math.max(0, p.skillCd - dt);
+  // Berserker: tick rage timer
+  if (p.berserkActive) {
+    p.berserkTimer = Math.max(0, p.berserkTimer - dt);
+    if (p.berserkTimer <= 0) p.berserkActive = false;
+  }
+  if (p.sharpenActive) {
+    p.sharpenTimer = Math.max(0, p.sharpenTimer - dt);
+    if (p.sharpenTimer <= 0) p.sharpenActive = false;
+  }
+  if (p.manaActive) {
+    p.manaTimer = Math.max(0, p.manaTimer - dt);
+    if (p.manaTimer <= 0) p.manaActive = false;
+  }
+  // Reaper: channel → lock movement, fire at end
+  if (p.reaperChanneling) {
+    p.reaperChannel += dt;
+    // Pulsing particles while aiming
+    if (settings.particles && Math.random() < 0.4)
+      spawnParticles(p.x, p.y, ['#fff','#ccc'], 2, 50, 0.4, 2);
+    if (p.reaperChannel >= REAPER_CHANNEL_TIME) {
+      p.reaperChanneling = false;
+      const alive = gs.enemies.filter(e => !e.dead);
+      if (alive.length > 0) {
+        const tgt = alive.reduce((best, e) => e.hp > best.hp ? e : best, alive[0]);
+        if (settings.particles)
+          spawnParticles(tgt.x, tgt.y, ['#fff','#f0f','#88f','#000'], 50, 200, 1.8, 7);
+        addFloatingText('💀 狙神!', tgt.x, tgt.y - 20, '#fff', 2.0);
+        killEnemy(tgt);
+      }
+    }
+    // Block movement while channeling
+    p.x = Math.max(-WORLD_W/2, Math.min(WORLD_W/2, p.x));
+    p.y = Math.max(-WORLD_H/2, Math.min(WORLD_H/2, p.y));
+  } else {
+    p.x += dx*p.spd*dt;
+    p.y += dy*p.spd*dt;
+  }
+  // Clamp to world bounds
+  p.x = Math.max(-WORLD_W/2, Math.min(WORLD_W/2, p.x));
+  p.y = Math.max(-WORLD_H/2, Math.min(WORLD_H/2, p.y));
+
+  cam.x += (p.x - GW/2 - cam.x) * Math.min(1, 8*dt);
+  cam.y += (p.y - GH/2 - cam.y) * Math.min(1, 8*dt);
+
+  if (p.invincible>0) p.invincible -= dt;
+
+  // HP regen
+  if (p.hpRegen > 0) healPlayer(p.hpRegen * dt);
+
+  // Magnet timer — pulls all gems + drops
+  if (p.magnetTimer > 0) {
+    p.magnetTimer -= dt;
+    gs.gems.forEach(g => {
+      const dx2=p.x-g.x, dy2=p.y-g.y;
+      const d=Math.sqrt(dx2*dx2+dy2*dy2)||1;
+      g.x += (dx2/d)*280*dt; g.y += (dy2/d)*280*dt;
+    });
+    gs.drops.forEach(d => {
+      const dx2=p.x-d.x, dy2=p.y-d.y;
+      const dd=Math.sqrt(dx2*dx2+dy2*dy2)||1;
+      d.x += (dx2/dd)*200*dt; d.y += (dy2/dd)*200*dt;
+    });
+  }
+
+  // Auto gem pickup — also awards XP for leveling
+  const pr2 = p.pickupR * p.pickupR;
+  gs.gems = gs.gems.filter(gem => {
+    const dx2=gem.x-p.x, dy2=gem.y-p.y;
+    if (dx2*dx2+dy2*dy2 < pr2) { awardXp(gem.xp); return false; }
+    return true;
+  });
+
+  // Drop pickup (contact range = 14px)
+  const PICKUP_R2 = 14*14;
+  let pendingSupply = null;
+  gs.drops = gs.drops.filter(drop => {
+    const dx2=drop.x-p.x, dy2=drop.y-p.y;
+    if (dx2*dx2+dy2*dy2 > PICKUP_R2) return true;
+    const def = DROP_DEFS[drop.type];
+    if (!def) return false;
+    if (def.instant) {
+      applyInstantDrop(drop.type);
+    } else {
+      // Queue supply (only one at a time)
+      if (!pendingSupply) pendingSupply = drop;
+      else return true; // keep if can't process now
+    }
+    return false;
+  });
+  if (pendingSupply && gs.phase === 'playing') {
+    gs.phase = 'supply';
+    showDropSupplyScreen(pendingSupply.type);
+  }
+
+
+  // Recompute derived stats each frame
+  updateDerivedStats(p);
+}
+
+function applyInstantDrop(type) {
+  const p = gs.player;
+  if (type === 'health') {
+    healPlayer(p.maxHp * 0.30);
+    spawnParticles(p.x, p.y, '#f44', 8, 70, 0.5, 3);
+  } else if (type === 'bomb_item') {
+    // Explodes all enemies within 90px of player
+    const r2 = 90*90;
+    gs.enemies.forEach(e => {
+      if (e.dead) return;
+      const dx=e.x-p.x, dy=e.y-p.y;
+      if (dx*dx+dy*dy < r2) hitEnemy(e, 60 + gs.wave.num * 4);
+    });
+    spawnParticles(p.x, p.y, ['#f84','#fd4','#f44'], 20, 130, 0.7, 4);
+  } else if (type === 'xp_bottle') {
+    awardXp(30 + gs.wave.num * 10);
+    spawnParticles(p.x, p.y, '#4ef', 10, 80, 0.6, 3);
+  } else if (type === 'magnet') {
+    p.magnetTimer = 4.0; // 4 seconds
+    // Immediately collect all gems on screen
+    gs.gems = gs.gems.filter(g => {
+      awardXp(g.xp); return false;
+    });
+    spawnParticles(p.x, p.y, '#f84', 12, 90, 0.5, 3);
+  }
+  updateHUD();
+}
+
+// ═══════════════════════════════════════════════════════
+// §9  Update enemies
+// ═══════════════════════════════════════════════════════
+function updateEnemies(dt) {
+  const p = gs.player;
+  const alive = gs.enemies.filter(e=>!e.dead);
+
+  for (let i=0; i<alive.length; i++) {
+    const e = alive[i];
+
+    // Slow debuff
+    if (e.slowTimer>0) e.slowTimer -= dt;
+    // Frost stacks → slow, at 10 freeze
+    if (e.frostStacks>0 && e.frozenTimer<=0) {
+      if (e.frostStacks>=10) { e.frozenTimer=2.0; e.frostStacks=0; }
+    }
+    if (e.frozenTimer>0) e.frozenTimer -= dt;
+    const frostSlow = 1 - Math.min(0.9, (e.frostStacks||0)*0.1);
+    const frozen    = (e.frozenTimer||0) > 0 ? 0 : 1;
+    // Stun: non-boss only, tick down, stacks add duration
+    if ((e.stunTimer||0) > 0) e.stunTimer -= dt;
+    const stunned   = (!e.isBoss && (e.stunTimer||0) > 0) ? 0 : 1;
+    // Paralysis: slow over time, stacks decay every 3s
+    if ((e.paralysisStacks||0) > 0) {
+      e.paralysisTimer -= dt;
+      if (e.paralysisTimer <= 0) {
+        e.paralysisStacks = Math.max(0, e.paralysisStacks-1);
+        e.paralysisTimer = 3.0;
+      }
+    }
+    const paralysisSpd = 1 - Math.min(0.8, (e.paralysisStacks||0)*0.08);
+    const spdMult   = (e.slowTimer>0 ? 0.4 : 1) * frostSlow * frozen * stunned * paralysisSpd;
+    // Flame DOT
+    if (e.flameStacks>0) {
+      e.flameTick = (e.flameTick||0) - dt;
+      if (e.flameTick<=0) { e.flameTick=1.0; e.hp-=e.maxHp*e.flameStacks*0.01; if(e.hp<=0&&!e.dead)killEnemy(e); }
+    }
+    // Poison DOT
+    if (e.poisonStacks>0) {
+      e.poisonTick = (e.poisonTick||0) - dt;
+      if (e.poisonTick<=0) { e.poisonTick=1.0; e.hp-=e.maxHp*e.poisonStacks*0.005; if(e.hp<=0&&!e.dead)killEnemy(e); }
+    }
+    if (e.dead) continue;
+
+    // ── Boss: dog charge override ──
+    if (e.bossType === 'dog') {
+      e.chargeTimer = (e.chargeTimer ?? 5) - dt;
+      if (!e.charging && e.chargeTimer <= 0.5 && e.chargeTimer > 0) {
+        // Telegraph: flash particles
+        if (settings.particles && Math.random()<0.3)
+          spawnParticles(e.x, e.y, ['#f84','#fd4'], 4, 60, 0.3, 2);
+      }
+      if (!e.charging && e.chargeTimer <= 0) {
+        e.charging = true;
+        e.chargeDur = 0.85;
+        // Lock charge direction at moment of launch
+        const cdx=p.x-e.x, cdy=p.y-e.y, cd=Math.sqrt(cdx*cdx+cdy*cdy)||1;
+        e.chargeVx = (cdx/cd)*380; e.chargeVy = (cdy/cd)*380;
+      }
+    }
+
+    // Move toward player
+    const dx=p.x-e.x, dy=p.y-e.y;
+    const dist = Math.sqrt(dx*dx+dy*dy)||0.001;
+
+    // Smoke cloud: enemies inside smoke move randomly
+    const inSmoke = (gs.smokeClouds||[]).some(sc => sc.phase==='active' &&
+      (e.x-sc.x)**2+(e.y-sc.y)**2 < sc.radius*sc.radius);
+    const moveAng = inSmoke ? (Math.random()*Math.PI*2) : Math.atan2(p.y-e.y, p.x-e.x);
+    const mdx = Math.cos(moveAng), mdy = Math.sin(moveAng);
+
+    if (e.bossType === 'dog' && e.charging) {
+      e.x += e.chargeVx * dt;
+      e.y += e.chargeVy * dt;
+      e.chargeDur -= dt;
+      if (settings.particles && Math.random()<0.5)
+        spawnParticles(e.x, e.y, [e.color,'#f44'], 3, 50, 0.2, 2);
+      if (e.chargeDur <= 0) {
+        e.charging = false;
+        e.chargeTimer = 5.0; // cooldown before next charge
+      }
+    } else if (e.bossType === 'cat') {
+      // Keep ~90px distance: approach if far, retreat if too close
+      const catDist = 90;
+      const moveMult = inSmoke ? 1 : (dist > catDist + 10 ? 1 : dist < catDist - 10 ? -0.9 : 0);
+      e.x += mdx*e.spd*spdMult*moveMult*dt;
+      e.y += mdy*e.spd*spdMult*moveMult*dt;
+    } else {
+      e.x += mdx*e.spd*spdMult*dt;
+      e.y += mdy*e.spd*spdMult*dt;
+    }
+
+    // ── Boss: cat ranged attack ──
+    if (e.bossType === 'cat') {
+      e.rangedTimer = (e.rangedTimer ?? 2.2) - dt;
+      if (e.rangedTimer <= 0) {
+        e.rangedTimer = 2.2;
+        const ang = Math.atan2(p.y-e.y, p.x-e.x);
+        const count = e.hp < e.maxHp*0.5 ? 5 : 3; // phase 2: 5 fish
+        for (let fi=0; fi<count; fi++) {
+          const spread = (fi - (count-1)/2) * 0.28;
+          gs.projectiles.push({
+            x:e.x, y:e.y,
+            vx:Math.cos(ang+spread)*175, vy:Math.sin(ang+spread)*175,
+            dmg: e.dmg * 0.7,
+            radius:5, color:'#ca7', life:1.6,
+            type:'fish', fromEnemy:true,
+          });
+        }
+        if (settings.particles)
+          spawnParticles(e.x, e.y, ['#ca7','#f84'], 6, 55, 0.3, 2);
+      }
+    }
+
+    // Soft separation
+    for (let j=i+1; j<alive.length; j++) {
+      const o = alive[j];
+      const ox=e.x-o.x, oy=e.y-o.y;
+      const d2=ox*ox+oy*oy;
+      const minD=(e.radius+o.radius)*0.85;
+      if (d2 < minD*minD && d2>0.0001) {
+        const d=Math.sqrt(d2), push=(minD-d)/d*0.4;
+        e.x+=ox*push; e.y+=oy*push;
+        o.x-=ox*push; o.y-=oy*push;
+      }
+    }
+
+    // Attack player on contact
+    if (dist < e.radius+10) {
+      e.attackTimer -= dt;
+      if (e.attackTimer<=0 && p.invincible<=0) {
+        e.attackTimer = 0.75;
+
+        // Dodge check
+        if (p.dodgeChance>0 && Math.random()<p.dodgeChance) {
+          spawnParticles(p.x, p.y, '#8af', 3, 55, 0.3, 2);
+          continue;
+        }
+
+        // Damage reduction
+        const actualDmg = e.dmg * (1 - p.dmgReduction) * (1 - Math.min(0.8,(e.paralysisStacks||0)*0.08));
+        p.hp -= actualDmg;
+        p.invincible = 0.5 * (p.invincMult||1);
+        spawnParticles(p.x, p.y, '#f44', 6, 90, 0.4, 2);
+        if (p.hp<=0) { p.hp=0; gs.phase='dead'; showDeadScreen(); }
+        updateHUD();
+      }
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// §10  Weapons: fire functions
+//       (Add new weapon fire functions here as needed)
+// ═══════════════════════════════════════════════════════
+function nearestEnemy(x, y) {
+  let best=null, bestD=Infinity;
+  for (const e of gs.enemies) {
+    if (e.dead) continue;
+    const dx=e.x-x, dy=e.y-y;
+    const d=dx*dx+dy*dy;
+    if (d<bestD) { bestD=d; best=e; }
+  }
+  return best;
+}
+
+// ── Weapon fire functions ──────────────────────────────────────────────────
+function fireShotgun(w, stats, p) {
+  const tgt = nearestEnemy(p.x, p.y);
+  if (!tgt) return;
+  const ang   = Math.atan2(tgt.y-p.y, tgt.x-p.x);
+  const mods  = w.variantMods || [];
+  const beff  = w.bulletEffect || null;
+  const elem  = w.element || null;
+  const col   = elem==='flame'?'#f84' : elem==='frost'?'#8cf' : elem==='poison'?'#6f4' : '#f84';
+  const dmgMult = mods.includes('dmg_20') ? 1.2 : 1.0;
+  const cnt   = (stats.count || 5) + (mods.includes('extra_shell') ? 1 : 0);
+  const spread = mods.includes('aspd') ? 0.85 : 1.0; // aspd on shotgun → tighter spread fires faster (via cd)
+  const shoot = (a, d) => gs.projectiles.push({
+    x:p.x, y:p.y, vx:Math.cos(a)*260, vy:Math.sin(a)*260,
+    dmg:d, radius:4, color:col, life:0.85, type:'bullet',
+    pierce:beff==='pierce', bounce:beff==='bounce', bounceCount:2,
+    splitOnHit:beff==='split', element:elem,
+  });
+  const fireBurst = () => {
+    for (let i=0; i<cnt; i++) {
+      const sp = cnt>1 ? (i/(cnt-1)-0.5)*1.0 : 0;
+      shoot(ang+sp, Math.floor(stats.dmg * 0.65 * dmgMult));
+    }
+  };
+  fireBurst();
+  if (w.extraGun) fireBurst();
+}
+
+function fireGatling(w, stats, p) {
+  const tgt = nearestEnemy(p.x, p.y);
+  if (!tgt) return;
+  const ang     = Math.atan2(tgt.y-p.y, tgt.x-p.x);
+  const mods    = w.variantMods || [];
+  const elem    = w.element || null;
+  const col     = elem==='flame'?'#f84' : elem==='frost'?'#8cf' : elem==='poison'?'#6f4' : '#fd4';
+  const hasDual = mods.includes('dual_bullet');
+  const dmg     = Math.floor(stats.dmg * (mods.includes('dmg_20') ? 1.2 : 1.0));
+  const shoot = (x, y, a) => gs.projectiles.push({
+    x, y, vx:Math.cos(a)*310, vy:Math.sin(a)*310,
+    dmg, radius:3, color:col, life:1.3, type:'bullet', element:elem,
+  });
+  const fireBurst = () => {
+    if (hasDual) {
+      const px = Math.cos(ang+Math.PI/2)*6, py = Math.sin(ang+Math.PI/2)*6;
+      shoot(p.x+px, p.y+py, ang); shoot(p.x-px, p.y-py, ang);
+    } else {
+      shoot(p.x, p.y, ang);
+    }
+  };
+  fireBurst();
+  if (w.extraGun) fireBurst();
+}
+
+function fireHealDroneCircle(w, stats, p) {
+  const r   = Math.round(stats.circleR  * (w.rangeMult||1));
+  const hps = stats.healPs * (w.healMult||1);
+  const dur = stats.circleDur;
+  gs.healCircles.push({
+    x: p.x, y: p.y, r, healPs: hps,
+    timer: dur, maxTimer: dur,
+    element: w.element || null,
+    follows: w.follows || false,
+    elemTick: 1.0,
+  });
+  if (settings.particles)
+    spawnParticles(p.x, p.y, ['#4f8','#8ff','#aff'], 10, 55, 0.55, 3);
+}
+
+function firePistol(w, stats, p) {
+  const tgt = nearestEnemy(p.x, p.y);
+  if (!tgt) return;
+  const ang   = Math.atan2(tgt.y-p.y, tgt.x-p.x);
+  const mods  = w.variantMods || [];
+  const hasDmg20  = mods.includes('dmg_20');
+  const hasSplit  = mods.includes('split_bullet');
+  const hasDual   = mods.includes('dual_bullet');
+  const elem      = w.element || null;
+  const beff      = w.bulletEffect || null;
+  const col       = elem==='flame'?'#f84' : elem==='frost'?'#8cf' : elem==='poison'?'#6f4' : '#fd4';
+  let dmg = stats.dmg;
+  if (hasDmg20) dmg = Math.floor(dmg * 1.2);
+
+  const shoot = (x, y, a, d) => gs.projectiles.push({
+    x, y, vx:Math.cos(a)*290, vy:Math.sin(a)*290,
+    dmg:d, radius:4, color:col, life:1.4, type:'bullet',
+    pierce:    beff==='pierce',
+    bounce:    beff==='bounce', bounceCount:2,
+    splitOnHit:beff==='split',
+    element: elem,
+  });
+
+  const burst = () => {
+    if (!w.variant) {
+      shoot(p.x, p.y, ang, dmg);
+    } else if (w.variant === 'shotgun') {
+      const cnt = hasSplit ? 7 : 5;
+      for (let i=0; i<cnt; i++) {
+        const sp = (i/(cnt-1)-0.5)*0.9;
+        shoot(p.x, p.y, ang+sp, Math.floor(dmg*0.6));
+      }
+    } else if (w.variant === 'gatling') {
+      if (hasDual) {
+        // Parallel side-by-side: offset perpendicular to aim direction
+        const perpX = Math.cos(ang + Math.PI/2) * 6;
+        const perpY = Math.sin(ang + Math.PI/2) * 6;
+        shoot(p.x + perpX, p.y + perpY, ang, dmg);
+        shoot(p.x - perpX, p.y - perpY, ang, dmg);
+      } else {
+        shoot(p.x, p.y, ang, dmg);
+      }
+    }
+  };
+
+  burst();
+  if (w.extraGun) burst(); // second gun fires the same pattern
+}
+
+function fireArrowRain(w, stats, p) {
+  const tgt = nearestEnemy(p.x, p.y);
+  if (!tgt) return;
+  const area = (stats.radius||50) * getAreaMult(p);
+  for (let i=0; i<(stats.count||4); i++) {
+    const ox = tgt.x + (Math.random()-.5)*area*2;
+    const oy = tgt.y + (Math.random()-.5)*area*2;
+    gs.projectiles.push({ x:ox, y:oy-90,
+      vx:0, vy:340,
+      dmg:stats.dmg, radius:3, color:'#fa4', life:0.55, type:'arrow', pierce:true, maxPierce:1 });
+  }
+}
+
+function fireHealDrone(w, stats, p) {
+  fireHealDroneCircle(w, stats, p);
+}
+
+function missileDroneExplosion(x, y, radius, dmg, weapRef) {
+  const r2 = radius * radius;
+  gs.enemies.forEach(e => {
+    if (e.dead) return;
+    const dx=e.x-x, dy=e.y-y;
+    if (dx*dx+dy*dy < r2) {
+      hitEnemy(e, dmg);
+      if (weapRef) {
+        if (weapRef.warhead==='stun' && !e.isBoss) {
+          e.stunStacks = Math.min(10,(e.stunStacks||0)+1);
+          e.stunTimer  = Math.max(e.stunTimer||0, 0.5 + (e.stunStacks||0)*0.4);
+        }
+        if (weapRef.warhead==='flame') e.flameStacks = Math.min(10,(e.flameStacks||0)+1);
+      }
+    }
+  });
+  const cols = weapRef?.warhead==='flame' ? ['#f64','#f84','#fd4'] : ['#f84','#fd4','#f44','#ff8'];
+  if (settings.particles) spawnParticles(x, y, cols, 18, 105, 0.65, 4);
+  // 二次爆炸: queue a second identical explosion
+  if (weapRef?.warhead==='double') {
+    gs.pendingExplosions.push({ timer:0.35, x, y, radius, dmg, w:null });
+  }
+}
+
+function fireMissileDrone(w, stats, p) {
+  const baseDmg = Math.round(50 * (w.missileDmgMult||1));
+  const baseR   = 20 * (w.missileRadMult||1);
+  const count   = 6;
+  const col     = w.deathMissile ? '#c0f' : (w.warhead==='flame' ? '#f64' : '#f84');
+
+  // ── 死神飞弹: evenly around player ──
+  if (w.deathMissile) {
+    const ddmg = Math.round(baseDmg * 2.0);
+    const dr   = baseR * 2.5;
+    for (let i=0; i<count; i++) {
+      const ang = (i/count)*Math.PI*2;
+      const tx  = p.x + Math.cos(ang)*130;
+      const ty  = p.y + Math.sin(ang)*130;
+      gs.pendingExplosions.push({ timer:0.25+i*0.1, x:tx, y:ty, radius:dr, dmg:ddmg, w });
+    }
+    if (settings.particles) spawnParticles(p.x,p.y,['#c0f','#f0f','#a0f'],20,100,0.8,4);
+    return;
+  }
+
+  // ── 6 homing missiles ──
+  for (let i=0; i<count; i++) {
+    const ang = Math.random()*Math.PI*2;
+    gs.projectiles.push({
+      x:p.x+Math.cos(ang)*6, y:p.y+Math.sin(ang)*6,
+      vx:Math.cos(ang)*50, vy:-80,
+      dmg:0, radius:4, color:col,
+      life:4.0, type:'missile', homing:true, maxSpd:230, pierce:false,
+      explodeR:baseR, explodeDmg:baseDmg, missileW:w,
+      onHit:(proj)=>{ missileDroneExplosion(proj.x,proj.y,proj.explodeR,proj.explodeDmg,proj.missileW); proj.dead=true; },
+      onExpire:(proj)=>{ missileDroneExplosion(proj.x,proj.y,proj.explodeR,proj.explodeDmg,proj.missileW); },
+    });
+  }
+
+  // ── Lv4 extra burst ──
+  if (w.missileMode==='ground') {
+    for (let i=0; i<3; i++)
+      gs.pendingExplosions.push({ timer:i*0.15, x:p.x+(Math.random()-.5)*30, y:p.y+(Math.random()-.5)*30,
+        radius:baseR*1.1, dmg:Math.round(baseDmg*0.8), w });
+  } else if (w.missileMode==='forward') {
+    const tgt=nearestEnemy(p.x,p.y);
+    const ang=tgt?Math.atan2(tgt.y-p.y,tgt.x-p.x):-Math.PI/2;
+    for (let i=0; i<4; i++) {
+      const a=ang+(Math.random()-.5)*0.4;
+      gs.projectiles.push({ x:p.x,y:p.y, vx:Math.cos(a)*290,vy:Math.sin(a)*290,
+        dmg:0, radius:4, color:col, life:0.7, type:'missile', pierce:false,
+        explodeR:baseR, explodeDmg:Math.round(baseDmg*0.7), missileW:w,
+        onHit:(proj)=>{ missileDroneExplosion(proj.x,proj.y,proj.explodeR,proj.explodeDmg,proj.missileW); proj.dead=true; },
+        onExpire:(proj)=>{ missileDroneExplosion(proj.x,proj.y,proj.explodeR,proj.explodeDmg,proj.missileW); },
+      });
+    }
+  } else if (w.missileMode==='scatter') {
+    const tgt=nearestEnemy(p.x,p.y);
+    if (tgt) {
+      for (let i=0; i<5; i++)
+        gs.pendingExplosions.push({ timer:i*0.1, x:tgt.x+(Math.random()-.5)*80, y:tgt.y+(Math.random()-.5)*80,
+          radius:baseR, dmg:Math.round(baseDmg*0.9), w });
+    }
+  }
+}
+
+function getMissileDroneUpgradeCards(w) {
+  const next = w.level + 1;
+  if (next===4) return [
+    { type:'missileup', missileOp:'mode', mode:'ground',  weapId:'missile_drone', icon:'💥', name:'原地爆炸', desc:'发射时在玩家脚下额外引爆一串导弹' },
+    { type:'missileup', missileOp:'mode', mode:'forward', weapId:'missile_drone', icon:'➡', name:'导弹开路', desc:'发射时朝前方额外发射一串导弹' },
+    { type:'missileup', missileOp:'mode', mode:'scatter', weapId:'missile_drone', icon:'🌪', name:'狂轰乱炸', desc:'发射时在目标周围额外投下一串导弹' },
+  ];
+  if (next===7) return [
+    { type:'missileup', missileOp:'warhead', warhead:'stun',   weapId:'missile_drone', icon:'⚡', name:'震荡弹头', desc:'伤害×2·爆炸对非boss施加眩晕(最多10层)' },
+    { type:'missileup', missileOp:'warhead', warhead:'flame',  weapId:'missile_drone', icon:'🔥', name:'燃烧弹头', desc:'伤害×2·爆炸施加1层灼烧' },
+    { type:'missileup', missileOp:'warhead', warhead:'double', weapId:'missile_drone', icon:'💣', name:'二次爆炸', desc:'伤害×2·爆炸后0.35秒再次爆炸造成100%伤害' },
+  ];
+  // Lv2/3/5/6: random stat
+  const pool = [
+    { op:'radius', icon:'⭕', name:'更多火药',  desc:'导弹爆炸半径+15%' },
+    { op:'dmg',    icon:'💣', name:'高爆火药',  desc:'导弹伤害+35%' },
+    { op:'cd',     icon:'⏱', name:'快速填充',  desc:'发射频率+20%' },
+  ];
+  const c = pool[Math.floor(Math.random()*pool.length)];
+  return [{ type:'missileup', missileOp:'stat', statOp:c.op, weapId:'missile_drone', icon:c.icon, name:c.name, desc:c.desc }];
+}
+
+function updatePendingExplosions(dt) {
+  if (!gs.pendingExplosions) return;
+  gs.pendingExplosions = gs.pendingExplosions.filter(pe => {
+    pe.timer -= dt;
+    if (pe.timer <= 0) { missileDroneExplosion(pe.x, pe.y, pe.radius, pe.dmg, pe.w); return false; }
+    return true;
+  });
+}
+
+// Update floating texts
+function updateFloatingTexts(dt) {
+  if (gs.floatingTexts) gs.floatingTexts = gs.floatingTexts.filter(ft => { ft.timer -= dt; return ft.timer > 0; });
+}
+
+function updateHealCircles(dt) {
+  if (!gs.healCircles) return;
+  const p = gs.player;
+  gs.healCircles = gs.healCircles.filter(c => {
+    c.timer -= dt;
+    if (c.timer <= 0) return false;
+    // Follow player if field hospital
+    if (c.follows) { c.x = p.x; c.y = p.y; }
+    // Heal player if inside circle
+    const dx=p.x-c.x, dy=p.y-c.y;
+    if (dx*dx+dy*dy < c.r*c.r) {
+      healPlayer(c.healPs * dt);
+    }
+    // Apply element to enemies inside circle
+    if (c.element) {
+      c.elemTick -= dt;
+      if (c.elemTick <= 0) {
+        c.elemTick = 1.0;
+        for (const e of gs.enemies) {
+          if (e.dead) continue;
+          const ex=e.x-c.x, ey=e.y-c.y;
+          if (ex*ex+ey*ey < c.r*c.r) {
+            if (c.element==='flame')  e.flameStacks  = Math.min(10,(e.flameStacks||0)+1);
+            if (c.element==='frost')  e.frostStacks  = Math.min(10,(e.frostStacks||0)+1);
+            if (c.element==='poison') e.poisonStacks = Math.min(10,(e.poisonStacks||0)+1);
+          }
+        }
+      }
+    }
+    return true;
+  });
+}
+
+function fireSniper(w, stats, p) {
+  const tgt = nearestEnemy(p.x, p.y);
+  if (!tgt) return;
+  const dx = tgt.x - p.x, dy = tgt.y - p.y;
+  const d = Math.sqrt(dx*dx+dy*dy)||1;
+  const ang = Math.atan2(dy, dx);
+  const spd = 650;
+
+  // Dragon shot every 3rd bullet
+  if (w.dragonSniper) {
+    w.dragonShotCount = (w.dragonShotCount||0) + 1;
+    if (w.dragonShotCount >= 3) {
+      w.dragonShotCount = 0;
+      const dmg = stats.dmg * (1+(w.sniperDmgBonus||0)) * (w.heavySniper?3:1) * (1+(w.growingBonus||0)/100) * (w.alloyBullet?1.5:1) * 8;
+      gs.projectiles.push({ x:p.x, y:p.y, vx:Math.cos(ang)*spd, vy:Math.sin(ang)*spd,
+        dmg, radius:10, color:'#fd4', life:2.5, type:'bullet', pierce:true, maxPierce:9999, isDragon:true });
+      if (settings.particles) spawnParticles(p.x, p.y, ['#fd4','#fa0','#f80'], 12, 120, 0.6, 5);
+      return;
+    }
+  }
+
+  const baseDmg = stats.dmg * (1+(w.sniperDmgBonus||0)) * (w.heavySniper?3:1) * (1+(w.growingBonus||0)/100) * (w.alloyBullet?1.5:1);
+  const bulletCount = 1 + (w.sniperExtraBullets||0);
+  const maxPierces = w.alloyBullet ? 9999 : 1;
+
+  for (let b = 0; b < bulletCount; b++) {
+    const spreadAng = b === 0 ? ang : ang + (b%2===0?1:-1)*Math.ceil(b/2)*0.06;
+    gs.projectiles.push({
+      x:p.x, y:p.y,
+      vx:Math.cos(spreadAng)*spd, vy:Math.sin(spreadAng)*spd,
+      dmg:baseDmg, radius:3, color:'#aef', life:2.2, type:'bullet',
+      pierce:true, maxPierce:maxPierces,
+      splitBullet: w.splitBullet||false,
+      wallBounce: w.lvl8Bounce||false,
+      isSniper: true,
+      reaperKill: w.reaperKill||false,
+    });
+  }
+  if (settings.particles) spawnParticles(p.x, p.y, ['#aef','#fff'], 4, 100, 0.3, 2);
+}
+
+function updateWeapons(dt) {
+  for (const w of gs.weapons) {
+    if (!WEAPON_DEFS[w.id]) continue;
+    const def = WEAPON_DEFS[w.id];
+    if (def.type === 'orbit' || def.type === 'orbit_book') continue;
+    w.timer -= dt;
+    if (w.timer>0) continue;
+    const stats = weaponStats(w);
+
+    // ── Gatling: burst-fire (8 shots rapid, then rest) ──
+    if (w.id === 'gatling') {
+      if (w.burstPhase === 'rest' || (w.burstCount||0) <= 0) {
+        w.burstCount = 8;
+        w.burstPhase = 'firing';
+      }
+      if (def.fire) def.fire(w, stats, gs.player);
+      w.burstCount--;
+      const aspdMult = (w.variantMods||[]).includes('aspd') ? 0.82 : 1;
+      if (w.burstCount <= 0) {
+        w.burstPhase = 'rest';
+        w.timer = 1.5 * gs.player.cdMult;   // rest between bursts
+      } else {
+        w.timer = 0.08 * aspdMult * gs.player.cdMult; // 80ms per shot in burst
+      }
+      continue;
+    }
+
+    let cdBase = stats.cd / 1000;
+    if (w.id === 'heal_drone') {
+      cdBase = stats.circleCd * (w.cdMultLocal||1);
+    }
+    if (w.id === 'missile_drone') {
+      cdBase = (stats.cd / 1000) * (w.missileCdMult||1);
+    }
+    // aspd mod reduces CD for shotgun/gatling
+    if ((w.variantMods||[]).includes('aspd')) cdBase *= 0.82;
+    const sharpenMult = (CLASSES[gs.player.classIdx]?.id === 'blacksmith' && gs.player.sharpenActive) ? 0.6 : 1;
+    const santaCdMult = (gs.player.santaCdTimer||0) > 0 ? 0.75 : 1;
+    w.timer = cdBase * gs.player.cdMult * sharpenMult * santaCdMult;
+    if (def.fire) def.fire(w, stats, gs.player);
+  }
+}
+
+function updateOrbits(dt) {
+  for (const w of gs.weapons) {
+    if (!WEAPON_DEFS[w.id]) continue;
+    const def = WEAPON_DEFS[w.id];
+    if (def.type !== 'orbit' && def.type !== 'orbit_book') continue;
+    const stats = weaponStats(w);
+    w.angle += dt * (stats.rotSpeed||2.6);
+    const p = gs.player;
+    const r = stats.radius * getAreaMult(p);
+    gs.swordOrbs = gs.swordOrbs || [];
+    for (let i=0; i<stats.orbs; i++) {
+      const a = w.angle + (i/stats.orbs)*Math.PI*2;
+      const ox=p.x+Math.cos(a)*r, oy=p.y+Math.sin(a)*r;
+      gs.swordOrbs.push({ x:ox, y:oy, color: stats.color||'#fd4', isBook: def.type==='orbit_book' });
+      // Contact damage
+      for (let ei=0; ei<gs.enemies.length; ei++) {
+        const e = gs.enemies[ei];
+        if (e.dead) continue;
+        const dx=ox-e.x, dy=oy-e.y;
+        if (dx*dx+dy*dy < (8+e.radius)**2) {
+          const key=`${w.id}_${i}_${ei}`;
+          if (!w.swordHitTimers[key]||w.swordHitTimers[key]<=0) {
+            hitEnemy(e, stats.dmg);
+            w.swordHitTimers[key] = 0.45;
+            if (settings.particles)
+              spawnParticles(ox, oy, stats.color||'#fd4', 2, 80, 0.25, 3);
+          }
+        }
+      }
+    }
+    for (const k in w.swordHitTimers) w.swordHitTimers[k] -= dt;
+
+    // orbit_book: each orb fires a projectile periodically
+    if (def.type === 'orbit_book') {
+      if (w.shotTimer === undefined) w.shotTimer = 0;
+      w.shotTimer -= dt;
+      if (w.shotTimer <= 0) {
+        w.shotTimer = (stats.shotCd/1000) * p.cdMult;
+        for (let i=0; i<stats.orbs; i++) {
+          const a = w.angle + (i/stats.orbs)*Math.PI*2;
+          const bx=p.x+Math.cos(a)*r, by=p.y+Math.sin(a)*r;
+          const tgt = nearestEnemy(bx, by);
+          if (tgt) {
+            const dx=tgt.x-bx, dy=tgt.y-by;
+            const dd=Math.sqrt(dx*dx+dy*dy)||1;
+            gs.projectiles.push({ x:bx, y:by,
+              vx:(dx/dd)*240, vy:(dy/dd)*240,
+              dmg:stats.shotDmg, radius:4, color:stats.color||'#a4f',
+              life:1.5, type:'bullet' });
+          }
+        }
+      }
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// §11  Projectiles
+// ═══════════════════════════════════════════════════════
+function triggerExplosion(x, y, radius, dmg) {
+  const r2 = radius*radius;
+  gs.enemies.forEach(e => {
+    if (e.dead) return;
+    const dx=e.x-x, dy=e.y-y;
+    if (dx*dx+dy*dy<r2) hitEnemy(e, dmg);
+  });
+  if (settings.particles)
+    spawnParticles(x, y, ['#f84','#fd4','#f44','#ff8'], 14, 90, 0.55, 3);
+}
+
+function updateProjectiles(dt) {
+  const newProjs = [];
+  gs.projectiles = gs.projectiles.filter(proj => {
+    if (proj.dead) return false;
+    proj.life -= dt;
+    if (proj.life<=0) {
+      if (proj.onExpire) proj.onExpire(proj);
+      return false;
+    }
+
+    // Homing
+    if (proj.homing) {
+      const tgt = nearestEnemy(proj.x, proj.y);
+      if (tgt) {
+        const dx=tgt.x-proj.x, dy=tgt.y-proj.y;
+        const d=Math.sqrt(dx*dx+dy*dy)||1;
+        proj.vx += (dx/d)*340*dt; proj.vy += (dy/d)*340*dt;
+        const spd = Math.sqrt(proj.vx*proj.vx+proj.vy*proj.vy);
+        const cap = proj.maxSpd||210;
+        if (spd>cap) { proj.vx=proj.vx/spd*cap; proj.vy=proj.vy/spd*cap; }
+      }
+    }
+
+    proj.x += proj.vx*dt;
+    proj.y += proj.vy*dt;
+
+    // Wall bounce for sniper Lv8
+    if (proj.wallBounce && !(proj.wallBounced)) {
+      if (proj.x < -WORLD_W/2 || proj.x > WORLD_W/2) { proj.vx = -proj.vx; proj.wallBounced = true; }
+      if (proj.y < -WORLD_H/2 || proj.y > WORLD_H/2) { proj.vy = -proj.vy; proj.wallBounced = true; }
+    }
+
+    // Enemy projectiles: check player collision
+    if (proj.fromEnemy) {
+      const p2 = gs.player;
+      const dx2=proj.x-p2.x, dy2=proj.y-p2.y;
+      if (dx2*dx2+dy2*dy2 < (proj.radius+10)**2 && p2.invincible<=0) {
+        if (p2.dodgeChance>0 && Math.random()<p2.dodgeChance) {
+          spawnParticles(p2.x, p2.y, ['#8af'], 3, 55, 0.3, 2);
+        } else {
+          const actualDmg = proj.dmg * (1 - p2.dmgReduction);
+          p2.hp -= actualDmg;
+          p2.invincible = 0.4 * (p2.invincMult||1);
+          if (settings.particles) spawnParticles(p2.x, p2.y, ['#f44','#ca7'], 5, 80, 0.35, 2);
+          if (p2.hp<=0) { p2.hp=0; gs.phase='dead'; showDeadScreen(); }
+          updateHUD();
+        }
+        return false;
+      }
+      return true;
+    }
+
+    for (let i=0; i<gs.enemies.length; i++) {
+      const e = gs.enemies[i];
+      if (e.dead) continue;
+      const dx=proj.x-e.x, dy=proj.y-e.y;
+      if (dx*dx+dy*dy < (proj.radius+e.radius)**2) {
+        if (proj.oneshot) {
+          if (e.isBoss) continue; // star passes through bosses harmlessly
+          killEnemy(e);
+        } else {
+          let hitDmg = proj.dmg;
+          const _p = gs.player;
+          if ((_p.critRate||0) > 0 && Math.random() < _p.critRate) {
+            hitDmg *= (_p.critDmgMult||1.5);
+            addFloatingText('暴击!', e.x, e.y - 10, '#fd4', 0.6);
+          }
+          hitEnemy(e, hitDmg);
+          // Reaper instakill (sniper passive)
+          if (proj.reaperKill && !e.isBoss && Math.random() < 0.005) {
+            killEnemy(e);
+          }
+        }
+        if (proj.slow) e.slowTimer = Math.max(e.slowTimer, proj.slow);
+        // Element stacks
+        if (proj.element==='flame')  e.flameStacks  = Math.min(10,(e.flameStacks||0)+1);
+        if (proj.element==='frost')  e.frostStacks  = Math.min(10,(e.frostStacks||0)+1);
+        if (proj.element==='poison') e.poisonStacks = Math.min(10,(e.poisonStacks||0)+1);
+        if (proj.onHit) proj.onHit(proj, e);
+        // Split bullet (luck-based 0-3 splits)
+        if (proj.splitBullet && !proj.isSplitChild) {
+          const luck = gs.player.luck || 0;
+          const maxSplits = 3;
+          const splitChance = Math.min(0.95, 0.1 + luck * 0.008);
+          let splits = 0;
+          for (let s = 0; s < maxSplits; s++) { if (Math.random() < splitChance) splits++; else break; }
+          const spd = Math.sqrt(proj.vx*proj.vx + proj.vy*proj.vy);
+          for (let s = 0; s < splits; s++) {
+            const ang = Math.random() * Math.PI * 2;
+            newProjs.push({ ...proj, dead:false, splitBullet:false, isSplitChild:true,
+              dmg: proj.dmg * 0.5, vx: Math.cos(ang)*spd, vy: Math.sin(ang)*spd, life:0.8, radius:3 });
+          }
+        }
+        // Bounce: redirect to next enemy
+        if (proj.bounce && (proj.bounceCount||0)>0) {
+          const next = gs.enemies.find(o=>!o.dead && o!==e);
+          if (next) {
+            const bdx=next.x-proj.x, bdy=next.y-proj.y, bd=Math.sqrt(bdx*bdx+bdy*bdy)||1;
+            const spd=Math.sqrt(proj.vx*proj.vx+proj.vy*proj.vy);
+            newProjs.push({...proj, dead:false, bounceCount:(proj.bounceCount)-1,
+              vx:bdx/bd*spd, vy:bdy/bd*spd, life:1.2});
+          }
+          proj.dead=true; return false;
+        }
+        // Split: spawn 2 sideways bullets
+        if (proj.splitOnHit) {
+          const a=Math.atan2(proj.vy,proj.vx), spd=Math.sqrt(proj.vx*proj.vx+proj.vy*proj.vy);
+          [a+Math.PI/2, a-Math.PI/2].forEach(ang =>
+            newProjs.push({...proj, dead:false, splitOnHit:false,
+              vx:Math.cos(ang)*spd, vy:Math.sin(ang)*spd, life:0.7}));
+          proj.dead=true; return false;
+        }
+        if (!proj.pierce) { proj.dead=true; return false; }
+        proj.pierced=(proj.pierced||0)+1;
+        if (proj.maxPierce && proj.pierced>=proj.maxPierce) { proj.dead=true; return false; }
+      }
+    }
+    return true;
+  });
+  if (newProjs.length) gs.projectiles.push(...newProjs);
+}
+
+// ═══════════════════════════════════════════════════════
+// §12  Particles
+// ═══════════════════════════════════════════════════════
+function updateParticles(dt) {
+  for (let i=gs.particles.length-1; i>=0; i--) {
+    const pp=gs.particles[i];
+    pp.x+=pp.vx*dt; pp.y+=pp.vy*dt;
+    pp.vx*=0.87; pp.vy*=0.87;
+    pp.life-=dt;
+    if (pp.life<=0) gs.particles.splice(i,1);
+  }
+  for (let i=gs.lightningBolts.length-1; i>=0; i--) {
+    gs.lightningBolts[i].life -= dt;
+    if (gs.lightningBolts[i].life<=0) gs.lightningBolts.splice(i,1);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// §13  Wave completion check
+// ═══════════════════════════════════════════════════════
+let waveCompleteTriggered = false;
+
+function checkWaveComplete() {
+  if (gs.phase!=='playing' || waveCompleteTriggered || gs.wave.spawning) return;
+  if (gs.wave.spawnQueue.length>0) return;
+  const alive = gs.enemies.filter(e=>!e.dead).length;
+  if (alive>0) return;
+
+  waveCompleteTriggered = true;
+  const isBoss = BOSS_WAVES.has(gs.wave.num);
+
+  const flash = document.getElementById('wave-clear');
+  flash.textContent = isBoss ? `⭐ BOSS 击败！` : `🏆 第${gs.wave.num}波清除！`;
+  flash.style.display='block';
+  flash.style.animation='none';
+  void flash.offsetWidth;
+  flash.style.animation='waveClear .9s ease forwards';
+  setTimeout(()=>{ flash.style.display='none'; }, 950);
+
+  checkAchievements();
+
+  setTimeout(()=>{
+    if (!gs || gs.phase!=='playing') return;
+    gs.phase = 'upgrading';
+    if (gs.wave.num===30) {
+      showVictoryScreen();
+    } else if (gs.wave.num % 5 === 0) {
+      showSuperSupplyScreen();
+    } else {
+      showUpgradeScreen(getUpgradeOptions());
+    }
+  }, 1000);
+}
+
+// ═══════════════════════════════════════════════════════
+// §14  Render
+// ═══════════════════════════════════════════════════════
+function render() {
+  ctx.clearRect(0,0,GW,GH);
+  ctx.fillStyle='#0d0d1a';
+  ctx.fillRect(0,0,GW,GH);
+
+  // World boundary
+  ctx.strokeStyle='#334455'; ctx.lineWidth=2;
+  ctx.strokeRect(Math.floor(-WORLD_W/2-cam.x), Math.floor(-WORLD_H/2-cam.y), WORLD_W, WORLD_H);
+  ctx.strokeStyle='#2a3a4a'; ctx.lineWidth=1;
+  ctx.strokeRect(Math.floor(-WORLD_W/2-cam.x)-2, Math.floor(-WORLD_H/2-cam.y)-2, WORLD_W+4, WORLD_H+4);
+
+  // Grid
+  ctx.strokeStyle='#161625'; ctx.lineWidth=1;
+  const gs2=32;
+  const gox=((cam.x%gs2)+gs2)%gs2, goy=((cam.y%gs2)+gs2)%gs2;
+  for (let gx=-gox; gx<=GW; gx+=gs2) {
+    ctx.beginPath(); ctx.moveTo(gx+.5,0); ctx.lineTo(gx+.5,GH); ctx.stroke();
+  }
+  for (let gy=-goy; gy<=GH; gy+=gs2) {
+    ctx.beginPath(); ctx.moveTo(0,gy+.5); ctx.lineTo(GW,gy+.5); ctx.stroke();
+  }
+
+  // Heal circles
+  if (gs.healCircles) {
+    const nowMs2 = performance.now()/1000;
+    gs.healCircles.forEach(c => {
+      const fade = Math.min(1, c.timer / 1.5);
+      const pulse = 0.25 + 0.15*Math.sin(nowMs2*3);
+      const sx=Math.floor(c.x-cam.x), sy=Math.floor(c.y-cam.y);
+      // Outer glow ring
+      ctx.globalAlpha = fade*(pulse+0.1);
+      ctx.strokeStyle = c.element==='flame'?'#f84' : c.element==='frost'?'#8cf' : c.element==='poison'?'#6f4' : '#4f8';
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(sx,sy,c.r,0,Math.PI*2); ctx.stroke();
+      // Fill
+      ctx.globalAlpha = fade*0.10;
+      ctx.fillStyle   = c.element==='flame'?'#f84' : c.element==='frost'?'#8cf' : c.element==='poison'?'#6f4' : '#4f8';
+      ctx.beginPath(); ctx.arc(sx,sy,c.r,0,Math.PI*2); ctx.fill();
+      ctx.globalAlpha = 1;
+    });
+  }
+
+
+  // Smoke clouds
+  (gs.smokeClouds||[]).forEach(sc => {
+    if (sc.phase !== 'active') return;
+    const fade = Math.min(1, sc.timer / 5.0);
+    const sx = Math.floor(sc.x - cam.x), sy = Math.floor(sc.y - cam.y);
+    ctx.globalAlpha = fade * 0.45;
+    ctx.fillStyle = '#aaa';
+    ctx.beginPath(); ctx.arc(sx, sy, sc.radius, 0, Math.PI*2); ctx.fill();
+    ctx.globalAlpha = fade * 0.25;
+    ctx.fillStyle = '#ccc';
+    ctx.beginPath(); ctx.arc(sx, sy, sc.radius*0.6, 0, Math.PI*2); ctx.fill();
+    ctx.globalAlpha = 1;
+  });
+
+  // Gems
+  gs.gems.forEach(gem => {
+    drawSprite('gem', Math.floor(gem.x-cam.x-3), Math.floor(gem.y-cam.y-3), 3);
+  });
+
+  // Ground drops
+  const now = performance.now() / 1000;
+  gs.drops.forEach(drop => {
+    const def = DROP_DEFS[drop.type];
+    if (!def) return;
+    drop.bobTimer = (drop.bobTimer||0) + 0.016;
+    const bobY = Math.sin(drop.bobTimer * 3) * 2.5;
+    const sx = Math.floor(drop.x - cam.x);
+    const sy = Math.floor(drop.y - cam.y + bobY);
+    const s  = def.size;
+    const shape = def.shape || 'rect';
+
+    // Rainbow cycling border
+    let borderCol = def.border;
+    if (drop.type === 'supply_rainbow') {
+      const hue = (now * 120) % 360;
+      borderCol = `hsl(${hue},100%,70%)`;
+    }
+
+    ctx.save();
+    ctx.translate(sx, sy);
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillRect(-s/2+2, s/2+1, s, 3);
+
+    ctx.fillStyle = def.color;
+    ctx.strokeStyle = borderCol;
+    ctx.lineWidth = 2;
+
+    if (shape === 'diamond') {
+      // Heart/health: diamond shape
+      ctx.beginPath();
+      ctx.moveTo(0, -s/2); ctx.lineTo(s/2, 0);
+      ctx.lineTo(0, s/2);  ctx.lineTo(-s/2, 0);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle='#fff'; ctx.font=`${s-4}px monospace`; ctx.textAlign='center';
+      ctx.fillText('♥', 0, (s-4)*0.38);
+    } else if (shape === 'circle') {
+      // Bomb: circle
+      ctx.beginPath(); ctx.arc(0, 0, s/2, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle='#fff'; ctx.font=`${s-5}px monospace`; ctx.textAlign='center';
+      ctx.fillText('💣', 0, (s-5)*0.38);
+    } else if (shape === 'star') {
+      // XP bottle: 4-point star
+      const r1=s/2, r2=s/4;
+      ctx.beginPath();
+      for (let si=0; si<8; si++) {
+        const a = (si*Math.PI/4)-Math.PI/2;
+        const r = si%2===0?r1:r2;
+        si===0?ctx.moveTo(Math.cos(a)*r,Math.sin(a)*r):ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r);
+      }
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle='#fff'; ctx.font=`${s-5}px monospace`; ctx.textAlign='center';
+      ctx.fillText('★', 0, (s-5)*0.38);
+    } else if (shape === 'rect') {
+      // Magnet: rounded rect
+      ctx.fillRect(-s/2,-s/2,s,s); ctx.strokeRect(-s/2,-s/2,s,s);
+      ctx.fillStyle='#fff'; ctx.font=`${s-4}px monospace`; ctx.textAlign='center';
+      ctx.fillText('⊕', 0, (s-4)*0.38);
+    } else if (shape === 'chest') {
+      // Chest body (lower 55%)
+      const bh = s*0.55, lh = s*0.48;
+      ctx.fillRect(-s/2, -bh/2+bh*0.05, s, bh); ctx.strokeRect(-s/2, -bh/2+bh*0.05, s, bh);
+      // Lid (upper part, slightly lighter)
+      ctx.fillStyle = borderCol;
+      ctx.globalAlpha = 0.55;
+      ctx.fillRect(-s/2, -bh/2+bh*0.05-lh*0.55, s, lh*0.55);
+      ctx.globalAlpha = 1;
+      ctx.strokeRect(-s/2, -bh/2+bh*0.05-lh*0.55, s, lh*0.55);
+      // Metal band
+      ctx.fillStyle = borderCol; ctx.globalAlpha = 0.8;
+      ctx.fillRect(-s/2, -3, s, 4);
+      ctx.globalAlpha = 1;
+      // Rarity label
+      ctx.fillStyle='#fff';
+      const rLabel = {supply_green:'G',supply_blue:'B',supply_purple:'P',supply_rainbow:'R'}[drop.type]||'?';
+      ctx.font=`bold ${Math.max(7,s/3)}px monospace`; ctx.textAlign='center';
+      ctx.fillText(rLabel, 0, s*0.22);
+    }
+
+    ctx.restore();
+    ctx.textAlign = 'left';
+  });
+
+  // Santa gifts
+  const _nowSanta = performance.now()/1000;
+  (gs.santaGifts||[]).forEach(gift => {
+    gift.bobTimer = (gift.bobTimer||0) + 0.016;
+    const bob = Math.sin(gift.bobTimer*3)*2.5;
+    const sx = Math.floor(gift.x - cam.x), sy = Math.floor(gift.y - cam.y + bob);
+    const gcol   = {red:'#c33',blue:'#268',green:'#252',rainbow:'#875'}[gift.type]||'#c33';
+    const gborder = {red:'#f55',blue:'#4af',green:'#4f6',rainbow:'#fd4'}[gift.type]||'#f55';
+    ctx.save();
+    ctx.globalAlpha = gift.timer < 3 ? gift.timer/3 : 1;
+    ctx.translate(sx, sy);
+    if (gift.type === 'rainbow') {
+      ctx.strokeStyle = `hsl(${(_nowSanta*120)%360},100%,65%)`;
+    } else {
+      ctx.strokeStyle = gborder;
+    }
+    ctx.fillStyle = gcol; ctx.lineWidth = 2;
+    ctx.fillRect(-7,-7,14,14); ctx.strokeRect(-7,-7,14,14);
+    ctx.strokeStyle = gborder; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(-7,0); ctx.lineTo(7,0); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,-7); ctx.lineTo(0,7); ctx.stroke();
+    ctx.fillStyle = gborder;
+    ctx.beginPath(); ctx.arc(0,-7,2.5,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  });
+
+  // Falling gifts (passive)
+  (gs.fallingGifts||[]).forEach(fg => {
+    const prog = Math.min(1, fg.fallTimer / fg.totalTime);
+    const sx = Math.floor(fg.x - cam.x);
+    const sy = Math.floor(fg.y - cam.y - (1-prog)*110);
+    const sz = Math.round(10 + prog*16);
+    ctx.save();
+    ctx.globalAlpha = 0.5 + prog*0.5;
+    ctx.translate(sx, sy);
+    ctx.fillStyle='#c33'; ctx.strokeStyle='#f55'; ctx.lineWidth=3;
+    ctx.fillRect(-sz/2,-sz/2,sz,sz); ctx.strokeRect(-sz/2,-sz/2,sz,sz);
+    ctx.lineWidth=2; ctx.strokeStyle='#f88';
+    ctx.beginPath(); ctx.moveTo(-sz/2,0); ctx.lineTo(sz/2,0); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,-sz/2); ctx.lineTo(0,sz/2); ctx.stroke();
+    ctx.fillStyle='#f88'; ctx.beginPath(); ctx.arc(0,-sz/2,3,0,Math.PI*2); ctx.fill();
+    // Ground shadow
+    ctx.globalAlpha = prog*0.3;
+    ctx.fillStyle='#000';
+    ctx.beginPath(); ctx.ellipse(0, sz/2+4, sz*0.55, 3, 0, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+  });
+
+  // Magnet aura
+  if (gs.player.magnetTimer > 0) {
+    const px=Math.floor(gs.player.x-cam.x), py=Math.floor(gs.player.y-cam.y);
+    ctx.strokeStyle=`rgba(250,140,0,${gs.player.magnetTimer*0.25})`;
+    ctx.lineWidth=2;
+    ctx.beginPath(); ctx.arc(px,py,gs.player.pickupR,0,Math.PI*2); ctx.stroke();
+  }
+
+  // Enemies
+  gs.enemies.forEach(e => {
+    if (e.dead) return;
+    const sc=e.scale;
+    const rows=SPRITES[e.sprite];
+    const sw=rows?rows[0].length*sc:16, sh=rows?rows.length*sc:16;
+    const sx=Math.floor(e.x-cam.x-sw/2), sy=Math.floor(e.y-cam.y-sh/2);
+    // Slow tint
+    if (e.slowTimer>0) { ctx.globalAlpha=0.7; }
+    drawSprite(e.sprite, sx, sy, sc);
+    ctx.globalAlpha=1;
+    // HP bar
+    const bw=e.isBoss?50:Math.max(14,sw); const bh=e.isBoss?5:3;
+    const bx=Math.floor(e.x-cam.x-bw/2), by=Math.floor(e.y-cam.y-sh/2-bh-2);
+    ctx.fillStyle=e.isBoss?'#200':'#200'; ctx.fillRect(bx,by,bw,bh);
+    ctx.fillStyle=e.isBoss?'#f44':e.color; ctx.fillRect(bx,by,Math.round(bw*Math.max(0,e.hp/e.maxHp)),bh);
+    // Status effect tint + icon
+    const sx2=Math.floor(e.x-cam.x), sy2=Math.floor(e.y-cam.y);
+    if ((e.flameStacks||0)>0) {
+      ctx.fillStyle=`rgba(255,100,0,${Math.min(0.55,e.flameStacks*0.05)})`;
+      ctx.beginPath(); ctx.arc(sx2,sy2,e.radius+2,0,Math.PI*2); ctx.fill();
+    }
+    if ((e.frostStacks||0)>0 || (e.frozenTimer||0)>0) {
+      const alpha = e.frozenTimer>0 ? 0.6 : Math.min(0.5,e.frostStacks*0.05);
+      ctx.fillStyle=`rgba(100,200,255,${alpha})`;
+      ctx.beginPath(); ctx.arc(sx2,sy2,e.radius+2,0,Math.PI*2); ctx.fill();
+    }
+    if ((e.poisonStacks||0)>0) {
+      ctx.fillStyle=`rgba(80,200,80,${Math.min(0.5,e.poisonStacks*0.05)})`;
+      ctx.beginPath(); ctx.arc(sx2,sy2,e.radius+2,0,Math.PI*2); ctx.fill();
+    }
+    // Boss name
+    if (e.isBoss && e.name) {
+      ctx.fillStyle='#fd4'; ctx.font='7px monospace'; ctx.textAlign='center';
+      ctx.fillText(e.name, Math.floor(e.x-cam.x), by-3);
+      ctx.textAlign='left';
+    }
+  });
+
+  // Projectiles
+  gs.projectiles.forEach(proj => {
+    const sx=Math.floor(proj.x-cam.x), sy=Math.floor(proj.y-cam.y);
+    ctx.fillStyle=proj.color||'#fff';
+    if (proj.isDragon) {
+      ctx.save();
+      ctx.translate(Math.floor(proj.x-cam.x), Math.floor(proj.y-cam.y));
+      ctx.rotate(Math.atan2(proj.vy, proj.vx));
+      ctx.fillStyle = '#fd4';
+      ctx.shadowColor = '#fa0'; ctx.shadowBlur = 8;
+      ctx.fillRect(-18, -5, 36, 10);
+      ctx.shadowBlur = 0;
+      ctx.restore();
+      return;
+    } else if (proj.type==='arrow') {
+      const ang=Math.atan2(proj.vy,proj.vx);
+      ctx.save(); ctx.translate(sx,sy); ctx.rotate(ang);
+      ctx.fillStyle='#fd4'; ctx.fillRect(-8,-1,16,2);
+      ctx.fillStyle='#f84'; ctx.fillRect(5,-2,3,4);
+      ctx.restore();
+    } else if (proj.type==='fireball') {
+      ctx.fillStyle='#f84';
+      ctx.beginPath(); ctx.arc(sx,sy,proj.radius,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#fd4';
+      ctx.beginPath(); ctx.arc(sx-1,sy-1,proj.radius*0.5,0,Math.PI*2); ctx.fill();
+    } else if (proj.type==='ice') {
+      ctx.fillStyle='#8cf';
+      ctx.beginPath(); ctx.arc(sx,sy,proj.radius,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#fff';
+      ctx.beginPath(); ctx.arc(sx-1,sy-1,proj.radius*0.4,0,Math.PI*2); ctx.fill();
+    } else if (proj.type==='bomb') {
+      ctx.fillStyle='#333';
+      ctx.beginPath(); ctx.arc(sx,sy,proj.radius,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#888';
+      ctx.beginPath(); ctx.arc(sx-2,sy-2,2,0,Math.PI*2); ctx.fill();
+    } else if (proj.type==='star_skill') {
+      const rot = performance.now()/1000 * 2.8;
+      ctx.save(); ctx.translate(sx, sy); ctx.rotate(rot);
+      const r1 = proj.radius, r2 = proj.radius * 0.42;
+      // Outer glow
+      ctx.globalAlpha = 0.35; ctx.fillStyle = '#fd4';
+      ctx.beginPath(); ctx.arc(0, 0, r1+5, 0, Math.PI*2); ctx.fill();
+      ctx.globalAlpha = 1;
+      // 5-point star
+      ctx.fillStyle = '#fd4';
+      ctx.beginPath();
+      for (let si=0; si<10; si++) {
+        const a = (si * Math.PI / 5) - Math.PI/2;
+        const r = si%2===0 ? r1 : r2;
+        si===0 ? ctx.moveTo(Math.cos(a)*r, Math.sin(a)*r)
+               : ctx.lineTo(Math.cos(a)*r, Math.sin(a)*r);
+      }
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle='#fff'; ctx.lineWidth=1.5; ctx.stroke();
+      ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(0,0,3,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+    } else if (proj.type==='fish') {
+      const ang2 = Math.atan2(proj.vy, proj.vx);
+      ctx.save(); ctx.translate(sx,sy); ctx.rotate(ang2);
+      // Body
+      ctx.fillStyle='#ca7'; ctx.fillRect(-6,-2,10,4);
+      // Tail fin
+      ctx.fillStyle='#a85';
+      ctx.beginPath(); ctx.moveTo(-6,0); ctx.lineTo(-10,-4); ctx.lineTo(-10,4); ctx.closePath(); ctx.fill();
+      // Eye
+      ctx.fillStyle='#111'; ctx.fillRect(2,-1,2,2);
+      ctx.restore();
+    } else {
+      ctx.beginPath(); ctx.arc(sx,sy,proj.radius||4,0,Math.PI*2); ctx.fill();
+    }
+  });
+
+  // Lightning bolts
+  gs.lightningBolts.forEach(bolt => {
+    const alpha=bolt.life/bolt.maxLife;
+    const x1=bolt.x1-cam.x, y1=bolt.y1-cam.y;
+    const x2=bolt.x2-cam.x, y2=bolt.y2-cam.y;
+    ctx.strokeStyle=`rgba(160,200,255,${alpha*0.4})`; ctx.lineWidth=4;
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    ctx.strokeStyle=`rgba(200,230,255,${alpha})`; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(x1,y1);
+    for (let i=1; i<=7; i++) {
+      const t=i/7;
+      ctx.lineTo(x1+(x2-x1)*t+(Math.random()-.5)*14, y1+(y2-y1)*t+(Math.random()-.5)*14);
+    }
+    ctx.stroke();
+  });
+
+  // Orbit orbs (sword + book)
+  (gs.swordOrbs||[]).forEach(orb => {
+    const sx=Math.floor(orb.x-cam.x), sy=Math.floor(orb.y-cam.y);
+    ctx.fillStyle=(orb.color||'#fd4')+'44';
+    ctx.beginPath(); ctx.arc(sx,sy,10,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle=orb.color||'#fd4';
+    ctx.save(); ctx.translate(sx,sy); ctx.rotate(Math.PI/4);
+    if (orb.isBook) {
+      // Book shape: rectangle + spine line
+      ctx.fillRect(-6,-5,12,10);
+      ctx.fillStyle='#000a'; ctx.fillRect(-6,-5,2,10);
+    } else {
+      ctx.fillRect(-5,-5,10,10);
+      ctx.fillStyle='#ffe'; ctx.fillRect(-2,-2,4,4);
+    }
+    ctx.restore();
+  });
+
+  // Drones — orbit the player visually
+  if (gs.weapons) {
+    let droneIdx = 0;
+    gs.weapons.forEach(w => {
+      const def = WEAPON_DEFS[w.id];
+      if (!def || def.type !== 'drone') return;
+      const stats = weaponStats(w);
+      const ang = (performance.now()/1000)*1.6 + droneIdx * Math.PI;
+      const dr = 26 + droneIdx * 16;
+      const dx2 = Math.cos(ang)*dr, dy2 = Math.sin(ang)*dr;
+      const dpx = Math.floor(gs.player.x - cam.x + dx2);
+      const dpy = Math.floor(gs.player.y - cam.y + dy2);
+      const col = stats.color || '#4f4';
+      // Rotor arms
+      ctx.fillStyle = col+'66';
+      ctx.fillRect(dpx-8, dpy-1, 16, 2);
+      ctx.fillRect(dpx-1, dpy-8, 2, 16);
+      // Body
+      ctx.fillStyle = col;
+      ctx.fillRect(dpx-4, dpy-4, 8, 8);
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(dpx-2, dpy-2, 4, 4);
+      droneIdx++;
+    });
+  }
+
+  // Player
+  const p = gs.player;
+  const spr = ['player_warrior','player_mage','player_ranger'][p.classIdx]||'player_warrior';
+  const prows=SPRITES[spr];
+  const psc=2;
+  const pw=prows?prows[0].length*psc:16, ph=prows?prows.length*psc:20;
+
+  if (p.invincible<=0||(Math.floor(p.invincible*12)%2===0))
+    drawSprite(spr, Math.floor(p.x-cam.x-pw/2), Math.floor(p.y-cam.y-ph/2), psc);
+
+  // Particles
+  for (const pp of gs.particles) {
+    ctx.globalAlpha=Math.max(0,pp.life/pp.maxLife);
+    ctx.fillStyle=pp.color;
+    ctx.fillRect(Math.floor(pp.x-cam.x-pp.size/2), Math.floor(pp.y-cam.y-pp.size/2), pp.size, pp.size);
+  }
+  ctx.globalAlpha=1;
+
+  // Tutorial hint
+  if (tutorialTimer>0) {
+    tutorialTimer -= 1/60;
+    const alpha = Math.min(1, tutorialTimer);
+    ctx.globalAlpha=alpha*0.8;
+    ctx.fillStyle='rgba(0,0,0,0.5)';
+    ctx.fillRect(GW/2-90, GH-30, 180, 20);
+    ctx.fillStyle='#eee'; ctx.font='9px monospace'; ctx.textAlign='center';
+    ctx.fillText('WASD / 方向键 移动', GW/2, GH-17);
+    ctx.textAlign='left'; ctx.globalAlpha=1;
+  }
+
+}
+
+// ═══════════════════════════════════════════════════════
+// §15  Main game loop
+// ═══════════════════════════════════════════════════════
+let lastTs = 0;
+
+function gameLoop(ts) {
+  const rawDt = Math.min((ts-lastTs)/1000, 0.1);
+  lastTs = ts;
+  const dt = rawDt * settings.gameSpeed;
+
+  if (gs) {
+    if (gs.phase==='playing') {
+      // Spawn from queue
+      if (gs.wave.spawning && gs.wave.spawnQueue.length>0) {
+        gs.wave.spawnTimer -= dt;
+        if (gs.wave.spawnTimer<=0) {
+          gs.wave.spawnTimer = BOSS_WAVES.has(gs.wave.num) ? 0.1 : 0.55;
+          spawnNextEnemy();
+          if (gs.wave.spawnQueue.length===0) gs.wave.spawning=false;
+        }
+      }
+
+      updatePlayer(dt);
+      // Level-up queue: pause wave to show reward screen
+      if (gs.player.levelUpQueue > 0) {
+        gs.player.levelUpQueue--;
+        gs.phase = 'levelup';
+        showLevelUpScreen();
+      }
+      updateEnemies(dt);
+      gs.swordOrbs = [];
+      updateOrbits(dt);
+      updateWeapons(dt);
+      updateHealCircles(dt);
+      updatePendingExplosions(dt);
+      updateKirbyWeapon(dt);
+      updateSniperEffects(dt);
+      updateSantaGifts(dt);
+      updateFallingGifts(dt);
+      updateFloatingTexts(dt);
+      updateProjectiles(dt);
+      updateParticles(dt);
+      gs.wave.timer += dt;
+      updateHUD();
+      checkWaveComplete();
+    } else if (gs.phase==='upgrading'||gs.phase==='supply'||gs.phase==='dead'||gs.phase==='levelup') {
+      updateParticles(dt);
+    }
+    render();
+  }
+  requestAnimationFrame(gameLoop);
+}
+
+// ═══════════════════════════════════════════════════════
+// §16  Upgrade screen (normal waves)
+// ═══════════════════════════════════════════════════════
+function showUpgradeScreen(options) {
+  document.getElementById('upg-title').textContent =
+    gs.wave.num===0 ? '⚔ 选择起始武器' : `🏆 第${gs.wave.num}波清除！`;
+  const container = document.getElementById('upg-cards');
+  container.innerHTML='';
+  options.forEach((opt,idx) => {
+    const card = document.createElement('div');
+    card.className='upg-card';
+    card.style.animationDelay=(idx*0.08)+'s';
+    card.innerHTML=`<span class="u-icon">${opt.icon}</span><div class="u-name">${opt.name}</div><div class="u-desc">${opt.desc}</div>`;
+    card.addEventListener('click',()=>applyUpgrade(opt));
+    container.appendChild(card);
+  });
+  document.getElementById('o-upgrade').classList.add('active');
+}
+
+function showStartWeaponScreen() {
+  const makeOpt = id => {
+    const def = WEAPON_DEFS[id];
+    return { type:'wepadd', weapId:id, icon:def.icon, name:`获得 ${def.name}`,
+             desc: def.startDesc || describeWeapon(id,1) };
+  };
+  const excluded = new Set(['heal_drone', 'kirby_copy']);
+  const allChoices = shuffled(Object.keys(WEAPON_DEFS).filter(id => !excluded.has(id)));
+  const options = allChoices.slice(0, 4).map(makeOpt);
+  showUpgradeScreen(options);
+}
+
+function applyUpgrade(opt) {
+  document.getElementById('o-upgrade').classList.remove('active');
+  applyUpgradeEffect(opt);
+  gs.phase='playing';
+  waveCompleteTriggered=false;
+  const nextWave = gs.wave.num===0 ? 1 : gs.wave.num+1;
+  startWave(nextWave);
+  updateHUD();
+}
+
+// ═══════════════════════════════════════════════════════
+// §17  Upgrade options generator
+// ═══════════════════════════════════════════════════════
+function describeWeapon(weapId, lv) {
+  if (!WEAPON_DEFS[weapId]) return '';
+  const def = WEAPON_DEFS[weapId];
+  if (def.describe) return def.describe(lv);
+  const s = def.levels[Math.min(lv-1, def.levels.length-1)];
+  const parts = [];
+  if (s.dmg)    parts.push(`伤害${s.dmg}`);
+  if (s.cd)     parts.push(`CD${s.cd}ms`);
+  if (s.radius) parts.push(`范围${s.radius}`);
+  if (s.orbs)   parts.push(`${s.orbs}轨道`);
+  if (s.count)  parts.push(`×${s.count}弹`);
+  if (s.pierce) parts.push('穿透');
+  if (s.chains) parts.push(`链${s.chains}目标`);
+  if (s.slow)   parts.push(`减速${s.slow}s`);
+  return parts.join(' | ') || '—';
+}
+
+// Returns upgrade cards for shotgun/gatling/heal_drone based on current weapon level/path
+function getShotgunUpgradeCards(w) {
+  const next = w.level + 1;
+  if (next === 4) {
+    return [
+      { type:'gun_upgrade', gunOp:'bullet', bulletEffect:'bounce', weapId:'shotgun',
+        icon:'↩', name:'弹射散弹', desc:'击中后弹向下一个敌人' },
+      { type:'gun_upgrade', gunOp:'bullet', bulletEffect:'pierce', weapId:'shotgun',
+        icon:'➡', name:'穿透散弹', desc:'散弹穿透所有敌人' },
+      { type:'gun_upgrade', gunOp:'bullet', bulletEffect:'split', weapId:'shotgun',
+        icon:'✦', name:'分裂散弹', desc:'击中后分裂出2颗侧向子弹' },
+    ];
+  }
+  if (next === 7) {
+    return [
+      { type:'gun_upgrade', gunOp:'element', element:'flame', weapId:'shotgun',
+        icon:'🔥', name:'炽焰散弹', desc:'叠加火焰层·每层1%HP/s持续伤害' },
+      { type:'gun_upgrade', gunOp:'element', element:'frost', weapId:'shotgun',
+        icon:'❄', name:'冰霜散弹', desc:'叠加冰霜层·满层冰冻2秒' },
+      { type:'gun_upgrade', gunOp:'element', element:'poison', weapId:'shotgun',
+        icon:'☠', name:'淬毒散弹', desc:'叠加毒素层·每层0.5%HP/s' },
+    ];
+  }
+  if (next === 8) {
+    return [{ type:'gun_upgrade', gunOp:'mod', mod:'extra_gun', weapId:'shotgun',
+      icon:'🔫', name:'双枪齐发', desc:'整套散弹额外再打一次，总伤害×2' }];
+  }
+  // Levels 2,3,5,6: random mod
+  const modPool = [
+    {mod:'dmg_20',      icon:'💪', name:'散弹: 伤害+20%', desc:'子弹伤害×1.2'},
+    {mod:'aspd',        icon:'⚡', name:'散弹: 射速提升', desc:'射击冷却-18%'},
+    {mod:'extra_shell', icon:'➕', name:'散弹: 多一颗弹', desc:'每次多射一颗弹'},
+  ];
+  const available = modPool.filter(m=>!(w.variantMods||[]).includes(m.mod));
+  if (!available.length) {
+    return [{ type:'wepup', weapId:'shotgun', icon:'💥',
+      name:`升级 散弹枪 → Lv.${next}`, desc:describeWeapon('shotgun',next) }];
+  }
+  const chosen = available[Math.floor(Math.random()*available.length)];
+  return [{ type:'gun_upgrade', gunOp:'mod', mod:chosen.mod,
+    weapId:'shotgun', icon:chosen.icon, name:chosen.name, desc:chosen.desc }];
+}
+
+function getGatlingUpgradeCards(w) {
+  const next = w.level + 1;
+  if (next === 4) {
+    return [
+      { type:'gun_upgrade', gunOp:'mod', mod:'dual_bullet', weapId:'gatling',
+        icon:'🔴', name:'加特林: 并列双发', desc:'每发子弹变为并列2发同步射出' },
+      { type:'gun_upgrade', gunOp:'bullet', bulletEffect:'pierce', weapId:'gatling',
+        icon:'➡', name:'加特林: 穿透弹', desc:'子弹穿透所有敌人' },
+      { type:'gun_upgrade', gunOp:'mod', mod:'aspd', weapId:'gatling',
+        icon:'⚡', name:'加特林: 射速提升', desc:'射击冷却-18%' },
+    ];
+  }
+  if (next === 7) {
+    return [
+      { type:'gun_upgrade', gunOp:'element', element:'flame', weapId:'gatling',
+        icon:'🔥', name:'炽焰子弹', desc:'叠加火焰层·每层1%HP/s持续伤害' },
+      { type:'gun_upgrade', gunOp:'element', element:'frost', weapId:'gatling',
+        icon:'❄', name:'冰霜子弹', desc:'叠加冰霜层·满层冰冻2秒' },
+      { type:'gun_upgrade', gunOp:'element', element:'poison', weapId:'gatling',
+        icon:'☠', name:'淬毒子弹', desc:'叠加毒素层·每层0.5%HP/s' },
+    ];
+  }
+  if (next === 8) {
+    return [{ type:'gun_upgrade', gunOp:'mod', mod:'extra_gun', weapId:'gatling',
+      icon:'🔫', name:'双枪齐发', desc:'连发弹幕额外再打一次，总伤害×2' }];
+  }
+  // Levels 2,3,5,6: random mod (dual_bullet only at level 4)
+  const modPool = [
+    {mod:'dmg_20', icon:'💪', name:'加特林: 伤害+20%', desc:'子弹伤害×1.2'},
+    {mod:'aspd',   icon:'⚡', name:'加特林: 射速提升', desc:'射击冷却-18%'},
+  ];
+  const available = modPool.filter(m=>!(w.variantMods||[]).includes(m.mod));
+  if (!available.length) {
+    return [{ type:'wepup', weapId:'gatling', icon:'🔴',
+      name:`升级 加特林 → Lv.${next}`, desc:describeWeapon('gatling',next) }];
+  }
+  const chosen = available[Math.floor(Math.random()*available.length)];
+  return [{ type:'gun_upgrade', gunOp:'mod', mod:chosen.mod,
+    weapId:'gatling', icon:chosen.icon, name:chosen.name, desc:chosen.desc }];
+}
+
+function getHealDroneUpgradeCards(w) {
+  const next = w.level + 1;
+  if (next === 4) {
+    return [
+      { type:'drone_upgrade', droneOp:'element', element:'poison', weapId:'heal_drone',
+        icon:'☠', name:'毒奶光圈', desc:'光圈内的敌人持续叠加毒素' },
+      { type:'drone_upgrade', droneOp:'element', element:'flame', weapId:'heal_drone',
+        icon:'🔥', name:'灼烧治疗', desc:'光圈内的敌人持续叠加火焰' },
+      { type:'drone_upgrade', droneOp:'element', element:'frost', weapId:'heal_drone',
+        icon:'❄', name:'冰霜治疗', desc:'光圈内的敌人持续叠加冰霜' },
+    ];
+  }
+  if (next === 7) {
+    return [
+      { type:'drone_upgrade', droneOp:'hospital', hosp:'range', weapId:'heal_drone',
+        icon:'🏥', name:'医院', desc:'光圈范围增加100%' },
+      { type:'drone_upgrade', droneOp:'hospital', hosp:'follow', weapId:'heal_drone',
+        icon:'🚑', name:'战地医院', desc:'光圈跟随玩家移动' },
+      { type:'drone_upgrade', droneOp:'hospital', hosp:'heal', weapId:'heal_drone',
+        icon:'💉', name:'未来医院', desc:'治疗量增加50%' },
+    ];
+  }
+  if (next === 8) {
+    return [
+      { type:'drone_upgrade', droneOp:'superheal', weapId:'heal_drone',
+        icon:'⚕', name:'超级治疗', desc:'治疗量+50%·范围+20%' },
+    ];
+  }
+  // Levels 2,3,5,6: random from heal/range/cd
+  const modPool = [
+    {op:'heal',  icon:'💊', name:'治疗强化', desc:'光圈治疗量+30%'},
+    {op:'range', icon:'🔵', name:'范围扩大', desc:'光圈半径+30%'},
+    {op:'cd',    icon:'⏱', name:'冷却缩短', desc:'光圈出现冷却-25%'},
+  ];
+  const chosen = modPool[Math.floor(Math.random()*modPool.length)];
+  return [{ type:'drone_upgrade', droneOp:'stat', statOp:chosen.op,
+    weapId:'heal_drone', icon:chosen.icon, name:chosen.name, desc:chosen.desc }];
+}
+
+function getSniperUpgradeCards(w) {
+  const nextLv = w.level + 1;
+  if ([2,3,5,6].includes(nextLv)) {
+    return [
+      { type:'sniperup', weapId:'sniper', icon:'💀', name:'夺命子弹', desc:'狙击伤害+35%', sniperOp:'dmgbonus' },
+      { type:'sniperup', weapId:'sniper', icon:'🎯', name:'暴击弹头', desc:'全局暴击率+10%，暴击伤害+10%', sniperOp:'critbullet' },
+      { type:'sniperup', weapId:'sniper', icon:'🔭', name:'连狙', desc:'额外发射1颗子弹', sniperOp:'extrabullet' },
+    ];
+  }
+  if (nextLv === 4) {
+    return [
+      { type:'sniperup', weapId:'sniper', icon:'💪', name:'重狙', desc:'伤害×3，但移动速度-8', sniperOp:'heavy' },
+      { type:'sniperup', weapId:'sniper', icon:'📈', name:'成长神狙', desc:'每击杀20个怪物伤害+1%', sniperOp:'growing' },
+      { type:'sniperup', weapId:'sniper', icon:'🐉', name:'大龙狙击', desc:'每发射3颗子弹第3颗变为金龙·高伤穿透', sniperOp:'dragon' },
+    ];
+  }
+  if (nextLv === 7) {
+    return [
+      { type:'sniperup', weapId:'sniper', icon:'💨', name:'战术狙击', desc:'每20秒投烟雾弹·烟中敌人随机游走5秒', sniperOp:'tactical' },
+      { type:'sniperup', weapId:'sniper', icon:'💠', name:'合金弹头', desc:'无限穿透·伤害+50%', sniperOp:'alloy' },
+      { type:'sniperup', weapId:'sniper', icon:'💥', name:'分裂弹头', desc:'命中后分裂0-3小子弹(幸运越高越多)·小弹50%伤害', sniperOp:'split' },
+    ];
+  }
+  return [];
+}
+
+// (pistol variant screen removed – shotgun and gatling are now separate weapons)
+
+function getUpgradeOptions() {
+  const p = gs.player;
+  const lv = p.level;
+  const cardCount = (p.luck >= 80) ? 4 : 3;
+
+  if (gs.weapons.length === 0) {
+    return shuffled(Object.keys(WEAPON_DEFS).filter(id => id !== 'kirby_copy')).slice(0,3).map(id => ({
+      type:'wepadd', weapId:id, icon:WEAPON_DEFS[id].icon,
+      name:`获得 ${WEAPON_DEFS[id].name}`, desc:describeWeapon(id,1)
+    }));
+  }
+
+  // ── Fixed-choice tiers return exclusively ──
+  const FIXED_GUN = [4, 7, 8];
+  const shotgunW = getWeapon('shotgun');
+  if (shotgunW && FIXED_GUN.includes(shotgunW.level + 1) && shotgunW.level < WEAPON_DEFS.shotgun.maxLv)
+    return getShotgunUpgradeCards(shotgunW).slice(0, cardCount);
+
+  const gatlingW = getWeapon('gatling');
+  if (gatlingW && FIXED_GUN.includes(gatlingW.level + 1) && gatlingW.level < WEAPON_DEFS.gatling.maxLv)
+    return getGatlingUpgradeCards(gatlingW).slice(0, cardCount);
+
+  const droneW = getWeapon('heal_drone');
+  if (droneW && FIXED_GUN.includes(droneW.level + 1) && droneW.level < WEAPON_DEFS.heal_drone.maxLv)
+    return getHealDroneUpgradeCards(droneW).slice(0, cardCount);
+
+  const missileW = getWeapon('missile_drone');
+  // Missile fixed tiers: 4, 7 (8 is super supply only)
+  if (missileW && [4,7].includes(missileW.level + 1) && missileW.level < WEAPON_DEFS.missile_drone.maxLv - 1)
+    return getMissileDroneUpgradeCards(missileW).slice(0, cardCount);
+
+  const sniperW = getWeapon('sniper');
+  if (sniperW && [4,7].includes(sniperW.level + 1) && sniperW.level < WEAPON_DEFS.sniper.maxLv - 1)
+    return getSniperUpgradeCards(sniperW).slice(0, cardCount);
+
+  // ── Build weapon pool ──
+  const weapPool = [];
+
+  // Branching weapon random-tier cards
+  if (shotgunW && shotgunW.level < WEAPON_DEFS.shotgun.maxLv)
+    getShotgunUpgradeCards(shotgunW).forEach(c => weapPool.push(c));
+  if (gatlingW && gatlingW.level < WEAPON_DEFS.gatling.maxLv)
+    getGatlingUpgradeCards(gatlingW).forEach(c => weapPool.push(c));
+  if (droneW && droneW.level < WEAPON_DEFS.heal_drone.maxLv)
+    getHealDroneUpgradeCards(droneW).forEach(c => weapPool.push(c));
+  // Missile drone: random tiers (exclude fixed 4/7, exclude Lv8 which is super supply only)
+  if (missileW && ![4,7,8].includes(missileW.level+1) && missileW.level < WEAPON_DEFS.missile_drone.maxLv - 1)
+    getMissileDroneUpgradeCards(missileW).forEach(c => weapPool.push(c));
+  // Sniper: random tiers (exclude fixed 4/7, exclude Lv8 which is super supply only)
+  if (sniperW && ![4,7,8].includes(sniperW.level+1) && sniperW.level < WEAPON_DEFS.sniper.maxLv - 1)
+    getSniperUpgradeCards(sniperW).forEach(c => weapPool.push(c));
+
+  // Other upgradable weapons (exclude missile_drone as handled above, exclude kirby_copy which is skill-only)
+  gs.weapons
+    .filter(w => !['shotgun','gatling','heal_drone','missile_drone','kirby_copy','sniper'].includes(w.id) && w.level < WEAPON_DEFS[w.id].maxLv)
+    .forEach(w => {
+      const def = WEAPON_DEFS[w.id];
+      weapPool.push({ type:'wepup', weapId:w.id, icon:def.icon,
+        name:`升级 ${def.name} → Lv.${w.level+1}`, desc:describeWeapon(w.id,w.level+1) });
+    });
+
+  // New weapons (up to 6 total)
+  if (gs.weapons.length < 6) {
+    const owned = new Set(gs.weapons.map(w => w.id));
+    shuffled(Object.keys(WEAPON_DEFS).filter(id => !owned.has(id) && id !== 'kirby_copy')).forEach(wid => {
+      const def = WEAPON_DEFS[wid];
+      weapPool.push({ type:'wepadd', weapId:wid, icon:def.icon,
+        name:`获得 ${def.name}`, desc:describeWeapon(wid,1) });
+    });
+  }
+
+  // ── Build stat pool (fallback only) ──
+  const isDoctor  = CLASSES[p.classIdx]?.id === 'doctor';
+  const isScholar = CLASSES[p.classIdx]?.id === 'scholar';
+  const statPool = shuffled(STAT_UPGRADES)
+    .filter(s => {
+      if (isDoctor  && s.id === 'maxhp') return false;
+      if (isScholar && s.id === 'speed') return false;
+      if (s.id === 'dodge' || s.id === 'dmgred') return lv >= 30 && Math.random() < 0.25;
+      return true;
+    })
+    .map(s => ({ type:'stat', id:s.id, icon:s.icon, name:s.name, desc:s.desc }));
+
+  // ── Fill cards: weapons first, stats only when weapon pool exhausted ──
+  const wShuf = shuffled(weapPool);
+  const result = [];
+  let wi = 0, si = 0;
+  for (let i = 0; i < cardCount; i++) {
+    if (wi < wShuf.length) result.push(wShuf[wi++]);
+    else if (si < statPool.length) result.push(statPool[si++]);
+  }
+  return result;
+}
+
+function shuffled(arr) {
+  const a=[...arr];
+  for (let i=a.length-1;i>0;i--) { const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+  return a;
+}
+
+// ═══════════════════════════════════════════════════════
+// §17b Drop supply screen (mid-wave pickup)
+// ═══════════════════════════════════════════════════════
+function showDropSupplyScreen(dropType) {
+  const def = DROP_DEFS[dropType];
+  const rarityLabel = {
+    supply_green:'💚 绿色补给', supply_blue:'💙 蓝色补给',
+    supply_purple:'💜 紫色补给', supply_rainbow:'🌈 彩色补给'
+  }[dropType] || '补给';
+
+  document.getElementById('upg-title').textContent = rarityLabel;
+  const container = document.getElementById('upg-cards');
+  container.innerHTML = '';
+
+  const options = getDropSupplyOptions(dropType);
+  options.forEach((opt, idx) => {
+    const card = document.createElement('div');
+    card.className = 'upg-card';
+    card.style.animationDelay = (idx * 0.08) + 's';
+    // Tint border by rarity
+    const borderCol = {supply_green:'#4f4',supply_blue:'#48f',
+                       supply_purple:'#a4f',supply_rainbow:'#fd4'}[dropType];
+    if (borderCol) card.style.borderColor = borderCol;
+    card.innerHTML = `<span class="u-icon">${opt.icon}</span><div class="u-name">${opt.name}</div><div class="u-desc">${opt.desc}</div>`;
+    card.addEventListener('click', () => applyDropSupplyUpgrade(opt));
+    container.appendChild(card);
+  });
+  document.getElementById('o-upgrade').classList.add('active');
+}
+
+function getDropSupplyOptions(dropType) {
+  const cards = DROP_DEFS[dropType]?.cards || 1;
+  if (dropType === 'supply_rainbow') {
+    // Rainbow: cards from SUPPLY_TALENTS pool (like boss reward, rare!)
+    const available = SUPPLY_TALENTS.filter(t => !gs.talents.has(t.id));
+    return shuffled(available).slice(0, 3)
+      .map(t => ({ type:'talent', id:t.id, icon:t.icon, name:t.name, desc:t.desc, _talent:t }));
+  }
+  // Green/Blue/Purple: stat & weapon upgrades
+  return getUpgradeOptions().slice(0, cards);
+}
+
+function applyDropSupplyUpgrade(opt) {
+  document.getElementById('o-upgrade').classList.remove('active');
+  if (opt.type === 'talent') {
+    gs.talents.add(opt.id);
+    opt._talent.apply(gs.player);
+    updateDerivedStats(gs.player);
+  } else {
+    applyUpgradeEffect(opt);
+  }
+  gs.phase = 'playing';
+  waveCompleteTriggered = false;
+  checkWaveComplete();
+  updateHUD();
+}
+
+// Shared upgrade effect (used by both wave-end and drop supply)
+function applyUpgradeEffect(opt) {
+  const p = gs.player;
+  if (opt.type === 'stat') {
+    if      (opt.id==='maxhp')  { p.maxHp+=30; healPlayer(30); }
+    else if (opt.id==='speed')  p.spd+=20;
+    else if (opt.id==='dmg')    p.dmgMult   = +(p.dmgMult *1.15).toFixed(4);
+    else if (opt.id==='area')   p.areaMult  = +(p.areaMult*1.15).toFixed(4);
+    else if (opt.id==='cd')     p.cdMult    = Math.max(0.2,+(p.cdMult*0.88).toFixed(4));
+    else if (opt.id==='heal')   healPlayer(p.maxHp*0.6);
+    else if (opt.id==='pickup') p.pickupR  += 40;
+    else if (opt.id==='luck')   p.luck     += 25;
+    else if (opt.id==='dodge')  p.baseDodge   = Math.min(0.6,p.baseDodge  +0.06);
+    else if (opt.id==='dmgred') p.baseDmgRed  = Math.min(0.6,p.baseDmgRed+0.05);
+    updateDerivedStats(p);
+  } else if (opt.type === 'wepup') {
+    const w = getWeapon(opt.weapId);
+    if (w) w.level = Math.min(WEAPON_DEFS[w.id].maxLv, w.level+1);
+  } else if (opt.type === 'wepadd') {
+    addWeapon(opt.weapId);
+  } else if (opt.type === 'gun_upgrade') {
+      const w = getWeapon(opt.weapId);
+      if (!w) return;
+      w.level = Math.min(WEAPON_DEFS[opt.weapId].maxLv, w.level + 1);
+      if (opt.gunOp === 'bullet') w.bulletEffect = opt.bulletEffect;
+      if (opt.gunOp === 'element') w.element = opt.element;
+      if (opt.gunOp === 'mod') {
+        if (!w.variantMods) w.variantMods = [];
+        if (opt.mod === 'extra_gun') {
+          w.extraGun = true;
+        } else {
+          w.variantMods.push(opt.mod); // dual_bullet, dmg_20, aspd, extra_shell
+        }
+      }
+    } else if (opt.type === 'missileup') {
+      const w = getWeapon(opt.weapId);
+      if (!w) return;
+      w.level = Math.min(WEAPON_DEFS[opt.weapId].maxLv, w.level + 1);
+      if (opt.missileOp === 'stat') {
+        if (opt.statOp==='radius') w.missileRadMult = +((w.missileRadMult||1)*1.15).toFixed(4);
+        if (opt.statOp==='dmg')    w.missileDmgMult = +((w.missileDmgMult||1)*1.35).toFixed(4);
+        if (opt.statOp==='cd')     w.missileCdMult  = +((w.missileCdMult||1)*0.80).toFixed(4);
+      }
+      if (opt.missileOp==='mode') w.missileMode = opt.mode;
+      if (opt.missileOp==='warhead') {
+        w.warhead = opt.warhead;
+        w.missileDmgMult = +((w.missileDmgMult||1)*2.0).toFixed(4);
+      }
+      if (opt.missileOp==='deathmissile') {
+        w.deathMissile = true;
+        w.missileDmgMult = +((w.missileDmgMult||1)*2.0).toFixed(4);
+        w.missileRadMult = +((w.missileRadMult||1)*2.5).toFixed(4);
+      }
+    } else if (opt.type === 'drone_upgrade') {
+      const w = getWeapon(opt.weapId);
+      if (!w) return;
+      w.level = Math.min(WEAPON_DEFS[opt.weapId].maxLv, w.level + 1);
+      if (opt.droneOp === 'element') w.element = opt.element;
+      if (opt.droneOp === 'stat') {
+        if (opt.statOp === 'heal')  w.healMult     = (w.healMult||1) * 1.3;
+        if (opt.statOp === 'range') w.rangeMult    = (w.rangeMult||1) * 1.3;
+        if (opt.statOp === 'cd')    w.cdMultLocal  = (w.cdMultLocal||1) * 0.75;
+      }
+      if (opt.droneOp === 'hospital') {
+        if (opt.hosp === 'range') w.rangeMult  = (w.rangeMult||1) * 2.0;
+        if (opt.hosp === 'follow') w.follows   = true;
+        if (opt.hosp === 'heal')  w.healMult   = (w.healMult||1) * 1.5;
+      }
+      if (opt.droneOp === 'superheal') {
+        w.healMult  = (w.healMult||1) * 1.5;
+        w.rangeMult = (w.rangeMult||1) * 1.2;
+      }
+    } else if (opt.type === 'sniperup') {
+      const w = getWeapon('sniper') || (() => { addWeapon('sniper'); return getWeapon('sniper'); })();
+      const p = gs.player;
+      w.level = Math.min(WEAPON_DEFS.sniper.maxLv, w.level + 1);
+      if (opt.sniperOp === 'dmgbonus')   w.sniperDmgBonus = (w.sniperDmgBonus||0) + 0.35;
+      if (opt.sniperOp === 'critbullet') { p.critRate = Math.min(1, (p.critRate||0)+0.10); p.critDmgMult = (p.critDmgMult||1.5)+0.10; w.sniperCritRate=(w.sniperCritRate||0)+0.10; w.sniperCritDmg=(w.sniperCritDmg||0)+0.10; }
+      if (opt.sniperOp === 'extrabullet') w.sniperExtraBullets = (w.sniperExtraBullets||0) + 1;
+      if (opt.sniperOp === 'heavy')      { w.heavySniper = true; p.spd = Math.max(10, p.spd - 8); }
+      if (opt.sniperOp === 'growing')    { w.growingSniper = true; w.growingKillCount=0; w.growingBonus=0; }
+      if (opt.sniperOp === 'dragon')     { w.dragonSniper = true; w.dragonShotCount = 0; }
+      if (opt.sniperOp === 'tactical')   { w.tacticalSniper = true; w.smokeTimer = 20; }
+      if (opt.sniperOp === 'alloy')      { w.alloyBullet = true; }
+      if (opt.sniperOp === 'split')      { w.splitBullet = true; }
+      if (opt.sniperOp === 'lvl8bounce') { w.lvl8Bounce = true; }
+      if (opt.sniperOp === 'reaperKill') { w.reaperKill = true; }
+    }
+}
+
+// ═══════════════════════════════════════════════════════
+// §17c  Level-up screen
+// ═══════════════════════════════════════════════════════
+function getLuckGain(luck) {
+  // Higher luck → more likely to roll high (10–20)
+  const bias = Math.min(1.0, luck / 120);
+  let v = 10 + Math.floor(Math.random()*11);
+  if (Math.random() < bias) v = Math.max(v, 10 + Math.floor(Math.random()*11));
+  return v;
+}
+
+function getLevelUpOptions() {
+  // Level-up: ONLY stat bonuses (no weapons)
+  const p = gs.player;
+  const pool = [];
+
+  if (CLASSES[p.classIdx]?.id !== 'doctor')
+    pool.push({ type:'lvstat', id:'maxhp', icon:'❤', name:'强化体质', desc:'+10 最大HP' });
+  pool.push({ type:'lvstat', id:'hpregen', icon:'💖', name:'生命再生',   desc:'+1/s 自然回复' });
+  const lkGain = getLuckGain(p.luck);
+  pool.push({ type:'lvstat', id:'luck',    icon:'🍀', name:'幸运提升',   desc:`+${lkGain} 幸运值`, _val:lkGain });
+  const spdGain = 1 + Math.floor(Math.random()*10);
+  if (CLASSES[p.classIdx]?.id !== 'scholar')
+    pool.push({ type:'lvstat', id:'speed', icon:'👟', name:'身轻如燕', desc:`移速+${spdGain}`, _val:spdGain });
+  pool.push({ type:'lvstat', id:'pickup',  icon:'🧲', name:'磁力感应',   desc:'+10 拾取范围' });
+  pool.push({ type:'lvstat', id:'xpmult',  icon:'⭐', name:'经验增幅',   desc:'+5% 经验获取' });
+  // Rare ~15%
+  if (Math.random() < 0.15) pool.push({ type:'lvstat', id:'dodge5',   icon:'💨', name:'幻影步伐', desc:'+5% 闪避率' });
+  if (Math.random() < 0.15) pool.push({ type:'lvstat', id:'dmgred5',  icon:'🛡', name:'铁皮强化', desc:'+5% 伤害减免' });
+
+  return shuffled(pool).slice(0, 3);
+}
+
+function showLevelUpScreen() {
+  const p = gs.player;
+  document.getElementById('lvlup-title').textContent = `⬆ 升至 Lv.${p.level}！`;
+  const container = document.getElementById('lvlup-cards');
+  container.innerHTML = '';
+  getLevelUpOptions().forEach((opt, idx) => {
+    const card = document.createElement('div');
+    card.className = 'upg-card';
+    card.style.animationDelay = (idx*0.08)+'s';
+    card.style.borderColor = '#4ef';
+    card.innerHTML = `<span class="u-icon">${opt.icon}</span><div class="u-name">${opt.name}</div><div class="u-desc">${opt.desc}</div>`;
+    card.addEventListener('click', () => applyLevelUpUpgrade(opt));
+    container.appendChild(card);
+  });
+  document.getElementById('o-levelup').classList.add('active');
+}
+
+function applyLevelUpUpgrade(opt) {
+  document.getElementById('o-levelup').classList.remove('active');
+  const p = gs.player;
+  if (opt.type === 'lvstat') {
+    if      (opt.id === 'maxhp')   { p.maxHp += 10; healPlayer(10); }
+    else if (opt.id === 'hpregen') { p.hpRegen = (p.hpRegen||0) + 1; }
+    else if (opt.id === 'luck')    { p.luck += (opt._val||15); }
+    else if (opt.id === 'speed')   { p.spd += (opt._val||5); }
+    else if (opt.id === 'pickup')  { p.pickupR += 10; }
+    else if (opt.id === 'xpmult')  { p.xpMult = +((p.xpMult||1) + 0.05).toFixed(2); }
+    else if (opt.id === 'dodge5')  { p.baseDodge  = Math.min(0.6, p.baseDodge  + 0.05); }
+    else if (opt.id === 'dmgred5') { p.baseDmgRed = Math.min(0.6, p.baseDmgRed + 0.05); }
+    else if (opt.id === 'dodge_dmgred') {
+      p.baseDodge  = Math.min(0.6, p.baseDodge  + 0.05);
+      p.baseDmgRed = Math.min(0.6, p.baseDmgRed + 0.05);
+    }
+    updateDerivedStats(p);
+  } else {
+    applyUpgradeEffect(opt);
+  }
+  // Chain if more level-ups queued
+  if (p.levelUpQueue > 0) {
+    p.levelUpQueue--;
+    showLevelUpScreen();
+  } else {
+    gs.phase = 'playing';
+    // Reset so wave-complete check re-fires if wave ended while level-up was open
+    waveCompleteTriggered = false;
+    checkWaveComplete();
+  }
+  updateHUD();
+}
+
+// ═══════════════════════════════════════════════════════
+// §18  Supply screen (boss wave)
+// ═══════════════════════════════════════════════════════
+// ── Super supply (every 5th wave) ──
+let ssupCurrentOptions = [];
+let ssupRefreshUsed    = [];
+
+function getSuperSupplyPool() {
+  const pool = [];
+  const missileW = getWeapon('missile_drone');
+  if (missileW && missileW.level === 7) {
+    pool.push({ type:'missileup', missileOp:'deathmissile', weapId:'missile_drone',
+      icon:'☠', name:'死神飞弹', desc:'导弹伤害×2·爆炸半径×2.5·均匀分布在玩家周围' });
+  }
+  const sniperW = getWeapon('sniper');
+  if (sniperW && sniperW.level === 7) {
+    pool.push({ type:'sniperup', weapId:'sniper', icon:'🔭', name:'连狙Lv8', desc:'发射间隔-1秒·子弹碰墙反弹一次', sniperOp:'lvl8bounce' });
+    if (CLASSES[gs.player.classIdx]?.id === 'reaper') {
+      pool.push({ type:'sniperup', weapId:'sniper', icon:'💀', name:'死神之狙·专武', desc:'子弹攻击有0.5%概率秒杀非Boss敌人', sniperOp:'reaperKill' });
+    }
+  }
+  SUPPLY_TALENTS.filter(t => !gs.talents.has(t.id)).forEach(t =>
+    pool.push({ type:'talent', id:t.id, icon:t.icon, name:t.name, desc:t.desc, _talent:t }));
+  return shuffled(pool);
+}
+
+function showSuperSupplyScreen() {
+  document.getElementById('ssup-sub').textContent = `第 ${gs.wave.num} 波结束 — 选择一项强力奖励`;
+  ssupRefreshUsed = [false, false, false];
+  ssupCurrentOptions = getSuperSupplyPool().slice(0, 3);
+  renderSuperSupplyCards();
+  document.getElementById('o-ssupply').classList.add('active');
+}
+
+function renderSuperSupplyCards() {
+  const container = document.getElementById('ssup-cards');
+  container.innerHTML = '';
+  ssupCurrentOptions.forEach((opt, idx) => {
+    const slot = document.createElement('div');
+    slot.className = 'ssup-slot';
+    const card = document.createElement('div');
+    card.className = 'sup-card ssup-card';
+    card.style.animationDelay = (idx*0.1)+'s';
+    card.innerHTML = `<span class="u-icon">${opt.icon}</span><div class="u-name">${opt.name}</div><div class="u-desc">${opt.desc}</div>`;
+    card.addEventListener('click', () => applySuperSupply(opt));
+    const btn = document.createElement('button');
+    btn.className = 'ssup-refresh' + (ssupRefreshUsed[idx] ? ' used' : '');
+    btn.textContent = ssupRefreshUsed[idx] ? '已刷新' : '🔄 刷新';
+    btn.disabled = ssupRefreshUsed[idx];
+    btn.addEventListener('click', () => {
+      if (ssupRefreshUsed[idx]) return;
+      ssupRefreshUsed[idx] = true;
+      const fresh = getSuperSupplyPool().filter(p =>
+        !ssupCurrentOptions.find((u,i) => i!==idx && u.name===p.name));
+      ssupCurrentOptions[idx] = fresh[Math.floor(Math.random()*fresh.length)] || ssupCurrentOptions[idx];
+      renderSuperSupplyCards();
+    });
+    slot.appendChild(card);
+    slot.appendChild(btn);
+    container.appendChild(slot);
+  });
+}
+
+function applySuperSupply(opt) {
+  document.getElementById('o-ssupply').classList.remove('active');
+  if (opt.type === 'talent') {
+    gs.talents.add(opt.id);
+    opt._talent.apply(gs.player);
+    updateDerivedStats(gs.player);
+  } else {
+    applyUpgradeEffect(opt);
+  }
+  gs.phase = 'playing';
+  waveCompleteTriggered = false;
+  startWave(gs.wave.num + 1);
+  updateHUD();
+}
+
+// ═══════════════════════════════════════════════════════
+// §19  HUD
+// ═══════════════════════════════════════════════════════
+function updateHUD() {
+  if (!gs) return;
+  const p=gs.player;
+
+  document.getElementById('hud-hp-txt').textContent  = `❤ ${Math.ceil(p.hp)}/${p.maxHp}`;
+  document.getElementById('hud-hp-bar').style.width  = Math.max(0,p.hp/p.maxHp*100)+'%';
+  // XP bar
+  document.getElementById('hud-level').textContent   = p.level;
+  document.getElementById('hud-xp-txt').textContent  = `${p.xp}/${p.xpToNext} XP`;
+  document.getElementById('hud-xp-fill').style.width = Math.min(100, p.xp/p.xpToNext*100).toFixed(1)+'%';
+  document.getElementById('hud-wave').textContent    = `Wave ${gs.wave.num}/30`;
+  document.getElementById('hud-enemies').textContent = `敌人: ${gs.enemies.filter(e=>!e.dead).length}`;
+  document.getElementById('hud-kills').textContent   = `💀 ${gs.kills}`;
+  document.getElementById('hud-score').textContent   = `得分: ${gs.score}`;
+
+  // Stats
+  const dropPct  = (dropChance(p.luck)*100).toFixed(0);
+  const effDodge = (p.dodgeChance*100).toFixed(0);
+  const effArm   = (p.dmgReduction*100).toFixed(0);
+  document.getElementById('hud-stat-lck').textContent = `🍀 LCK:${p.luck}(掉${dropPct}%)`;
+  document.getElementById('hud-stat-eva').textContent = `💨 闪避: ${effDodge}%`;
+  document.getElementById('hud-stat-arm').textContent = `🛡 减伤: ${effArm}%`;
+  const regenEl = document.getElementById('hud-stat-regen');
+  if (p.hpRegen > 0) {
+    const xpTag = p.xpMult > 1 ? ` | ⭐×${p.xpMult.toFixed(2)}` : '';
+    regenEl.textContent = `💖 ${p.hpRegen}/s${xpTag}`;
+    regenEl.style.display = '';
+  } else if (p.xpMult > 1) {
+    regenEl.textContent = `⭐ 经验×${p.xpMult.toFixed(2)}`;
+    regenEl.style.display = '';
+  } else {
+    regenEl.style.display = 'none';
+  }
+
+  // Weapons bar
+  const wbar = document.getElementById('hud-weapons-bar');
+  if (gs.weapons.length===0) {
+    wbar.textContent = '⚔ 武器: —';
+  } else {
+    wbar.innerHTML = gs.weapons.map(w=>{
+      const def=WEAPON_DEFS[w.id];
+      return def ? `<span title="${def.name}">${def.icon}Lv${w.level}</span>` : '';
+    }).join(' ');
+  }
+
+  // Skill cooldown bar
+  const skillEl = document.getElementById('hud-skill');
+  if (skillEl) {
+    const clsId = CLASSES[p.classIdx]?.id;
+    const skillName = clsId==='doctor' ? '💊 妙手回春' : clsId==='berserker' ? '⚡ 狂暴' : clsId==='blacksmith' ? '⚒ 临阵磨枪' : clsId==='mage' ? '✨ 法力无天' : clsId==='scholar' ? '📚 经验老道' : clsId==='reaper' ? '🎯 狙神' : clsId==='kirby' ? '⭐ 模仿' : clsId==='santa' ? '🎁 圣诞礼物' : '⭐ 天选之星';
+    if (clsId==='berserker' && p.berserkActive) {
+      skillEl.textContent = `⚡ 狂暴 ${Math.ceil(p.berserkTimer)}s`;
+      skillEl.className = 'berserk-on';
+    } else if (clsId==='blacksmith' && p.sharpenActive) {
+      skillEl.textContent = `⚒ 临阵磨枪 ${Math.ceil(p.sharpenTimer)}s`;
+      skillEl.className = 'berserk-on';
+    } else if (clsId==='mage' && p.manaActive) {
+      skillEl.textContent = `✨ 法力无天 ${Math.ceil(p.manaTimer)}s`;
+      skillEl.className = 'berserk-on';
+    } else if (clsId==='reaper' && p.reaperChanneling) {
+      skillEl.textContent = `🎯 瞄准中 ${(REAPER_CHANNEL_TIME - p.reaperChannel).toFixed(1)}s`;
+      skillEl.className = 'berserk-on';
+    } else if (clsId==='santa' && ((p.santaAtkTimer||0)>0||(p.santaCdTimer||0)>0||(p.santaHealTimer||0)>0)) {
+      const parts = [];
+      if (p.santaAtkTimer>0) parts.push(`🔴攻+25% ${Math.ceil(p.santaAtkTimer)}s`);
+      if (p.santaCdTimer>0)  parts.push(`🔵CD-25% ${Math.ceil(p.santaCdTimer)}s`);
+      if (p.santaHealTimer>0) parts.push(`🟢回血 ${Math.ceil(p.santaHealTimer)}s`);
+      skillEl.textContent = parts.join(' ');
+      skillEl.className = 'berserk-on';
+    } else if (p.skillCd > 0) {
+      skillEl.textContent = `${skillName} ${Math.ceil(p.skillCd)}s`;
+      skillEl.className = 'cd-active';
+    } else {
+      skillEl.textContent = `${skillName} READY`;
+      skillEl.className = '';
+    }
+  }
+
+  // Talents bar
+  const tbar = document.getElementById('hud-talents-bar');
+  if (gs.talents.size===0) {
+    tbar.textContent='';
+  } else {
+    tbar.innerHTML = [...gs.talents].map(id=>{
+      const t=SUPPLY_TALENTS.find(t=>t.id===id);
+      return t ? `<span title="${t.name}">${t.icon}</span>` : '';
+    }).join('');
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// §20  Menu / overlay helpers
+// ═══════════════════════════════════════════════════════
+function showOverlay(id) {
+  document.querySelectorAll('.overlay').forEach(el=>el.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.getElementById('hud').style.display='none';
+  document.getElementById('hud-bot').style.display='none';
+}
+
+function showGameScreen() {
+  document.querySelectorAll('.overlay').forEach(el=>el.classList.remove('active'));
+  document.getElementById('hud').style.display='block';
+  document.getElementById('hud-bot').style.display='block';
+}
+
+function showDeadScreen() {
+  saveBest(); checkAchievements();
+  document.getElementById('hud').style.display='none';
+  document.getElementById('hud-bot').style.display='none';
+  const p=gs.player;
+  const effDodge=(Math.min(0.6,p.baseDodge+p.luck*0.001)*100).toFixed(0);
+  const effArm  =(Math.min(0.6,p.baseDmgRed+p.luck*0.0005)*100).toFixed(0);
+  document.getElementById('dead-stats').innerHTML=`
+    <div class="stat-row">🌊 波数: <b style="color:#fd4">第 ${gs.wave.num} 波</b></div>
+    <div class="stat-row">💀 击杀: <b style="color:#4ef">${gs.kills}</b></div>
+    <div class="stat-row">⭐ 得分: <b style="color:#4f4">${gs.score}</b></div>
+    <div class="stat-row">🍀 幸运: <b>${p.luck}</b> &nbsp;💨 闪避: <b>${effDodge}%</b> &nbsp;🛡 减伤: <b>${effArm}%</b></div>`;
+  document.getElementById('o-dead').classList.add('active');
+}
+
+function showVictoryScreen() {
+  saveBest(); checkAchievements();
+  document.getElementById('hud').style.display='none';
+  document.getElementById('hud-bot').style.display='none';
+  document.getElementById('victory-stats').innerHTML=`
+    <div class="stat-row">🌊 通关全部 <b style="color:#fd4">30波</b></div>
+    <div class="stat-row">💀 击杀: <b style="color:#4ef">${gs.kills}</b></div>
+    <div class="stat-row">⭐ 得分: <b style="color:#4f4">${gs.score}</b></div>`;
+  document.getElementById('o-victory').classList.add('active');
+}
+
+// Button wiring
+document.getElementById('btn-start').addEventListener('click', () => {
+  selectedClassIdx = 0;
+  document.querySelectorAll('.cls-card').forEach((c,i)=>c.classList.toggle('sel',i===0));
+  document.getElementById('btn-confirm').disabled = false;
+  document.getElementById('btn-confirm').style.opacity = '1';
+  showOverlay('o-class');
+});
+document.getElementById('btn-settings').addEventListener('click', ()=>showOverlay('o-settings'));
+document.getElementById('btn-achieve').addEventListener('click', ()=>{ renderAchievements(); showOverlay('o-achieve'); });
+document.getElementById('btn-class-back').addEventListener('click', ()=>showOverlay('o-menu'));
+document.getElementById('btn-settings-back').addEventListener('click', ()=>showOverlay('o-menu'));
+document.getElementById('btn-achieve-back').addEventListener('click', ()=>showOverlay('o-menu'));
+document.getElementById('btn-dead-menu').addEventListener('click', ()=>{ showOverlay('o-menu'); renderBestRun(); });
+document.getElementById('btn-victory-menu').addEventListener('click', ()=>{ showOverlay('o-menu'); renderBestRun(); });
+document.getElementById('btn-retry').addEventListener('click', ()=>{ showGameScreen(); initGame(lastClassIdx); });
+document.getElementById('btn-victory-retry').addEventListener('click', ()=>{ showGameScreen(); initGame(lastClassIdx); });
+document.getElementById('btn-confirm').addEventListener('click', ()=>{
+  if (selectedClassIdx<0) return;
+  if (CLASSES[selectedClassIdx]?.id === 'santa') {
+    const d = new Date();
+    if (d.getMonth() !== 11 || d.getDate() !== 25) return;
+  }
+  showGameScreen();
+  initGame(selectedClassIdx);
+});
+
+// Christmas check: show Santa card only on December 25
+(function() {
+  const d = new Date();
+  if (d.getMonth() === 11 && d.getDate() === 25) {
+    const santaCard = document.getElementById('cls-8');
+    if (santaCard) santaCard.style.display = '';
+  }
+})();
+
+// Pre-select the only class
+selectedClassIdx = 0;
+document.querySelectorAll('.cls-card').forEach((card, i) => {
+  card.addEventListener('click', () => {
+    selectedClassIdx = i;
+    document.querySelectorAll('.cls-card').forEach((c,ci) => c.classList.toggle('sel', ci===i));
+  });
+});
+
+document.getElementById('tog-particles').addEventListener('click', ()=>{
+  settings.particles=!settings.particles;
+  document.getElementById('tog-particles').classList.toggle('on',settings.particles);
+});
+document.getElementById('spd-slider').addEventListener('input', function(){
+  settings.gameSpeed=this.value/100;
+  document.getElementById('spd-val').textContent='×'+settings.gameSpeed.toFixed(1);
+});
+
+// ═══════════════════════════════════════════════════════
+// §21  Achievements
+// ═══════════════════════════════════════════════════════
+const ACHIEVEMENTS = [
+  { id:'first_kill', name:'初次击杀',  desc:'击败第一个敌人',           icon:'⚔',  check:()=>gs&&gs.kills>=1 },
+  { id:'wave5',      name:'生存大师',  desc:'到达第5波',                icon:'🌊', check:()=>gs&&gs.wave.num>=5 },
+  { id:'wave10',     name:'Boss猎手',  desc:'击败第一个Boss（第10波）', icon:'🔥', check:()=>gs&&gs.wave.num>=10 },
+  { id:'wave20',     name:'传奇勇士',  desc:'击败第二个Boss（第20波）', icon:'⚡', check:()=>gs&&gs.wave.num>=20 },
+  { id:'wave30',     name:'传奇终结者',desc:'通关全30波',               icon:'👑', check:()=>gs&&gs.wave.num>=30 },
+  { id:'kill100',    name:'大屠杀',    desc:'本局击杀100个敌人',        icon:'💀', check:()=>gs&&gs.kills>=100 },
+  { id:'kill500',    name:'死神降临',  desc:'本局击杀500个敌人',        icon:'☠',  check:()=>gs&&gs.kills>=500 },
+  { id:'lucky100',   name:'幸运儿',    desc:'幸运值达到100',            icon:'🍀', check:()=>gs&&gs.player.luck>=100 },
+  { id:'dodgemax',   name:'无影幻形',  desc:'闪避率达到50%',            icon:'👻', check:()=>gs&&gs.player.dodgeChance>=0.5 },
+  { id:'armmax',     name:'钢铁意志',  desc:'减伤率达到50%',            icon:'🛡', check:()=>gs&&gs.player.dmgReduction>=0.5 },
+  { id:'talents3',   name:'天赋满载',  desc:'获得3个补给天赋',          icon:'✨', check:()=>gs&&gs.talents&&gs.talents.size>=3 },
+  { id:'allweapons', name:'武器大师',  desc:'同时装备5种武器',           icon:'🗡', check:()=>gs&&gs.weapons.length>=5 },
+];
+
+function loadAchievements() {
+  try { return JSON.parse(localStorage.getItem('pixelwarrior_ach')||'{}'); } catch { return {}; }
+}
+function saveAchievements(data) {
+  try { localStorage.setItem('pixelwarrior_ach', JSON.stringify(data)); } catch {}
+}
+function checkAchievements() {
+  const data=loadAchievements(); let changed=false;
+  ACHIEVEMENTS.forEach(a=>{ if (!data[a.id]&&a.check()) { data[a.id]=true; changed=true; } });
+  if (changed) saveAchievements(data);
+}
+function renderAchievements() {
+  const data=loadAchievements();
+  document.getElementById('ach-list').innerHTML=ACHIEVEMENTS.map(a=>`
+    <div class="ach-item ${data[a.id]?'done':''}">
+      <span class="ach-icon">${a.icon}</span>
+      <div>
+        <div style="font-weight:700;color:${data[a.id]?'#fd4':'#666'}">${a.name}</div>
+        <div class="ach-text">${a.desc}</div>
+      </div>
+      ${data[a.id]?'<span style="margin-left:auto;color:#4f4;font-size:16px">✓</span>':''}
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+// §22  Save / Load best
+// ═══════════════════════════════════════════════════════
+const BEST_KEY='pixelwarrior_best_v2';
+
+function saveBest() {
+  if (!gs) return;
+  const best=loadBest();
+  if (!best||gs.score>(best.score||0)) {
+    try {
+      localStorage.setItem(BEST_KEY, JSON.stringify({
+        wave:gs.wave.num, kills:gs.kills, score:gs.score,
+        className: CLASSES[gs.player.classIdx]?.name||'?',
+      }));
+    } catch {}
+  }
+}
+function loadBest() {
+  try { return JSON.parse(localStorage.getItem(BEST_KEY)); } catch { return null; }
+}
+function renderBestRun() {
+  const best=loadBest();
+  const el=document.getElementById('best-run');
+  if (best) {
+    el.innerHTML=`📊 最高记录 &nbsp;|&nbsp; 职业:<b style="color:#fd4">${best.className}</b> &nbsp;波数:<b>${best.wave}/30</b> &nbsp;击杀:<b>${best.kills}</b> &nbsp;得分:<b style="color:#4f4">${best.score}</b>`;
+  } else {
+    el.textContent='暂无记录 — 快去创造传奇吧！';
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// §23  Boot
+// ═══════════════════════════════════════════════════════
+renderBestRun();
+requestAnimationFrame(function bootstrap(ts) {
+  lastTs = ts;
+  requestAnimationFrame(gameLoop);
+});
+</script>
+<div id="float-layer" style="position:fixed;inset:0;pointer-events:none;z-index:15;overflow:hidden"></div>
+</body>
+</html>
