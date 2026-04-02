@@ -322,40 +322,40 @@ input[type=range]{width:120px;accent-color:#48f}
 
     <!-- 上方预览区 -->
     <div id="cls-preview">
-      <div id="cls-prev-icon">⭐</div>
-      <div id="cls-prev-name">天选者</div>
-      <div id="cls-prev-stat">HP: 120 &nbsp; 速度: 140<br>——<br>初始幸运+50<br>天选之星技能<br>幸运决定星星大小</div>
+      <div id="cls-prev-icon">💊</div>
+      <div id="cls-prev-name">医生</div>
+      <div id="cls-prev-stat">HP: 120 &nbsp; 速度: 70<br>回血: 5/s &nbsp; 经验: +0%<br>——<br>被动: 每回复100HP 伤害+5%<br>妙手回春: 立刻回复100HP<br>冷却30秒</div>
     </div>
 
     <!-- 下方格子 -->
     <div id="cls-grid">
       <div class="cls-dot sel" id="cls-0"
-        data-icon="⭐" data-name="天选者"
-        data-stat="HP: 120 &nbsp; 速度: 140<br>——<br>初始幸运+50<br>天选之星技能<br>幸运决定星星大小">⭐</div>
-      <div class="cls-dot" id="cls-1"
         data-icon="💊" data-name="医生"
         data-stat="HP: 120 &nbsp; 速度: 70<br>回血: 5/s &nbsp; 经验: +0%<br>——<br>被动: 每回复100HP 伤害+5%<br>妙手回春: 立刻回复100HP<br>冷却30秒">💊</div>
-      <div class="cls-dot" id="cls-2"
+      <div class="cls-dot" id="cls-1"
         data-icon="⚔" data-name="狂战士"
         data-stat="HP: 100 &nbsp; 速度: 70<br>回血: 2/s &nbsp; 经验: +0%<br>——<br>被动: 每升一级最大HP+5<br>狂暴: 20秒内伤害×2<br>冷却50秒">⚔</div>
-      <div class="cls-dot" id="cls-3"
+      <div class="cls-dot" id="cls-2"
         data-icon="⚒" data-name="铁匠"
         data-stat="HP: 100 &nbsp; 速度: 70<br>回血: 1/s &nbsp; 经验: +0%<br>——<br>被动: 物理伤害+50%<br>临阵磨枪: 10秒内CD-40%<br>冷却50秒">⚒</div>
-      <div class="cls-dot" id="cls-4"
+      <div class="cls-dot" id="cls-3"
         data-icon="🔮" data-name="法师"
         data-stat="HP: 100 &nbsp; 速度: 70<br>回血: 1/s &nbsp; 经验: +0%<br>——<br>被动: 法术伤害+50%<br>法力无天: 10秒内范围+30%<br>冷却45秒">🔮</div>
-      <div class="cls-dot" id="cls-5"
+      <div class="cls-dot" id="cls-4"
         data-icon="🎓" data-name="博士"
         data-stat="HP: 100 &nbsp; 速度: 62<br>回血: 1/s &nbsp; 经验: +50%<br>——<br>被动: 无法获得移速加成<br>经验老道: 吸取全场经验<br>冷却50秒">🎓</div>
-      <div class="cls-dot" id="cls-6"
+      <div class="cls-dot" id="cls-5"
         data-icon="💀" data-name="白色死神"
         data-stat="HP: 100 &nbsp; 速度: 70<br>回血: 1/s &nbsp; 经验: +0%<br>——<br>被动: 枪械伤害+50%·CD-25%<br>狙神: 瞄准7.49秒后秒杀HP最高目标<br>冷却542秒">💀</div>
-      <div class="cls-dot" id="cls-7"
+      <div class="cls-dot" id="cls-6"
         data-icon="⭐" data-name="模仿者"
         data-stat="HP: 100 &nbsp; 速度: 70<br>回血: 1/s &nbsp; 经验: +0%<br>——<br>四种模仿形态<br>模仿: 吞下怪物获得随机形态<br>冷却120秒">⭐</div>
-      <div class="cls-dot" id="cls-8" style="display:none;border-color:#f44;color:#f44"
+      <div class="cls-dot" id="cls-7" style="display:none;border-color:#f44;color:#f44"
         data-icon="🎅" data-name="圣诞老人 🎄"
         data-stat="HP: 100 &nbsp; 速度: 70<br>回血: 1/s &nbsp; 幸运: 5<br>——<br>被动: 0.5%概率召唤超大礼盒<br>圣诞礼物: 随机生成礼盒<br>冷却60秒<br><span style='color:#f44'>仅圣诞节开放</span>">🎅</div>
+      <div class="cls-dot" id="cls-8"
+        data-icon="⭐" data-name="天选者"
+        data-stat="HP: 100 &nbsp; 速度: 70<br>——<br>初始幸运+50<br>天选之星技能<br>幸运决定星星大小">⭐</div>
     </div>
 
     <div style="font-size:9px;color:#555;margin-bottom:10px">起始武器通过首次选择获得</div>
@@ -591,8 +591,6 @@ function drawSprite(name, sx, sy, scale) {
 // ═══════════════════════════════════════════════════════
 
 const CLASSES = [
-  { id:'chosen', name:'天选者', hp:120, spd:140, dmgMult:1.0, areaMult:1.0, cdMult:1.0,
-    bonus: p => { p.luck += 50; } },
   { id:'doctor', name:'医生',   hp:120, spd:70,  dmgMult:1.0, areaMult:1.0, cdMult:1.0,
     bonus: p => { p.hpRegen = 5; p.pickupR = 4; p.xpMult = 1; p.healAccum = 0; } },
   { id:'berserker', name:'狂战士', hp:100, spd:70,  dmgMult:1.0, areaMult:1.0, cdMult:1.0,
@@ -609,6 +607,8 @@ const CLASSES = [
     bonus: p => { p.hpRegen = 1; p.pickupR = 4; p.xpMult = 1; } },
   { id:'santa', name:'圣诞老人', hp:100, spd:70, dmgMult:1.0, areaMult:1.0, cdMult:1.0,
     bonus: p => { p.hpRegen = 1; p.pickupR = 4; p.xpMult = 1; p.luck = 5; } },
+  { id:'chosen', name:'天选者', hp:100, spd:70, dmgMult:1.0, areaMult:1.0, cdMult:1.0,
+    bonus: p => { p.luck += 50; } },
 ];
 
 const ENEMY_TYPES = {
@@ -668,15 +668,25 @@ function getWavePlan(n) {
 // ═══════════════════════════════════════════════════════
 // §0  版本号 & 更新公告  ← 每次更新只需修改这里
 // ═══════════════════════════════════════════════════════
-const GAME_VERSION = 'v0.2.0';
+const GAME_VERSION = 'v0.2.1';
 const CHANGELOG = [
+  {
+    version: 'v0.2.1',
+    date: '2026-04',
+    items: [
+      '天选者移至角色列表最后，需解锁后才能使用',
+      '天选者数据调整：HP 120→100，移速 140→70',
+      '天选者解锁条件：800金币 或 通关全部30波',
+      '默认开放角色调整为仅「医生」',
+    ]
+  },
   {
     version: 'v0.2.0',
     date: '2026-04',
     items: [
       '新增金币系统：每局结束按波数获得金币',
       '新增商城：消耗金币解锁职业角色',
-      '新增角色解锁机制：首次游玩仅开放天选者和医生',
+      '新增角色解锁机制：首次游玩仅开放医生',
       '其余角色需在商城购买或完成指定条件解锁',
       '修复：设置页和成就页无法返回的问题',
     ]
@@ -3895,7 +3905,7 @@ document.getElementById('btn-confirm').addEventListener('click', ()=>{
 (function() {
   const d = new Date();
   if (d.getMonth() === 11 && d.getDate() === 25) {
-    const santaDot = document.getElementById('cls-8');
+    const santaDot = document.getElementById('cls-7');
     if (santaDot) santaDot.style.display = '';
   }
 })();
@@ -3968,8 +3978,8 @@ function calcCoinsEarned(waveNum, kills) {
 }
 
 // ── Unlock helpers ──
-// Default unlocked: chosen + doctor
-const DEFAULT_UNLOCKED = ['chosen','doctor'];
+// Default unlocked: doctor only (chosen now requires unlock)
+const DEFAULT_UNLOCKED = ['doctor'];
 
 function getUnlocked() {
   try {
@@ -3993,15 +4003,15 @@ function isUnlocked(id) {
 // ── Unlock condition definitions per class ──
 // condition: { price: coins_cost, condDesc: string, condCheck: fn→bool }
 const CLASS_UNLOCK = {
-  chosen:    { price: 0,   condDesc: '默认解锁',                     condCheck: ()=>true },
-  doctor:    { price: 0,   condDesc: '默认解锁',                     condCheck: ()=>true },
-  berserker: { price: 300, condDesc: '或: 在一局中撑过第10波',        condCheck: ()=>{ const b=loadBest(); return b&&b.wave>=10; } },
-  blacksmith:{ price: 400, condDesc: '购买即可解锁',                  condCheck: ()=>false },
-  mage:      { price: 400, condDesc: '购买即可解锁',                  condCheck: ()=>false },
-  scholar:   { price: 500, condDesc: '或: 在一局中撑过第20波',        condCheck: ()=>{ const b=loadBest(); return b&&b.wave>=20; } },
-  reaper:    { price: 600, condDesc: '或: 在一局中撑过第25波',        condCheck: ()=>{ const b=loadBest(); return b&&b.wave>=25; } },
-  kirby:     { price: 500, condDesc: '或: 一局中击杀500个敌人',       condCheck: ()=>{ const b=loadBest(); return b&&b.kills>=500; } },
-  santa:     { price: 0,   condDesc: '仅圣诞节（12月25日）开放',      condCheck: ()=>{ const d=new Date(); return d.getMonth()===11&&d.getDate()===25; } },
+  doctor:    { price: 0,   condDesc: '默认解锁',                            condCheck: ()=>true },
+  berserker: { price: 300, condDesc: '或: 在一局中撑过第10波',               condCheck: ()=>{ const b=loadBest(); return b&&b.wave>=10; } },
+  blacksmith:{ price: 400, condDesc: '购买即可解锁',                         condCheck: ()=>false },
+  mage:      { price: 400, condDesc: '购买即可解锁',                         condCheck: ()=>false },
+  scholar:   { price: 500, condDesc: '或: 在一局中撑过第20波',               condCheck: ()=>{ const b=loadBest(); return b&&b.wave>=20; } },
+  reaper:    { price: 600, condDesc: '或: 在一局中撑过第25波',               condCheck: ()=>{ const b=loadBest(); return b&&b.wave>=25; } },
+  kirby:     { price: 500, condDesc: '或: 一局中击杀500个敌人',              condCheck: ()=>{ const b=loadBest(); return b&&b.kills>=500; } },
+  santa:     { price: 0,   condDesc: '仅圣诞节（12月25日）开放',             condCheck: ()=>{ const d=new Date(); return d.getMonth()===11&&d.getDate()===25; } },
+  chosen:    { price: 800, condDesc: '或: 通关全部30波',                     condCheck: ()=>{ const b=loadBest(); return b&&b.wave>=30; } },
 };
 
 // Auto-unlock via conditions (called when opening shop or starting game)
@@ -4032,7 +4042,7 @@ function refreshClsGrid() {
 }
 
 // ── Shop render ──
-const CLS_ICONS = ['⭐','💊','⚔','⚒','🔮','🎓','💀','⭐','🎅'];
+const CLS_ICONS = ['💊','⚔','⚒','🔮','🎓','💀','⭐','🎅','⭐'];
 function renderShop() {
   autoCheckUnlocks();
   const coins = getCoins();
