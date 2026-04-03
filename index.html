@@ -5050,14 +5050,15 @@ const _BAD_WORDS=['操','妈的','傻逼','草泥马','cnm','nmsl','cnmd','nmd',
 function _hasBadWord(t){const l=t.toLowerCase();return _BAD_WORDS.some(w=>l.includes(w.toLowerCase()));}
 function parseColorMsg(raw){
   const safe=raw.replace(/</g,'&lt;');
-  if(raw.startsWith('#R '))return'<span style="color:#f44">'+safe.slice(3)+'</span>';
-  if(raw.startsWith('#Y '))return'<span style="color:#fd4">'+safe.slice(3)+'</span>';
-  if(raw.startsWith('#B '))return'<span style="color:#5af">'+safe.slice(3)+'</span>';
-  if(raw.startsWith('#G '))return'<span style="color:#4fd">'+safe.slice(3)+'</span>';
-  if(raw.startsWith('#P '))return'<span style="color:#f8a">'+safe.slice(3)+'</span>';
-  if(raw.startsWith('#小九牛逼 ')){
+  const m1=raw.match(/^#([RYBGP]) ?([\s\S]*)$/);
+  if(m1){
+    const col={R:'#f44',Y:'#fd4',B:'#5af',G:'#4fd',P:'#f8a'}[m1[1]];
+    if(col)return'<span style="color:'+col+'">'+m1[2].replace(/</g,'&lt;')+'</span>';
+  }
+  if(raw.startsWith('#小九牛逼')){
     const cs=['#f44','#f84','#fd4','#4fd','#5af','#a4f','#f8a'];
-    return[...safe.slice(6)].map((c,i)=>'<span style="color:'+cs[i%cs.length]+'">'+c+'</span>').join('');
+    const txt=raw.slice(raw.startsWith('#小九牛逼 ')?6:5);
+    return[...txt.replace(/</g,'&lt;')].map((c,i)=>'<span style="color:'+cs[i%cs.length]+'">'+c+'</span>').join('');
   }
   return safe;
 }
