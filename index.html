@@ -269,6 +269,7 @@ input[type=range]{width:120px;accent-color:#48f}
   <div class="panel" style="max-width:300px">
     <div style="font-size:16px;color:#fd4;margin-bottom:14px">⏸ 游戏暂停</div>
     <button class="btn primary" id="btn-resume">▶ 继续</button><br>
+    <button class="btn" id="btn-char-from-menu">👤 角色详情</button><br>
     <button class="btn" id="btn-ingame-settings">⚙ 设置</button>
     <button class="btn" id="btn-quit-run" style="border-color:#f44;color:#f44">✖ 放弃本局</button>
   </div>
@@ -276,10 +277,10 @@ input[type=range]{width:120px;accent-color:#48f}
 
 <!-- Character detail overlay -->
 <div class="overlay" id="o-char-detail">
-  <div class="panel" style="max-width:360px">
-    <div style="font-size:16px;color:#4ef;margin-bottom:12px">👤 角色详情</div>
-    <div id="char-detail-content" style="font-size:11px;line-height:2;text-align:left"></div>
-    <button class="btn" id="btn-char-detail-back" style="margin-top:12px">← 返回</button>
+  <div class="panel" style="max-width:500px;width:92%">
+    <div style="font-size:18px;color:#4ef;margin-bottom:14px;letter-spacing:2px">👤 角色详情</div>
+    <div id="char-detail-content" style="font-size:12px;line-height:2.1;text-align:left;max-height:60vh;overflow-y:auto;padding-right:4px"></div>
+    <button class="btn" id="btn-char-detail-back" style="margin-top:14px">← 返回</button>
   </div>
 </div>
 
@@ -294,25 +295,36 @@ input[type=range]{width:120px;accent-color:#48f}
 </div>
 
 <!-- MAIN MENU -->
-<div class="overlay active" id="o-menu">
-  <div class="panel" style="max-width:400px">
+<div class="overlay active" id="o-menu" style="background:#0d0d1a;align-items:stretch;justify-content:stretch;flex-direction:column">
+
+  <!-- Top button bar -->
+  <div id="menu-topbar" style="display:flex;justify-content:center;flex-wrap:wrap;gap:8px;padding:14px 20px;background:rgba(0,0,0,0.4);border-bottom:1px solid #1e2030">
+    <button class="btn" id="btn-settings" style="padding:7px 16px;font-size:12px">⚙ 设置</button>
+    <button class="btn" id="btn-achieve" style="padding:7px 16px;font-size:12px">🏆 成就</button>
+    <button class="btn" id="btn-shop" style="border-color:#fd4;color:#fd4;padding:7px 16px;font-size:12px">🏪 商城</button>
+    <button class="btn" id="btn-announce" style="border-color:#f84;color:#f84;padding:7px 16px;font-size:12px">📢 公告</button>
+    <button class="btn" id="btn-mailbox" style="border-color:#4ef;color:#4ef;padding:7px 16px;font-size:12px;position:relative">
+      📬 邮箱<span id="mail-badge" style="display:none;position:absolute;top:-6px;right:-6px;
+        background:#f44;color:#fff;font-size:9px;border-radius:50%;width:16px;height:16px;
+        line-height:16px;text-align:center">0</span>
+    </button>
+    <button class="btn" id="btn-activity" style="border-color:#4fd;color:#4fd;padding:7px 16px;font-size:12px">🎪 活动</button>
+  </div>
+
+  <!-- Center: title + animated character -->
+  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px">
     <div class="game-title">像素勇士</div>
     <div class="game-sub">肉 鸽 版</div>
-    <div id="menu-coins-bar">💰 金币: <span id="menu-coins">0</span></div>
-    <div style="margin-bottom:18px">
-      <button class="btn primary" id="btn-start">⚔ 开始游戏</button><br>
-      <button class="btn" id="btn-settings">⚙ 设置</button>
-      <button class="btn" id="btn-achieve">🏆 成就</button>
-      <button class="btn" id="btn-shop" style="border-color:#fd4;color:#fd4">🏪 商城</button><br>
-      <button class="btn" id="btn-announce" style="border-color:#f84;color:#f84">📢 公告</button>
-      <button class="btn" id="btn-mailbox" style="border-color:#4ef;color:#4ef;position:relative">
-        📬 邮箱<span id="mail-badge" style="display:none;position:absolute;top:-6px;right:-6px;
-          background:#f44;color:#fff;font-size:9px;border-radius:50%;width:16px;height:16px;
-          line-height:16px;text-align:center">0</span>
-      </button>
-    </div>
-    <div id="best-run" style="font-size:10px;color:#666;border-top:1px solid #222;padding-top:10px"></div>
-    <div id="menu-version" style="font-size:9px;color:#444;margin-top:8px;letter-spacing:1px"></div>
+    <div id="menu-char-icon" style="font-size:90px;margin:20px 0 10px;line-height:1;animation:titlePulse 2.5s ease-in-out infinite">⚔</div>
+    <div id="menu-char-label" style="font-size:12px;color:#555;letter-spacing:2px">— 选择职业，踏上征途 —</div>
+    <div id="menu-coins-bar" style="margin-top:20px;font-size:15px;color:#fd4;letter-spacing:1px">💰 金币: <span id="menu-coins">0</span></div>
+    <div id="best-run" style="font-size:10px;color:#444;margin-top:10px"></div>
+  </div>
+
+  <!-- Bottom bar: version left, start button right -->
+  <div style="display:flex;justify-content:space-between;align-items:flex-end;padding:16px 24px;background:rgba(0,0,0,0.4);border-top:1px solid #1e2030">
+    <div id="menu-version" style="font-size:9px;color:#333;letter-spacing:1px"></div>
+    <button class="btn primary" id="btn-start" style="font-size:16px;padding:12px 34px;letter-spacing:2px;box-shadow:0 0 20px #fd44">⚔ 开始游戏</button>
   </div>
 </div>
 
@@ -336,6 +348,23 @@ input[type=range]{width:120px;accent-color:#48f}
     <div id="mailbox-list" style="max-height:340px;overflow-y:auto;margin-bottom:14px"></div>
     <div style="text-align:center">
       <button class="btn" id="btn-mailbox-back">← 返回</button>
+    </div>
+  </div>
+</div>
+
+<!-- ACTIVITY -->
+<div class="overlay" id="o-activity">
+  <div class="panel" style="max-width:440px;text-align:left">
+    <div style="font-size:18px;color:#4fd;margin-bottom:4px;text-align:center;letter-spacing:2px">🎪 限时活动</div>
+    <div style="font-size:10px;color:#555;text-align:center;margin-bottom:14px">特殊挑战 · 限时奖励</div>
+    <div id="activity-list" style="max-height:380px;overflow-y:auto;margin-bottom:14px;text-align:center">
+      <div style="color:#444;padding:40px 0;font-size:13px;line-height:2">
+        🌙 暂无进行中的活动<br>
+        <span style="font-size:10px;color:#333">活动期间将在此显示特殊挑战与奖励</span>
+      </div>
+    </div>
+    <div style="text-align:center">
+      <button class="btn" id="btn-activity-back">← 返回</button>
     </div>
   </div>
 </div>
@@ -803,8 +832,22 @@ function getWavePlan(n) {
 // ═══════════════════════════════════════════════════════
 // §0  版本号 & 更新公告  ← 每次更新只需修改这里
 // ═══════════════════════════════════════════════════════
-const GAME_VERSION = 'v0.3.0';
+const GAME_VERSION = 'v0.3.1';
 const CHANGELOG = [
+  {
+    version: 'v0.3.1',
+    date: '2026-04',
+    items: [
+      '主菜单全面改版：角色居中展示，顶部按钮栏，右下角开始按钮',
+      '新增「活动」按钮，未来限时活动将在此展示',
+      '角色详情面板扩大，支持滚动查看，可从暂停菜单直接打开',
+      '模仿者HUD技能栏实时显示当前形态及对应颜色',
+      '导弹无人机：导弹落点显示红色警告圈和准心指示',
+      '移除召唤书武器',
+      '怪物不再能在地图边界外生成',
+      '移速宝箱加成调整为+7（固定值）',
+    ]
+  },
   {
     version: 'v0.3.0',
     date: '2026-04',
@@ -999,19 +1042,6 @@ const WEAPON_DEFS = {
       if (w?.deathMissile)       parts.push('☠死神');
       return parts.join(' · ');
     }
-  },
-  summon_book: {
-    name:'召唤书', icon:'📖', maxLv:7, type:'orbit_book',
-    levels: [
-      {orbs:1, dmg:8,  shotDmg:14, radius:46, rotSpeed:1.8, shotCd:1800, color:'#a4f'},
-      {orbs:1, dmg:10, shotDmg:18, radius:48, rotSpeed:1.9, shotCd:1600, color:'#a4f'},
-      {orbs:2, dmg:12, shotDmg:22, radius:50, rotSpeed:2.0, shotCd:1500, color:'#b4f'},
-      {orbs:2, dmg:15, shotDmg:28, radius:52, rotSpeed:2.1, shotCd:1300, color:'#b4f'},
-      {orbs:3, dmg:18, shotDmg:35, radius:55, rotSpeed:2.2, shotCd:1200, color:'#c4f'},
-      {orbs:3, dmg:22, shotDmg:44, radius:58, rotSpeed:2.3, shotCd:1000, color:'#d4f'},
-      {orbs:4, dmg:28, shotDmg:55, radius:62, rotSpeed:2.5, shotCd:900,  color:'#f4f'},
-    ],
-    describe: lv => { const s=WEAPON_DEFS.summon_book.levels[lv-1]; return `${s.orbs}书 | 碰撞${s.dmg} | 射击${s.shotDmg}`; }
   },
   sniper: {
     name:'狙击枪', icon:'🔭', maxLv:8, type:'normal', fire:fireSniper,
@@ -1557,6 +1587,9 @@ function spawnNextEnemy() {
   else if (edge===1){ ex=cam.x-margin+Math.random()*(GW+margin*2); ey=cam.y+GH+margin; }
   else if (edge===2){ ex=cam.x-margin;      ey=cam.y-margin+Math.random()*(GH+margin*2); }
   else              { ex=cam.x+GW+margin;   ey=cam.y-margin+Math.random()*(GH+margin*2); }
+  // Clamp to world bounds
+  ex = Math.max(-WORLD_W/2, Math.min(WORLD_W/2, ex));
+  ey = Math.max(-WORLD_H/2, Math.min(WORLD_H/2, ey));
 
   gs.enemies.push({
     type: entry.type,
@@ -1731,7 +1764,7 @@ function spawnDrop(x, y, type) {
 const CHEST_STAT_POOL = [
   { id:'maxhp',  icon:'❤', name:'+20 最大HP',      apply:p=>{p.maxHp+=20; healPlayer(20);} },
   { id:'dmg10',  icon:'⚔', name:'+10% 伤害',       apply:p=>{p.dmgMult=+(p.dmgMult*1.10).toFixed(4);} },
-  { id:'spd15',  icon:'💨', name:'+15 移速',        apply:p=>{p.spd+=15;} },
+  { id:'spd7',   icon:'💨', name:'+7 移速',          apply:p=>{p.spd+=7;} },
   { id:'luck5',  icon:'🍀', name:'+5 幸运',         apply:p=>{p.luck+=5;} },
   { id:'dodge',  icon:'🌀', name:'+4% 闪避',        apply:p=>{p.baseDodge=Math.min(0.6,p.baseDodge+0.04);} },
   { id:'armor',  icon:'🛡', name:'+4% 减伤',        apply:p=>{p.baseDmgRed=Math.min(0.6,p.baseDmgRed+0.04);} },
@@ -2321,19 +2354,16 @@ function fireMissileDrone(w, stats, p) {
     return;
   }
 
-  // ── 6 homing missiles ──
+  // ── 6 falling missiles around player ──
   for (let i=0; i<count; i++) {
-    const ang = Math.random()*Math.PI*2;
-    gs.projectiles.push({
-      x:p.x+Math.cos(ang)*6, y:p.y+Math.sin(ang)*6,
-      vx:Math.cos(ang)*50, vy:-80,
-      dmg:0, radius:4, color:col,
-      life:4.0, type:'missile', homing:true, maxSpd:230, pierce:false,
-      explodeR:baseR, explodeDmg:baseDmg, missileW:w,
-      onHit:(proj)=>{ missileDroneExplosion(proj.x,proj.y,proj.explodeR,proj.explodeDmg,proj.missileW); proj.dead=true; },
-      onExpire:(proj)=>{ missileDroneExplosion(proj.x,proj.y,proj.explodeR,proj.explodeDmg,proj.missileW); },
-    });
+    const ang = (i/count)*Math.PI*2 + Math.random()*0.4;
+    const dist = 40 + Math.random()*70;
+    const tx = p.x + Math.cos(ang)*dist;
+    const ty = p.y + Math.sin(ang)*dist;
+    const delay = 0.08 + i * 0.12;
+    gs.pendingExplosions.push({ timer:delay, x:tx, y:ty, radius:baseR, dmg:baseDmg, w, falling:true, col });
   }
+  if (settings.particles) spawnParticles(p.x, p.y, col, 8, 80, 0.5, 3);
 
   // ── Lv4 extra burst ──
   if (w.missileMode==='ground') {
@@ -2959,6 +2989,34 @@ function render() {
     ctx.restore();
   });
 
+  // Falling missile warning indicators
+  if (gs.pendingExplosions) {
+    const _nowPe = performance.now()/1000;
+    gs.pendingExplosions.forEach(pe => {
+      if (!pe.falling) return;
+      const sx = Math.floor(pe.x - cam.x), sy = Math.floor(pe.y - cam.y);
+      const maxDelay = 0.08 + 5 * 0.12; // max delay range
+      const progress = Math.max(0, 1 - pe.timer / Math.max(0.01, maxDelay));
+      const alpha = 0.25 + progress * 0.65;
+      const r = Math.max(6, pe.radius * 0.75);
+      const pulse = 0.85 + 0.15*Math.sin(_nowPe*10 + pe.x);
+      // Warning circle fill
+      ctx.globalAlpha = alpha * 0.25 * pulse;
+      ctx.fillStyle = '#f44';
+      ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI*2); ctx.fill();
+      // Warning circle ring
+      ctx.globalAlpha = alpha * pulse;
+      ctx.strokeStyle = '#f44';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI*2); ctx.stroke();
+      // Crosshair lines
+      const ch = r * 0.55;
+      ctx.beginPath(); ctx.moveTo(sx-ch, sy); ctx.lineTo(sx+ch, sy); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(sx, sy-ch); ctx.lineTo(sx, sy+ch); ctx.stroke();
+      ctx.globalAlpha = 1;
+    });
+  }
+
   // Magnet aura
   if (gs.player.magnetTimer > 0) {
     const px=Math.floor(gs.player.x-cam.x), py=Math.floor(gs.player.y-cam.y);
@@ -3147,6 +3205,26 @@ function render() {
 
   if (p.invincible<=0||(Math.floor(p.invincible*12)%2===0))
     drawSprite(spr, Math.floor(p.x-cam.x-pw/2), Math.floor(p.y-cam.y-ph/2), psc);
+
+  // Kirby form label above player
+  if (CLASSES[p.classIdx]?.id === 'kirby') {
+    const _kfW = getWeapon('kirby_copy');
+    if (_kfW?.kirbyForm) {
+      const _fLabels = {fire:'🔥火焰', sword:'⚔剑士', thunder:'⚡雷电', ice:'❄冰冻'};
+      const _fColors = {fire:'#f84', sword:'#fd4', thunder:'#aaf', ice:'#8ef'};
+      const _lbl = _fLabels[_kfW.kirbyForm] || '';
+      const _col = _fColors[_kfW.kirbyForm] || '#fff';
+      const _px = Math.floor(p.x - cam.x);
+      const _py = Math.floor(p.y - cam.y - ph/2 - 8);
+      ctx.font = 'bold 8px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      ctx.fillRect(_px - 18, _py - 7, 36, 9);
+      ctx.fillStyle = _col;
+      ctx.fillText(_lbl, _px, _py);
+      ctx.textAlign = 'left';
+    }
+  }
 
   // Particles
   for (const pp of gs.particles) {
@@ -3914,7 +3992,25 @@ function updateHUD() {
   const skillEl = document.getElementById('hud-skill');
   if (skillEl) {
     const clsId = CLASSES[p.classIdx]?.id;
-    const skillName = clsId==='doctor' ? '💊 妙手回春' : clsId==='berserker' ? '⚡ 狂暴' : clsId==='blacksmith' ? '⚒ 临阵磨枪' : clsId==='mage' ? '✨ 法力无天' : clsId==='scholar' ? '📚 经验老道' : clsId==='reaper' ? '🎯 狙神' : clsId==='kirby' ? '⭐ 模仿' : clsId==='santa' ? '🎁 圣诞礼物' : '⭐ 天选之星';
+    // Kirby form: determine name + color
+    let _kirbyFormName = '无形态', _kirbyFormColor = '#888';
+    if (clsId === 'kirby') {
+      const _kw = getWeapon('kirby_copy');
+      const _formNames  = {fire:'🔥火焰', sword:'⚔剑士', thunder:'⚡雷电', ice:'❄冰冻'};
+      const _formColors = {fire:'#f84', sword:'#fd4', thunder:'#88f', ice:'#8ef'};
+      if (_kw?.kirbyForm) {
+        _kirbyFormName  = _formNames[_kw.kirbyForm]  || '未知';
+        _kirbyFormColor = _formColors[_kw.kirbyForm] || '#888';
+      }
+    }
+    const skillName = clsId==='doctor' ? '💊 妙手回春' : clsId==='berserker' ? '⚡ 狂暴' : clsId==='blacksmith' ? '⚒ 临阵磨枪' : clsId==='mage' ? '✨ 法力无天' : clsId==='scholar' ? '📚 经验老道' : clsId==='reaper' ? '🎯 狙神' : clsId==='kirby' ? `🌀 模仿·${_kirbyFormName}` : clsId==='santa' ? '🎁 圣诞礼物' : '⭐ 天选之星';
+    if (clsId === 'kirby') {
+      skillEl.style.color = _kirbyFormColor;
+      skillEl.style.borderColor = _kirbyFormColor;
+    } else {
+      skillEl.style.color = '';
+      skillEl.style.borderColor = '';
+    }
     if (clsId==='berserker' && p.berserkActive) {
       skillEl.textContent = `⚡ 狂暴 ${Math.ceil(p.berserkTimer)}s`;
       skillEl.className = 'berserk-on';
@@ -4124,7 +4220,27 @@ document.getElementById('btn-mailbox').addEventListener('click', ()=>{ renderMai
 document.getElementById('btn-mailbox-back').addEventListener('click', ()=>showOverlay('o-menu'));
 document.getElementById('btn-shop').addEventListener('click', ()=>{ renderShop(); showOverlay('o-shop'); });
 document.getElementById('btn-shop-back').addEventListener('click', ()=>{ renderMenuCoins(); showOverlay('o-menu'); });
+document.getElementById('btn-activity').addEventListener('click', ()=>showOverlay('o-activity'));
+document.getElementById('btn-activity-back').addEventListener('click', ()=>showOverlay('o-menu'));
 updateMailBadge();
+
+// Animated character cycling on main menu
+(function() {
+  const icons = ['⚔','🔮','💊','🌀','💀','⚒','🎓','🎅'];
+  const labels = ['狂战士','法师','医生','模仿者','白色死神','铁匠','博士','圣诞老人'];
+  let ci = 0;
+  setInterval(()=>{
+    ci = (ci+1) % icons.length;
+    const el = document.getElementById('menu-char-icon');
+    const lb = document.getElementById('menu-char-label');
+    if (el) { el.style.opacity='0'; setTimeout(()=>{ el.textContent=icons[ci]; el.style.opacity='1'; },200); }
+    if (lb) { lb.style.opacity='0'; setTimeout(()=>{ lb.textContent='— '+labels[ci]+' —'; lb.style.opacity='1'; },200); }
+  }, 2400);
+  const el = document.getElementById('menu-char-icon');
+  const lb = document.getElementById('menu-char-label');
+  if (el) el.style.transition='opacity .2s';
+  if (lb) lb.style.transition='opacity .2s';
+})();
 document.getElementById('btn-class-back').addEventListener('click', ()=>showOverlay('o-menu'));
 document.getElementById('btn-settings-back').addEventListener('click', ()=>showOverlay('o-menu'));
 document.getElementById('btn-achieve-back').addEventListener('click', ()=>showOverlay('o-menu'));
@@ -4162,6 +4278,12 @@ document.getElementById('btn-ingame-char').addEventListener('click', ()=>{
   if (!gs) return;
   gs._prePausePhase = gs.phase;
   gs.phase = 'paused';
+  renderCharDetail();
+  document.getElementById('o-char-detail').classList.add('active');
+});
+document.getElementById('btn-char-from-menu').addEventListener('click', ()=>{
+  if (!gs) return;
+  document.getElementById('o-ingame-menu').classList.remove('active');
   renderCharDetail();
   document.getElementById('o-char-detail').classList.add('active');
 });
