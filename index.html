@@ -495,11 +495,7 @@ input[type=range]{width:120px;accent-color:#48f}
       <button id="lang-toggle" class="btn" style="padding:4px 14px;font-size:11px">English</button>
     </div>
     <hr style="border:0;border-top:1px solid #222;margin:12px 0">
-    <div style="font-size:10px;color:#888;margin-bottom:4px">💬 聊天室 (Firebase URL)</div>
-    <input id="chat-url-input" type="text" placeholder="https://your-project.firebaseio.com"
-      style="width:100%;background:#111;border:1px solid #334;border-radius:3px;color:#eee;
-      padding:6px 8px;font-size:10px;font-family:monospace;box-sizing:border-box;margin-bottom:4px">
-    <div style="font-size:9px;color:#444">免费创建：console.firebase.google.com → Realtime Database</div>
+    <div style="font-size:10px;color:#888;margin-bottom:4px">💬 聊天室已连接，无需配置</div>
     <div class="setting-row">
       <span>⏩ 游戏速度 <span id="spd-val">×1.0</span></span>
       <input type="range" id="spd-slider" min="50" max="200" value="100" step="10">
@@ -4948,8 +4944,9 @@ function getChatNick(){
   }catch{_chatNick='匿名玩家';}
   return _chatNick;
 }
+const _DEFAULT_CHAT_URL='https://xiaojiu-3777c-default-rtdb.asia-southeast1.firebasedatabase.app';
 function getChatUrl(){
-  try{return(localStorage.getItem('pw_chat_url')||'').trim().replace(/\/+$/,'');}catch{return '';}
+  try{const u=(localStorage.getItem('pw_chat_url')||'').trim().replace(/\/+$/,'');return u||_DEFAULT_CHAT_URL;}catch{return _DEFAULT_CHAT_URL;}
 }
 async function fetchChatMsgs(){
   const url=getChatUrl();if(!url)return null;
@@ -4990,7 +4987,7 @@ function renderChatMsgs(msgs){
 }
 function renderChatPreview(msgs){
   const el=document.getElementById('menu-chat-latest');if(!el)return;
-  if(!getChatUrl()){el.textContent='配置Firebase后即可使用聊天 — 点击进入查看说明';return;}
+  if(!getChatUrl()){el.textContent='聊天室加载中...';return;}
   if(!msgs){el.textContent='聊天室连接失败...';return;}
   if(!msgs.length){el.textContent='暂无消息，快来第一个打招呼！';return;}
   const last=msgs[msgs.length-1];
