@@ -5035,14 +5035,7 @@ if(nickEl){
     }
   });
 }
-document.getElementById('chat-url-input').addEventListener('change',function(){
-  try{localStorage.setItem('pw_chat_url',this.value.trim());}catch(e){}
-  startChatPoll();
-});
-try{
-  const su=localStorage.getItem('pw_chat_url');
-  if(su)document.getElementById('chat-url-input').value=su;
-}catch(e){}
+// chat-url-input removed (URL is now hardcoded)
 
 // Wrap showOverlay to track chat open state
 (function(){
