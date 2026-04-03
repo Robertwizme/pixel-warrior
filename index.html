@@ -316,6 +316,7 @@ input[type=range]{width:120px;accent-color:#48f}
     <div class="game-title">像素勇士</div>
     <div class="game-sub">肉 鸽 版</div>
     <div id="menu-char-icon" style="font-size:90px;margin:20px 0 10px;line-height:1;animation:titlePulse 2.5s ease-in-out infinite">⚔</div>
+    <canvas id="menu-sprite-canvas" style="display:none;margin:20px auto 10px;image-rendering:pixelated;image-rendering:crisp-edges"></canvas>
     <div id="menu-char-label" style="font-size:12px;color:#555;letter-spacing:2px">— 选择职业，踏上征途 —</div>
     <div id="menu-coins-bar" style="margin-top:20px;font-size:15px;color:#fd4;letter-spacing:1px">💰 金币: <span id="menu-coins">0</span></div>
     <div id="best-run" style="font-size:10px;color:#444;margin-top:10px"></div>
@@ -699,6 +700,8 @@ const SPRITES = {
   player_warrior:[' yy ','yyyy',' nn ','nnnn','sRns','rrrr','Rkrr',' k k'],
   player_mage:   [' pp ','pppp',' ww ','wwww','wbww','bbbb','bQpb',' b b'],
   player_ranger: [' gg ','gggg',' nn ','nnnn','nGnn','GGGG','GnGG',' G G'],
+  // 医生（护士）: 白帽 + 红十字 + 棕发 + 肤色脸 + 白裙 + 深色鞋
+  player_doctor: ['WWWW','WrWW','TnnT','nnnn','WrWW','WWWW','nWWn',' k k'],
   slime:  [' gg ','gggg','gWgW','gggg',' GG ',' GG '],
   goblin: [' kk ','nknk','nnnn',' oo ','oooo',' n n'],
   skeleton:[' ww ','wKwK','wwww',' ss ','ssss',' s s'],
@@ -3198,7 +3201,9 @@ function render() {
 
   // Player
   const p = gs.player;
-  const spr = ['player_warrior','player_mage','player_ranger'][p.classIdx]||'player_warrior';
+  const _clsId2 = CLASSES[p.classIdx]?.id;
+  const _sprMap = {doctor:'player_doctor', mage:'player_mage', scholar:'player_ranger'};
+  const spr = _sprMap[_clsId2] || 'player_warrior';
   const prows=SPRITES[spr];
   const psc=2;
   const pw=prows?prows[0].length*psc:16, ph=prows?prows.length*psc:20;
@@ -4224,22 +4229,82 @@ document.getElementById('btn-activity').addEventListener('click', ()=>showOverla
 document.getElementById('btn-activity-back').addEventListener('click', ()=>showOverlay('o-menu'));
 updateMailBadge();
 
-// Animated character cycling on main menu
+// Animated character cycling on main menu (sprite-aware)
 (function() {
-  const icons = ['⚔','🔮','💊','🌀','💀','⚒','🎓','🎅'];
-  const labels = ['狂战士','法师','医生','模仿者','白色死神','铁匠','博士','圣诞老人'];
+  const MENU_CLASSES = [
+    { label:'医生',     sprite:'player_doctor' },
+    { label:'狂战士',   icon:'⚔' },
+    { label:'法师',     sprite:'player_mage' },
+    { label:'模仿者',   icon:'🌀' },
+    { label:'白色死神', icon:'💀' },
+    { label:'铁匠',     icon:'⚒' },
+    { label:'博士',     sprite:'player_ranger' },
+    { label:'圣诞老人', icon:'🎅' },
+  ];
   let ci = 0;
-  setInterval(()=>{
-    ci = (ci+1) % icons.length;
-    const el = document.getElementById('menu-char-icon');
-    const lb = document.getElementById('menu-char-label');
-    if (el) { el.style.opacity='0'; setTimeout(()=>{ el.textContent=icons[ci]; el.style.opacity='1'; },200); }
-    if (lb) { lb.style.opacity='0'; setTimeout(()=>{ lb.textContent='— '+labels[ci]+' —'; lb.style.opacity='1'; },200); }
-  }, 2400);
-  const el = document.getElementById('menu-char-icon');
-  const lb = document.getElementById('menu-char-label');
-  if (el) el.style.transition='opacity .2s';
-  if (lb) lb.style.transition='opacity .2s';
+
+  function drawMenuSprite(sprName) {
+    const cv = document.getElementById('menu-sprite-canvas');
+    if (!cv) return;
+    const rows = SPRITES[sprName];
+    if (!rows) return;
+    const sc = 10; // large scale for menu display
+    cv.width  = rows[0].length * sc;
+    cv.height = rows.length * sc;
+    cv.style.width  = (rows[0].length * sc) + 'px';
+    cv.style.height = (rows.length * sc) + 'px';
+    const c2 = cv.getContext('2d');
+    c2.clearRect(0, 0, cv.width, cv.height);
+    rows.forEach((row, ry) => {
+      [...row].forEach((ch, cx) => {
+        const col = P[ch];
+        if (!col) return;
+        c2.fillStyle = col;
+        c2.fillRect(cx * sc, ry * sc, sc, sc);
+      });
+    });
+  }
+
+  function showMenuClass(idx) {
+    const cls = MENU_CLASSES[idx];
+    const iconEl  = document.getElementById('menu-char-icon');
+    const canvEl  = document.getElementById('menu-sprite-canvas');
+    const labelEl = document.getElementById('menu-char-label');
+    if (cls.sprite) {
+      if (iconEl)  iconEl.style.display  = 'none';
+      if (canvEl) { canvEl.style.display = 'block'; drawMenuSprite(cls.sprite); }
+    } else {
+      if (canvEl) canvEl.style.display = 'none';
+      if (iconEl) { iconEl.style.display = ''; iconEl.textContent = cls.icon; }
+    }
+    if (labelEl) labelEl.textContent = '— ' + cls.label + ' —';
+  }
+
+  // Fade transition helper
+  function fadeToClass(idx) {
+    const iconEl  = document.getElementById('menu-char-icon');
+    const canvEl  = document.getElementById('menu-sprite-canvas');
+    const labelEl = document.getElementById('menu-char-label');
+    [iconEl, canvEl, labelEl].forEach(el => { if (el) el.style.opacity = '0'; });
+    setTimeout(() => {
+      showMenuClass(idx);
+      [iconEl, canvEl, labelEl].forEach(el => { if (el) el.style.opacity = '1'; });
+    }, 220);
+  }
+
+  // Set transitions
+  ['menu-char-icon','menu-sprite-canvas','menu-char-label'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.transition = 'opacity .22s';
+  });
+
+  // Show doctor first
+  showMenuClass(0);
+
+  setInterval(() => {
+    ci = (ci + 1) % MENU_CLASSES.length;
+    fadeToClass(ci);
+  }, 2600);
 })();
 document.getElementById('btn-class-back').addEventListener('click', ()=>showOverlay('o-menu'));
 document.getElementById('btn-settings-back').addEventListener('click', ()=>showOverlay('o-menu'));
