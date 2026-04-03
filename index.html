@@ -230,7 +230,7 @@ input[type=range]{width:120px;accent-color:#48f}
     <div id="load-bar" style="height:100%;background:linear-gradient(90deg,#48f,#fd4);border-radius:4px;width:0%;transition:width .12s ease"></div>
   </div>
   <div id="load-text" style="font-size:10px;color:#555;margin-top:10px;letter-spacing:2px">初始化...</div>
-  <div style="font-size:9px;color:#333;margin-top:24px">${GAME_VERSION}</div>
+  <div id="load-version" style="font-size:9px;color:#333;margin-top:24px"></div>
 </div>
 
 <!-- Canvas -->
@@ -805,8 +805,30 @@ const IMG_SRC_MAGE='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAG4AAAClCAYAAA
 // Preloaded player images (base64 embedded — loads instantly)
 const IMG_DOCTOR = new Image();
 const IMG_MAGE   = new Image();
-IMG_DOCTOR.onload = () => { if(document.getElementById('menu-sprite-canvas')?.style.display!=='none') { /* re-draw if menu visible */ } };
-IMG_MAGE.onload   = () => {};
+IMG_DOCTOR.onload = () => {
+  const cv = document.getElementById('menu-sprite-canvas');
+  if (cv && cv.style.display !== 'none') {
+    const c2 = cv.getContext('2d');
+    const tgtH = 160, tgtW = Math.round(IMG_DOCTOR.naturalWidth / IMG_DOCTOR.naturalHeight * tgtH);
+    cv.width = tgtW; cv.height = tgtH;
+    cv.style.width = tgtW + 'px'; cv.style.height = tgtH + 'px';
+    c2.clearRect(0, 0, tgtW, tgtH);
+    c2.imageSmoothingEnabled = false;
+    c2.drawImage(IMG_DOCTOR, 0, 0, tgtW, tgtH);
+  }
+};
+IMG_MAGE.onload = () => {
+  const cv = document.getElementById('menu-sprite-canvas');
+  if (cv && cv.style.display !== 'none') {
+    const c2 = cv.getContext('2d');
+    const tgtH = 160, tgtW = Math.round(IMG_MAGE.naturalWidth / IMG_MAGE.naturalHeight * tgtH);
+    cv.width = tgtW; cv.height = tgtH;
+    cv.style.width = tgtW + 'px'; cv.style.height = tgtH + 'px';
+    c2.clearRect(0, 0, tgtW, tgtH);
+    c2.imageSmoothingEnabled = false;
+    c2.drawImage(IMG_MAGE, 0, 0, tgtW, tgtH);
+  }
+};
 IMG_DOCTOR.src = IMG_SRC_DOCTOR;
 IMG_MAGE.src   = IMG_SRC_MAGE;
 
@@ -951,6 +973,7 @@ function getWavePlan(n) {
 // §0  版本号 & 更新公告  ← 每次更新只需修改这里
 // ═══════════════════════════════════════════════════════
 const GAME_VERSION = 'v0.3.2';
+document.getElementById('load-version').textContent = GAME_VERSION;
 const CHANGELOG = [
   {
     version: 'v0.3.2',
@@ -4386,7 +4409,7 @@ updateMailBadge();
     { label:'模仿者',   icon:'🌀' },
     { label:'白色死神', icon:'💀' },
     { label:'铁匠',     icon:'⚒' },
-    { label:'博士',     sprite:'player_ranger' },
+    { label:'博士',     icon:'🎓' },
     { label:'圣诞老人', icon:'🎅' },
   ];
   let ci = 0;
@@ -4926,7 +4949,7 @@ function getChatNick(){
   return _chatNick;
 }
 function getChatUrl(){
-  try{return(localStorage.getItem('pw_chat_url')||'').trim().replace(//+$/,'');}catch{return '';}
+  try{return(localStorage.getItem('pw_chat_url')||'').trim().replace(/\/+$/,'');}catch{return '';}
 }
 async function fetchChatMsgs(){
   const url=getChatUrl();if(!url)return null;
