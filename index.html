@@ -97,6 +97,16 @@ body{background:#0d0d1a;color:#eee;font-family:'Courier New',monospace;overflow:
 .sup-card .u-desc{font-size:10px;color:#cc9;line-height:1.7}
 
 /* ── Settings ── */
+/* ── Chat ── */
+#menu-chat-preview{cursor:pointer;padding:7px 18px;background:rgba(0,0,0,0.5);
+  border-top:1px solid #1e2030;display:flex;align-items:center;gap:10px;
+  transition:background .15s}
+#menu-chat-preview:hover{background:rgba(0,80,80,0.35)}
+.chat-msg{font-size:11px;line-height:1.8;padding:4px 8px;border-radius:3px;
+  background:rgba(255,255,255,0.03);border-left:2px solid #334;word-break:break-all}
+.chat-msg .chat-nick{color:#4fd;font-weight:700;margin-right:5px}
+.chat-msg .chat-time{color:#444;font-size:9px;margin-left:5px}
+.chat-msg.own-msg{border-left-color:#48f;background:rgba(68,136,255,0.07)}
 .setting-row{display:flex;align-items:center;justify-content:space-between;margin:10px 0;font-size:13px}
 .toggle{width:44px;height:22px;background:#333;border-radius:11px;cursor:pointer;position:relative;transition:background .2s}
 .toggle.on{background:#48f}
@@ -322,6 +332,13 @@ input[type=range]{width:120px;accent-color:#48f}
     <div id="best-run" style="font-size:10px;color:#444;margin-top:10px"></div>
   </div>
 
+  <!-- Chat preview strip -->
+  <div id="menu-chat-preview" onclick="showOverlay('o-chat');startChatPoll();">
+    <span style="color:#4fd;font-size:13px">💬</span>
+    <span id="menu-chat-latest" style="font-size:10px;color:#666;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">加载聊天中...</span>
+    <span style="color:#555;font-size:9px">进入聊天室 ▶</span>
+  </div>
+
   <!-- Bottom bar: version left, start button right -->
   <div style="display:flex;justify-content:space-between;align-items:flex-end;padding:16px 24px;background:rgba(0,0,0,0.4);border-top:1px solid #1e2030">
     <div id="menu-version" style="font-size:9px;color:#333;letter-spacing:1px"></div>
@@ -366,6 +383,38 @@ input[type=range]{width:120px;accent-color:#48f}
     </div>
     <div style="text-align:center">
       <button class="btn" id="btn-activity-back">← 返回</button>
+    </div>
+  </div>
+</div>
+
+<!-- CHAT -->
+<div class="overlay" id="o-chat">
+  <div class="panel" style="max-width:480px;width:92%;max-height:80vh;display:flex;flex-direction:column;padding:16px">
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div style="color:#4fd;font-size:16px">💬 <span id="chat-title">聊天室</span></div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span id="chat-nick-show" style="font-size:10px;color:#888;cursor:pointer" title="点击修改昵称"></span>
+        <button class="btn" id="btn-chat-back" style="padding:4px 10px;font-size:11px">← 返回</button>
+      </div>
+    </div>
+    <!-- Messages -->
+    <div id="chat-messages" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:3px;min-height:200px;max-height:52vh;margin-bottom:10px"></div>
+    <!-- Input area (toggled by left button) -->
+    <div style="display:flex;align-items:center;gap:6px;border-top:1px solid #222;padding-top:10px">
+      <button id="btn-chat-compose" class="btn" style="padding:6px 10px;font-size:13px;min-width:36px" title="写消息">✏️</button>
+      <div id="chat-input-area" style="flex:1;display:none;gap:6px">
+        <input id="chat-input" type="text" maxlength="100" placeholder="输入消息（最多100字）..."
+          style="width:calc(100% - 58px);background:#111;border:1px solid #48f;border-radius:3px;
+          color:#eee;padding:7px 10px;font-size:12px;font-family:monospace">
+        <button class="btn primary" id="btn-chat-send" style="padding:6px 12px;font-size:12px">发</button>
+      </div>
+      <div id="chat-compose-hint" style="font-size:10px;color:#555;flex:1">点击 ✏️ 写消息</div>
+    </div>
+    <!-- Config hint -->
+    <div id="chat-config-hint" style="display:none;text-align:center;padding:20px;color:#555;font-size:11px">
+      请先在设置中配置 Firebase URL<br>
+      <span style="color:#333;font-size:9px">console.firebase.google.com → Realtime Database → 复制URL</span>
     </div>
   </div>
 </div>
@@ -437,9 +486,20 @@ input[type=range]{width:120px;accent-color:#48f}
 <!-- SETTINGS -->
 <div class="overlay" id="o-settings">
   <div class="panel" style="max-width:360px">
-    <div style="font-size:18px;color:#fd4;margin-bottom:16px">⚙ 设置</div>
+    <div id="settings-title" style="font-size:18px;color:#fd4;margin-bottom:16px">⚙ 设置</div>
     <div class="setting-row"><span>🎵 背景音乐</span><div class="toggle on" id="tog-music"></div></div>
     <div class="setting-row"><span>✨ 粒子效果</span><div class="toggle on" id="tog-particles"></div></div>
+    <div class="setting-row"><span id="lbl-sfx">🔊 音效</span><div class="toggle on" id="tog-sfx"></div></div>
+    <div class="setting-row">
+      <span id="lbl-lang">🌐 语言 / Language</span>
+      <button id="lang-toggle" class="btn" style="padding:4px 14px;font-size:11px">English</button>
+    </div>
+    <hr style="border:0;border-top:1px solid #222;margin:12px 0">
+    <div style="font-size:10px;color:#888;margin-bottom:4px">💬 聊天室 (Firebase URL)</div>
+    <input id="chat-url-input" type="text" placeholder="https://your-project.firebaseio.com"
+      style="width:100%;background:#111;border:1px solid #334;border-radius:3px;color:#eee;
+      padding:6px 8px;font-size:10px;font-family:monospace;box-sizing:border-box;margin-bottom:4px">
+    <div style="font-size:9px;color:#444">免费创建：console.firebase.google.com → Realtime Database</div>
     <div class="setting-row">
       <span>⏩ 游戏速度 <span id="spd-val">×1.0</span></span>
       <input type="range" id="spd-slider" min="50" max="200" value="100" step="10">
@@ -597,6 +657,49 @@ function stopMusic() {
   if (_musicLoopTimer) { clearTimeout(_musicLoopTimer); _musicLoopTimer=null; }
   if (_audioCtx) { try{_audioCtx.close();}catch(e){} _audioCtx=null; }
 }
+
+// ═══════════════════════════════════════════════════════
+// §SFX  Sound Effects
+// ═══════════════════════════════════════════════════════
+const SFX = {
+  _ctx: null,
+  _get() {
+    if (!this._ctx) {
+      try { this._ctx = new (window.AudioContext||window.webkitAudioContext)(); } catch(e) { return null; }
+    }
+    if (this._ctx.state === 'suspended') this._ctx.resume();
+    return this._ctx;
+  },
+  _note(ctx, freq, endFreq, t, dur, wave, vol) {
+    try {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = wave; o.frequency.setValueAtTime(freq, t);
+      if (endFreq !== freq) o.frequency.exponentialRampToValueAtTime(endFreq, t+dur);
+      g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t+dur*0.9);
+      o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t+dur+0.01);
+    } catch(e) {}
+  },
+  play(type) {
+    if (!settings.sfx) return;
+    const ctx = this._get(); if (!ctx) return;
+    const t = ctx.currentTime;
+    const N = this._note.bind(this, ctx);
+    switch (type) {
+      case 'click':     N(880,880,t,.04,'square',.07); break;
+      case 'hit':       N(660,330,t,.07,'square',.09); break;
+      case 'death':     N(440,110,t,.13,'sawtooth',.09); break;
+      case 'playerhit': N(200,100,t,.10,'sawtooth',.14); break;
+      case 'chest':
+        [523,659,784].forEach((f,i)=>N(f,f,t+i*.09,.18,'sine',.11)); break;
+      case 'levelup':
+        [262,330,392,523].forEach((f,i)=>N(f,f,t+i*.09,.12,'square',.09)); break;
+      case 'wave':
+        [392,494,587,784].forEach((f,i)=>N(f,f,t+i*.1,.14,'square',.09)); break;
+      case 'coin':      N(784,1047,t,.09,'triangle',.09); break;
+      case 'send':      N(660,880,t,.07,'sine',.08); break;
+    }
+  }
+};
 function toggleMusic(on) {
   _musicEnabled = on;
   try { localStorage.setItem('pw_music', on?'1':'0'); } catch(e){}
@@ -847,8 +950,19 @@ function getWavePlan(n) {
 // ═══════════════════════════════════════════════════════
 // §0  版本号 & 更新公告  ← 每次更新只需修改这里
 // ═══════════════════════════════════════════════════════
-const GAME_VERSION = 'v0.3.1';
+const GAME_VERSION = 'v0.3.2';
 const CHANGELOG = [
+  {
+    version: 'v0.3.2',
+    date: '2026-04',
+    items: [
+      '新增音效系统：攻击、死亡、升级、宝箱、波次均有音效',
+      '设置可切换中文/英文界面',
+      '新增聊天室：主菜单底部显示最新消息，点击进入',
+      '聊天基于Firebase（设置中填入URL即可），所有玩家共享',
+      '随机生成聊天昵称，点击昵称可修改',
+    ]
+  },
   {
     version: 'v0.3.1',
     date: '2026-04',
@@ -1162,7 +1276,7 @@ const SUPPLY_TALENTS = [
 // ═══════════════════════════════════════════════════════
 // §5  Game state + initGame
 // ═══════════════════════════════════════════════════════
-let settings = { particles:true, gameSpeed:1.0 };
+let settings = { particles:true, gameSpeed:1.0, sfx:true, lang:'zh' };
 let gs   = null;
 let cam  = { x:0, y:0 };
 let selectedClassIdx = -1;
@@ -1690,6 +1804,7 @@ function killEnemy(enemy) {
     if (sw.growingKillCount >= 20) { sw.growingKillCount -= 20; sw.growingBonus = (sw.growingBonus||0) + 1; }
   }
   gs.gems.push({ x:enemy.x, y:enemy.y, xp:enemy.xp });
+  SFX.play(enemy.isBoss ? 'wave' : 'death');
   if (gs.talents.has('berserker')) gs.player.berserkerKills++;
   if (settings.particles) {
     const cols = enemy.isBoss ? ['#f44','#fd4','#f84','#fff'] : [enemy.color,'#fd4'];
@@ -1792,6 +1907,7 @@ const CHEST_STAT_POOL = [
 
 function autoApplyChest(dropType) {
   const p = gs.player;
+  SFX.play('chest');
   const def = DROP_DEFS[dropType];
   if (!def?.rarity) return;
   const rarity = def.rarity;
@@ -1853,6 +1969,7 @@ function awardXp(amount) {
   while (p.xp >= p.xpToNext) {
     p.xp -= p.xpToNext;
     p.level++;
+    SFX.play('levelup');
     p.xpToNext = Math.floor(100 + p.level * 40);
     p.levelUpQueue++;
     if (CLASSES[p.classIdx]?.id === 'berserker') p.maxHp += 5;
@@ -2166,6 +2283,7 @@ function updateEnemies(dt) {
         // Damage reduction
         const actualDmg = e.dmg * (1 - p.dmgReduction) * (1 - Math.min(0.8,(e.paralysisStacks||0)*0.08));
         p.hp -= actualDmg;
+        SFX.play('playerhit');
         gs._damageTaken = (gs._damageTaken||0) + actualDmg;
         p.invincible = 0.5 * (p.invincMult||1);
         spawnParticles(p.x, p.y, '#f44', 6, 90, 0.4, 2);
@@ -2785,6 +2903,7 @@ function checkWaveComplete() {
 
   const flash = document.getElementById('wave-clear');
   flash.textContent = isBoss ? `⭐ BOSS 击败！` : `🏆 第${gs.wave.num}波清除！`;
+  SFX.play('wave');
   flash.style.display='block';
   flash.style.animation='none';
   void flash.offsetWidth;
@@ -4471,6 +4590,9 @@ document.querySelectorAll('.cls-dot').forEach((dot, i) => {
   });
 });
 
+// Global SFX for btn clicks
+document.querySelectorAll('.btn').forEach(b=>b.addEventListener('click',()=>SFX.play('click'),{passive:true}));
+
 document.getElementById('tog-particles').addEventListener('click', ()=>{
   settings.particles=!settings.particles;
   document.getElementById('tog-particles').classList.toggle('on',settings.particles);
@@ -4754,6 +4876,176 @@ requestAnimationFrame(function bootstrap(ts) {
   lastTs = ts;
   requestAnimationFrame(gameLoop);
 });
+
+// §21 Language system
+const UI_STRINGS = {
+  zh:{settings:'⚙ 设置',sfx:'🔊 音效',lang:'🌐 语言 / Language',back:'← 返回',
+    start:'⚔ 开始游戏',achieve:'🏆 成就',shop:'🏪 商城',announce:'📢 公告',
+    mailbox:'📬 邮箱',activity:'🎪 活动',chatCompose:'点击 ✏️ 写消息',
+    chatSend:'发',chatPlaceholder:'输入消息（最多100字）...'},
+  en:{settings:'⚙ Settings',sfx:'🔊 Sound FX',lang:'🌐 Language',back:'← Back',
+    start:'⚔ Start Game',achieve:'🏆 Achievements',shop:'🏪 Shop',announce:'📢 Updates',
+    mailbox:'📬 Mailbox',activity:'🎪 Events',chatCompose:'Click ✏️ to compose',
+    chatSend:'Send',chatPlaceholder:'Type message (max 100)...'}
+};
+function T(k){const s=UI_STRINGS[settings.lang||'zh'];return(s&&s[k])||UI_STRINGS.zh[k]||k;}
+function applyLang(){
+  const g=id=>document.getElementById(id);
+  const sv=(id,k)=>{const e=g(id);if(e)e.textContent=T(k);};
+  sv('settings-title','settings');sv('lbl-sfx','sfx');sv('lbl-lang','lang');
+  sv('btn-settings-back','back');sv('btn-class-back','back');
+  sv('btn-achieve-back','back');sv('btn-announce-back','back');
+  sv('btn-mailbox-back','back');sv('btn-activity-back','back');sv('btn-chat-back','back');
+  sv('chat-compose-hint','chatCompose');
+  const bs=g('btn-start');if(bs)bs.textContent=T('start');
+  const ci=g('chat-input');if(ci)ci.placeholder=T('chatPlaceholder');
+  const cs=g('btn-chat-send');if(cs)cs.textContent=T('chatSend');
+  const lb=g('lang-toggle');if(lb)lb.textContent=(settings.lang==='zh')?'English':'中文';
+}
+document.getElementById('lang-toggle').addEventListener('click',()=>{
+  settings.lang=(settings.lang==='zh')?'en':'zh';
+  try{localStorage.setItem('pw_lang',settings.lang);}catch(e){}
+  applyLang();SFX.play('click');
+});
+try{const sl=localStorage.getItem('pw_lang');if(sl){settings.lang=sl;applyLang();}}catch(e){}
+
+// §22 Chat system (Firebase Realtime Database REST)
+let _chatPollTimer=null,_chatOpen=false,_chatInputVisible=false,_chatNick='';
+function getChatNick(){
+  if(_chatNick)return _chatNick;
+  try{
+    let n=localStorage.getItem('pw_chat_nick');
+    if(!n){
+      const a=['勇猛','冷酷','神秘','传奇','狂野','精锐'];
+      const c=['战士','法师','游侠','刺客','博士','医生'];
+      n=a[Math.floor(Math.random()*a.length)]+c[Math.floor(Math.random()*c.length)]+(100+Math.floor(Math.random()*900));
+      localStorage.setItem('pw_chat_nick',n);
+    }
+    _chatNick=n;
+  }catch{_chatNick='匿名玩家';}
+  return _chatNick;
+}
+function getChatUrl(){
+  try{return(localStorage.getItem('pw_chat_url')||'').trim().replace(//+$/,'');}catch{return '';}
+}
+async function fetchChatMsgs(){
+  const url=getChatUrl();if(!url)return null;
+  try{
+    const r=await fetch(url+'/chat.json?limitToLast=30&orderBy=%22%24key%22');
+    if(!r.ok)return null;
+    const d=await r.json();if(!d)return[];
+    return Object.entries(d).sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>({key:k,...v}));
+  }catch{return null;}
+}
+async function sendChatMsg(text){
+  const url=getChatUrl();if(!url||!text.trim())return false;
+  try{
+    const r=await fetch(url+'/chat.json',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({nick:getChatNick(),text:text.trim().slice(0,100),time:Date.now()})
+    });
+    SFX.play('send');return r.ok;
+  }catch{return false;}
+}
+function renderChatMsgs(msgs){
+  const el=document.getElementById('chat-messages');if(!el)return;
+  const myNick=getChatNick();
+  if(!msgs||!msgs.length){
+    el.innerHTML='<div style="text-align:center;color:#444;padding:20px;font-size:11px">暂无消息，快来打个招呼！</div>';
+    return;
+  }
+  el.innerHTML=msgs.map(m=>{
+    const d=new Date(m.time||0);
+    const ts=d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');
+    const own=m.nick===myNick;
+    return '<div class="chat-msg'+(own?' own-msg':'')+'">'+
+      '<span class="chat-nick">'+(m.nick||'匿名').replace(/</g,'&lt;')+'</span>'+
+      '<span>'+(m.text||'').replace(/</g,'&lt;')+'</span>'+
+      '<span class="chat-time">'+ts+'</span></div>';
+  }).join('');
+  el.scrollTop=el.scrollHeight;
+}
+function renderChatPreview(msgs){
+  const el=document.getElementById('menu-chat-latest');if(!el)return;
+  if(!getChatUrl()){el.textContent='配置Firebase后即可使用聊天 — 点击进入查看说明';return;}
+  if(!msgs){el.textContent='聊天室连接失败...';return;}
+  if(!msgs.length){el.textContent='暂无消息，快来第一个打招呼！';return;}
+  const last=msgs[msgs.length-1];
+  el.textContent=(last.nick||'?')+': '+(last.text||'');
+}
+async function pollChat(){
+  const msgs=await fetchChatMsgs();
+  renderChatPreview(msgs);
+  if(_chatOpen)renderChatMsgs(msgs);
+  _chatPollTimer=setTimeout(pollChat,6000);
+}
+function startChatPoll(){clearTimeout(_chatPollTimer);pollChat();}
+
+document.getElementById('btn-chat-back').addEventListener('click',()=>{
+  _chatOpen=false;clearTimeout(_chatPollTimer);showOverlay('o-menu');
+});
+document.getElementById('btn-chat-compose').addEventListener('click',()=>{
+  _chatInputVisible=!_chatInputVisible;
+  const area=document.getElementById('chat-input-area');
+  const hint=document.getElementById('chat-compose-hint');
+  if(area)area.style.display=_chatInputVisible?'flex':'none';
+  if(hint)hint.style.display=_chatInputVisible?'none':'';
+  document.getElementById('btn-chat-compose').textContent=_chatInputVisible?'✖':'✏️';
+  if(_chatInputVisible)setTimeout(()=>document.getElementById('chat-input')?.focus(),100);
+});
+document.getElementById('btn-chat-send').addEventListener('click',async()=>{
+  const inp=document.getElementById('chat-input');
+  if(!inp||!inp.value.trim())return;
+  const text=inp.value.trim();inp.value='';
+  const ok=await sendChatMsg(text);
+  if(ok)setTimeout(pollChat,600);
+});
+document.getElementById('chat-input').addEventListener('keydown',e=>{
+  if(e.key==='Enter')document.getElementById('btn-chat-send').click();
+});
+const nickEl=document.getElementById('chat-nick-show');
+if(nickEl){
+  nickEl.textContent=getChatNick();
+  nickEl.addEventListener('click',()=>{
+    const n=prompt('修改昵称:',getChatNick());
+    if(n&&n.trim()){
+      _chatNick=n.trim().slice(0,20);
+      try{localStorage.setItem('pw_chat_nick',_chatNick);}catch(e){}
+      nickEl.textContent=_chatNick;
+    }
+  });
+}
+document.getElementById('chat-url-input').addEventListener('change',function(){
+  try{localStorage.setItem('pw_chat_url',this.value.trim());}catch(e){}
+  startChatPoll();
+});
+try{
+  const su=localStorage.getItem('pw_chat_url');
+  if(su)document.getElementById('chat-url-input').value=su;
+}catch(e){}
+
+// Wrap showOverlay to track chat open state
+(function(){
+  const orig=window.showOverlay;
+  window.showOverlay=function(id){
+    _chatOpen=(id==='o-chat');
+    if(_chatOpen){
+      document.getElementById('chat-nick-show').textContent=getChatNick();
+      startChatPoll();
+    }
+    orig(id);
+  };
+})();
+
+// SFX toggle listener
+document.getElementById('tog-sfx').addEventListener('click',()=>{
+  settings.sfx=!settings.sfx;
+  document.getElementById('tog-sfx').classList.toggle('on',settings.sfx);
+});
+
+// Initial chat preview poll
+setTimeout(startChatPoll,1500);
+
 </script>
 <div id="float-layer" style="position:fixed;inset:0;pointer-events:none;z-index:15;overflow:hidden"></div>
 </body>
