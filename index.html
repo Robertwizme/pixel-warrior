@@ -5711,7 +5711,7 @@ setInterval(checkFriendBadge,30000);
 setTimeout(checkFriendBadge,5000);
 
 // §27 Private chat (DM)
-let _dmFriend='',_dmPollTimer=null,_dmOpen=false;
+let _dmFriend='',_dmPollTimer=null,_dmOpen=false,_dmBack='o-friends';
 function _dmRoomKey(a,b){
   const sorted=[a,b].sort();
   try{return btoa(unescape(encodeURIComponent(sorted.join('')))).replace(/[+/=]/g,c=>c==='+'?'-':c==='/'?'_':'');}
@@ -5720,6 +5720,7 @@ function _dmRoomKey(a,b){
 
 function openDM(friendNick,fromOverlay){
   _dmFriend=friendNick;
+  _dmBack=fromOverlay||'o-friends';
   const el=document.getElementById('dm-friend-name');if(el)el.textContent=friendNick;
   _dmOpen=true;
   if(_dmPollTimer){clearTimeout(_dmPollTimer);_dmPollTimer=null;}
@@ -5945,7 +5946,8 @@ document.getElementById('btn-uprofile-back').addEventListener('click',()=>showOv
 document.getElementById('btn-friends-back').addEventListener('click',()=>showOverlay('o-menu'));
 document.getElementById('btn-dm-back').addEventListener('click',()=>{
   _dmOpen=false;if(_dmPollTimer){clearTimeout(_dmPollTimer);_dmPollTimer=null;}
-  showOverlay('o-friends');
+  showOverlay(_dmBack);
+  if(_dmBack==='o-chat')switchChatSection('dms');
 });
 document.getElementById('btn-codex').addEventListener('click',()=>openCodex());
 document.getElementById('btn-gacha').addEventListener('click',()=>{
@@ -6055,7 +6057,7 @@ async function renderInlineDmList(){
   }
   el.innerHTML=list.map(f=>{
     const nAttr=f.nick.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
-    return '<div class="friend-item" data-nick="'+nAttr+'" onclick="openDM(this.dataset.nick)">'+
+    return '<div class="friend-item" data-nick="'+nAttr+'" data-from="o-chat" onclick="openDM(this.dataset.nick,this.dataset.from)">'+
       '<div class="friend-avatar-sm" style="font-size:16px;font-weight:700;color:#4ef">'+f.nick.charAt(0)+'</div>'+
       '<div style="flex:1"><div style="font-size:12px;color:#eee">'+f.nick.replace(/</g,'&lt;')+'</div>'+
       '<div style="font-size:10px;color:#555">点击私聊</div></div>'+
