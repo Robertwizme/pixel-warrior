@@ -473,7 +473,10 @@ input[type=range]{width:120px;accent-color:#48f}
     <div style="display:flex;align-items:center;gap:8px">
       <span id="chat-nick-show" style="font-size:13px;color:#4fd;cursor:pointer;font-weight:700" title="点击修改昵称">...</span>
     </div>
-    <div style="color:#4fd;font-size:15px;font-weight:700">💬 聊天室</div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button id="btn-chat-clear" style="display:none;background:#300;border:1px solid #f44;color:#f44;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer" title="清空聊天室">🗑️ 清空</button>
+      <div style="color:#4fd;font-size:15px;font-weight:700">💬 聊天室</div>
+    </div>
     <button class="btn" id="btn-chat-back" style="padding:5px 12px;font-size:12px">← 返回</button>
   </div>
   <!-- Messages -->
@@ -5046,8 +5049,8 @@ async function fetchChatMsgs(){
     return Object.entries(d).sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>({key:k,...v}));
   }catch{return null;}
 }
-const _BAD_WORDS=['操','妈的','傻逼','草泥马','cnm','nmsl','cnmd','nmd','tmd','sb','fuck','shit','bitch','asshole','bastard','damn','cunt','dick','傻x','diao','JB','NMBD'];
-function _hasBadWord(t){const l=t.toLowerCase();return _BAD_WORDS.some(w=>l.includes(w.toLowerCase()));}
+const _BAD_WORDS=['操','妈的','傻逼','草泥马','cnm','nmsl','cnmd','nmd','tmd','sb','sm','wcnm','fuck','shit','bitch','asshole','bastard','damn','cunt','dick','傻x','diao','jb','nmbd'];
+function _hasBadWord(t){const l=t.toLowerCase().replace(/\s/g,'');return _BAD_WORDS.some(w=>l.includes(w));}
 function parseColorMsg(raw){
   const safe=raw.replace(/</g,'&lt;');
   const m1=raw.match(/^#([RYBGP]) ?([\s\S]*)$/);
@@ -5149,6 +5152,18 @@ function startChatPoll(){clearTimeout(_chatPollTimer);pollChat();}
 
 document.getElementById('btn-chat-back').addEventListener('click',()=>{
   _chatOpen=false;clearTimeout(_chatPollTimer);showOverlay('o-menu');
+});
+document.getElementById('btn-chat-clear').addEventListener('click',async()=>{
+  if(getChatNick()!=='作者')return;
+  if(!confirm('确定清空所有聊天内容？'))return;
+  const url=getChatUrl();if(!url)return;
+  try{
+    await fetch(url+'/chat.json',{method:'DELETE'});
+    await fetch(url+'/nicks.json',{method:'DELETE'});
+    document.getElementById('chat-messages').innerHTML=
+      '<div style="text-align:center;color:#444;padding:20px;font-size:11px">聊天已清空</div>';
+    SFX.play('click');
+  }catch(e){alert('清空失败');}
 });
 document.getElementById('btn-chat-compose').addEventListener('click',()=>{
   _chatInputVisible=!_chatInputVisible;
@@ -5319,7 +5334,9 @@ updateMenuAvatar();
     }
     _chatOpen=(id==='o-chat');
     if(_chatOpen){
-      document.getElementById('chat-nick-show').textContent=getChatNick();
+      const _nick=getChatNick();
+      document.getElementById('chat-nick-show').textContent=_nick;
+      document.getElementById('btn-chat-clear').style.display=_nick==='作者'?'':'none';
       startChatPoll();
     }
     orig(id);
