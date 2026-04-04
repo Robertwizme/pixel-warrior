@@ -1242,7 +1242,7 @@ function getWavePlan(n) {
 // ═══════════════════════════════════════════════════════
 // §0  版本号 & 更新公告  ← 每次更新只需修改这里
 // ═══════════════════════════════════════════════════════
-const GAME_VERSION = 'v0.5.0';
+const GAME_VERSION = 'v0.5.1';
 document.getElementById('load-version').textContent = GAME_VERSION;
 const CHANGELOG = [
   { version:'v0.5.0', date:'2026-04-04', items:[
@@ -3775,9 +3775,10 @@ function render() {
   const _sprMap = {doctor:'player_doctor', mage:'player_mage', scholar:'player_ranger'};
   const spr = _sprMap[_clsId2] || 'player_warrior';
 
-  // Use original PNG images for doctor / mage
+  // Use original PNG images for doctor / mage / reaper
   const _imgSpr = (_clsId2==='doctor' && IMG_DOCTOR.complete && IMG_DOCTOR.naturalWidth) ? IMG_DOCTOR
                 : (_clsId2==='mage'   && IMG_MAGE.complete   && IMG_MAGE.naturalWidth  ) ? IMG_MAGE
+                : (_clsId2==='reaper' && IMG_REAPER.complete  && IMG_REAPER.naturalWidth ) ? IMG_REAPER
                 : null;
   let pw, ph;
   if (_imgSpr) {
@@ -5702,7 +5703,7 @@ function startChatPoll(){clearTimeout(_chatPollTimer);pollChat();}
   petEl.addEventListener('mousedown', e=>{ dragging=true; dx=e.clientX-petEl.offsetLeft; dy=e.clientY-petEl.offsetTop; petEl.style.cursor='grabbing'; e.preventDefault(); });
   petEl.addEventListener('touchstart', e=>{ dragging=true; const t=e.touches[0]; dx=t.clientX-petEl.offsetLeft; dy=t.clientY-petEl.offsetTop; e.preventDefault(); },{passive:false});
   document.addEventListener('mousemove', e=>{ if(!dragging)return; petEl.style.left=Math.max(0,e.clientX-dx)+'px'; petEl.style.top=Math.max(0,e.clientY-dy)+'px'; });
-  document.addEventListener('touchmove', e=>{ if(!dragging)return; const t=e.touches[0]; petEl.style.left=Math.max(0,t.clientX-dx)+'px'; petEl.style.top=Math.max(0,t.clientY-dy)+'px'; e.preventDefault(); },{passive:false});
+  chatOverlay.addEventListener('touchmove', e=>{ if(!dragging)return; const t=e.touches[0]; petEl.style.left=Math.max(0,t.clientX-dx)+'px'; petEl.style.top=Math.max(0,t.clientY-dy)+'px'; e.preventDefault(); },{passive:false});
   document.addEventListener('mouseup', ()=>{ dragging=false; petEl.style.cursor='grab'; });
   document.addEventListener('touchend', ()=>{ dragging=false; });
 })();
@@ -6472,30 +6473,51 @@ function updatePet(dt){
   if(!gs.petState) gs.petState = { x:p.x, y:p.y, atkTimer:0, skillTimer:0, skillActive:false, skillTimer2:0, dragonPhase:0 };
   const pet = gs.petState;
 
-  // Follow player at offset
-  const tx=p.x+30, ty=p.y-20;
-  const ddx=tx-pet.x, ddy=ty-pet.y;
-  const d=Math.sqrt(ddx*ddx+ddy*ddy)||1;
-  const followSpd = 120;
-  if(d>8){ pet.x += (ddx/d)*Math.min(d,followSpd*dt); pet.y += (ddy/d)*Math.min(d,followSpd*dt); }
+  // Move pet toward nearest enemy; idle-orbit player when no enemies
+  const petSpd = (def.spd || 80);
+  const tgt = nearestEnemy(pet.x, pet.y);
+  if (tgt) {
+    // Chase enemy
+    const edx = tgt.x - pet.x, edy = tgt.y - pet.y;
+    const ed = Math.sqrt(edx*edx + edy*edy) || 1;
+    const stopDist = (tgt.radius || 8) + 10;
+    if (ed > stopDist) {
+      pet.x += (edx/ed) * Math.min(ed - stopDist, petSpd * dt);
+      pet.y += (edy/ed) * Math.min(ed - stopDist, petSpd * dt);
+    }
+  } else {
+    // No enemies — drift back near player with gentle orbit
+    const orbitR = 32;
+    const angle = Date.now() * 0.001;
+    const tx = p.x + Math.cos(angle) * orbitR;
+    const ty = p.y + Math.sin(angle) * orbitR;
+    const ddx = tx - pet.x, ddy = ty - pet.y;
+    const dd = Math.sqrt(ddx*ddx + ddy*ddy) || 1;
+    if (dd > 4) { pet.x += (ddx/dd)*Math.min(dd, petSpd*dt); pet.y += (ddy/dd)*Math.min(dd, petSpd*dt); }
+  }
 
-  // Auto attack
+  // Auto attack — only when close enough to touch the enemy
   pet.atkTimer -= dt;
   if(pet.atkTimer<=0){
     pet.atkTimer = 100/def.atkSpd;
-    const tgt=nearestEnemy(pet.x,pet.y);
-    if(tgt){
-      let dmg = def.dmg * (p.dmgMult||1);
-      // Dragon trait: 5% element proc
-      if(petId==='dragon' && Math.random()<0.05){
-        const elems=['flameStacks','frostStacks','poisonStacks'];
-        tgt[elems[Math.floor(Math.random()*elems.length)]] = Math.min(10,(tgt[elems[Math.floor(Math.random()*elems.length)]]||0)+1);
+    const atkTgt = nearestEnemy(pet.x, pet.y);
+    if(atkTgt){
+      const adx = atkTgt.x - pet.x, ady = atkTgt.y - pet.y;
+      const aDist = Math.sqrt(adx*adx + ady*ady);
+      const atkRange = (atkTgt.radius || 8) + 14;
+      if(aDist <= atkRange){
+        let dmg = def.dmg * (p.dmgMult||1);
+        // Dragon trait: 5% element proc
+        if(petId==='dragon' && Math.random()<0.05){
+          const elems=['flameStacks','frostStacks','poisonStacks'];
+          atkTgt[elems[Math.floor(Math.random()*elems.length)]] = Math.min(10,(atkTgt[elems[Math.floor(Math.random()*elems.length)]]||0)+1);
+        }
+        hitEnemy(atkTgt, dmg);
+        // Shoot projectile visually
+        const ang=Math.atan2(atkTgt.y-pet.y, atkTgt.x-pet.x);
+        gs.projectiles.push({ x:pet.x,y:pet.y, vx:Math.cos(ang)*220,vy:Math.sin(ang)*220,
+          dmg:0, radius:3, color:def.color, life:0.5, type:'pet_bullet', pierce:false });
       }
-      hitEnemy(tgt, dmg);
-      // Shoot projectile visually
-      const ang=Math.atan2(tgt.y-pet.y, tgt.x-pet.x);
-      gs.projectiles.push({ x:pet.x,y:pet.y, vx:Math.cos(ang)*220,vy:Math.sin(ang)*220,
-        dmg:0, radius:3, color:def.color, life:0.5, type:'pet_bullet', pierce:false });
     }
   }
 
