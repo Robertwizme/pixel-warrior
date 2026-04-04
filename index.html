@@ -5136,7 +5136,8 @@ function renderChatPreview(msgs){
   if(!msgs){el.textContent='聊天室连接失败...';return;}
   if(!msgs.length){el.textContent='暂无消息，快来第一个打招呼！';return;}
   const last=msgs[msgs.length-1];
-  el.textContent=(last.nick||'?')+': '+(last.text||'');
+  const nick=(last.nick||'?').replace(/</g,'&lt;');
+  el.innerHTML=nick+': '+parseColorMsg(last.text||'');
 }
 async function pollChat(){
   const msgs=await fetchChatMsgs();
