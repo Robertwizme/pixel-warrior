@@ -1279,7 +1279,7 @@ function getWavePlan(n) {
 // ═══════════════════════════════════════════════════════
 // §0  版本号 & 更新公告  ← 每次更新只需修改这里
 // ═══════════════════════════════════════════════════════
-const GAME_VERSION = 'v0.5.8';
+const GAME_VERSION = 'v0.5.9';
 document.getElementById('load-version').textContent = GAME_VERSION;
 const CHANGELOG = [
   { version:'v0.5.0', date:'2026-04-04', items:[
@@ -4865,6 +4865,7 @@ function showOverlay(id) {
   document.getElementById('hud').style.display='none';
   document.getElementById('hud-bot').style.display='none';
   _setMobileVisible(false);
+  const _fl=document.getElementById('float-layer'); if(_fl) _fl.style.display='none';
 }
 
 function showGameScreen() {
@@ -4873,6 +4874,7 @@ function showGameScreen() {
   document.getElementById('hud-bot').style.display='block';
   document.getElementById('hud-ingame-btns').style.display='flex';
   if (_isTouchDevice) _setMobileVisible(true);
+  const _fl=document.getElementById('float-layer'); if(_fl) _fl.style.display='block';
 }
 
 function showDeadScreen() {
