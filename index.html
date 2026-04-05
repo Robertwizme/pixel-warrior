@@ -993,6 +993,27 @@ document.addEventListener('click',    _tryStartMusic, {passive:true});
 document.addEventListener('keydown',  _tryStartMusic, {passive:true});
 document.addEventListener('touchstart',_tryStartMusic, {passive:true});
 
+// ── iOS button touch fix ──
+// iOS Safari sometimes doesn't fire click on buttons inside overlays.
+// Use touchend delegation to guarantee button response on all mobile browsers.
+if ('ontouchstart' in window) {
+  let _tapX = 0, _tapY = 0;
+  document.addEventListener('touchstart', function(e){
+    _tapX = e.touches[0].clientX; _tapY = e.touches[0].clientY;
+  }, {passive:true});
+  document.addEventListener('touchend', function(e){
+    const touch = e.changedTouches[0];
+    if (!touch) return;
+    if (Math.abs(touch.clientX - _tapX) > 10 || Math.abs(touch.clientY - _tapY) > 10) return;
+    const btn = e.target.closest('button');
+    if (!btn || btn.disabled) return;
+    const overlay = btn.closest('.overlay.active, #menu-topbar');
+    if (!overlay) return;
+    e.preventDefault();
+    btn.dispatchEvent(new MouseEvent('click', {bubbles:true, cancelable:true, view:window}));
+  }, {passive:false});
+}
+
 // ── 横屏全屏 ──
 function _requestFullscreen() {
   const el = document.documentElement;
@@ -1258,7 +1279,7 @@ function getWavePlan(n) {
 // ═══════════════════════════════════════════════════════
 // §0  版本号 & 更新公告  ← 每次更新只需修改这里
 // ═══════════════════════════════════════════════════════
-const GAME_VERSION = 'v0.5.7';
+const GAME_VERSION = 'v0.5.8';
 document.getElementById('load-version').textContent = GAME_VERSION;
 const CHANGELOG = [
   { version:'v0.5.0', date:'2026-04-04', items:[
