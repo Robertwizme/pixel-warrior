@@ -6695,7 +6695,7 @@ function renderForge(){
         '<div style="font-size:9px;color:#4f8">伤害 +'+bonus+'</div>'+
       '</div>'+
       (canUp
-        ?'<button onclick="forgeUpgrade(''+w.id+'')" style="padding:5px 10px;font-size:10px;background:#1a1a2e;border:1.5px solid '+(ok2?'#fd4':'#333')+';border-radius:4px;color:'+(ok2?'#fd4':'#555')+';cursor:'+(ok2?'pointer':'default')+';font-family:'Courier New',monospace">🔩'+cost+'</button>'
+        ?'<button onclick="forgeUpgrade(\''+w.id+'\')" style="padding:5px 10px;font-size:10px;background:#1a1a2e;border:1.5px solid '+(ok2?'#fd4':'#333')+';border-radius:4px;color:'+(ok2?'#fd4':'#555')+';cursor:'+(ok2?'pointer':'default')+';font-family:monospace">🔩'+cost+'</button>'
         :'<span style="font-size:10px;color:#4f8;padding:5px 8px;border:1px solid #4f8;border-radius:4px">MAX</span>'
       )+'</div>';
   }).join('');
