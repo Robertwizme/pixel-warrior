@@ -416,6 +416,7 @@ input[type=range]{width:120px;accent-color:#48f}
     <button class="btn icon-btn" id="btn-gacha" style="border-color:#f8a;color:#f8a" title="抽奖">🎰</button>
     <button class="btn icon-btn" id="btn-friends" style="border-color:#4ef;color:#4ef;position:relative" title="好友">👥<span id="friend-badge" style="display:none;position:absolute;top:-5px;right:-5px;background:#f84;color:#fff;font-size:9px;border-radius:50%;width:15px;height:15px;line-height:15px;text-align:center">!</span></button>
     <button class="btn icon-btn" id="btn-pet" style="border-color:#4f8;color:#4f8" title="宠物">🐾</button>
+    <button class="btn icon-btn" id="btn-forge" style="border-color:#fd4;color:#fd4" title="武器强化">⚒</button>
   </div>
 
   <!-- Center: title + animated character -->
@@ -591,6 +592,24 @@ input[type=range]{width:120px;accent-color:#48f}
   </div>
 </div>
 
+<!-- FORGE -->
+<div class="overlay" id="o-forge">
+  <div class="panel" style="max-width:440px;width:92%;text-align:center;padding:16px 20px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="font-size:15px;color:#fd4;font-weight:700;letter-spacing:1px">⚒ 武器强化</div>
+      <button class="btn" id="btn-forge-back" style="padding:4px 10px;font-size:11px">← 返回</button>
+    </div>
+    <div style="font-size:11px;color:#888;margin-bottom:12px">
+      🔩 武器碎片: <span id="forge-frags" style="color:#fd4;font-weight:700">0</span>
+      <span style="color:#555;margin-left:8px">（抽奖池可获得）</span>
+    </div>
+    <div style="font-size:9px;color:#555;margin-bottom:10px;text-align:left;background:#0d1322;border-radius:6px;padding:6px 10px">
+      每级强化提升 <span style="color:#fd4">+8%</span> 全局武器伤害（最高5级 = +40%）
+    </div>
+    <div id="forge-weapon-list" style="max-height:55vh;overflow-y:auto"></div>
+  </div>
+</div>
+
 <!-- GACHA -->
 <div class="overlay" id="o-gacha">
   <div class="panel" style="max-width:400px;text-align:center;padding:24px">
@@ -634,11 +653,13 @@ input[type=range]{width:120px;accent-color:#48f}
       <div style="color:#4af">💪 伤害 +15% — <span style="color:#4af">10%</span></div>
       <div style="color:#4af">⏱ CD -10% — <span style="color:#4af">8%</span></div>
       <div style="color:#c8f">🍀 幸运 +30 — <span style="color:#c8f">5%</span></div>
-      <div style="color:#fd4;margin-top:6px;font-weight:bold">🗡 飞剑 — <span style="color:#fd4">100抽保底</span></div>
+      <div style="color:#888;margin-top:6px">🔩 武器碎片 ×3 — <span style="color:#4af">12%</span></div>
+      <div style="color:#c8f">⚙ 武器碎片 ×10 — <span style="color:#c8f">5%</span></div>
+      <div style="color:#fd4;margin-top:4px;font-weight:bold">🗡 飞剑 — <span style="color:#fd4">2%概率 / 100抽保底</span></div>
       <div style="color:#88f;font-weight:bold;margin-top:10px;text-align:center">📊 宠物池概率</div>
       <div style="color:#888">🐾 普通宠物 — <span style="color:#eee">60%</span></div>
       <div style="color:#4af">✨ 精英宠物 — <span style="color:#4af">35%</span></div>
-      <div style="color:#fd4">🐉 传说宠物(飞龙) — <span style="color:#fd4">100抽保底</span></div>
+      <div style="color:#fd4">🐉 传说宠物(飞龙) — <span style="color:#fd4">2%概率 / 100抽保底</span></div>
     </div>
     <div id="gacha-result-area" style="display:none"></div>
     <!-- Draw buttons -->
@@ -1279,7 +1300,7 @@ function getWavePlan(n) {
 // ═══════════════════════════════════════════════════════
 // §0  版本号 & 更新公告  ← 每次更新只需修改这里
 // ═══════════════════════════════════════════════════════
-const GAME_VERSION = 'v0.5.9';
+const GAME_VERSION = 'v0.6.0';
 document.getElementById('load-version').textContent = GAME_VERSION;
 const CHANGELOG = [
   { version:'v0.5.0', date:'2026-04-04', items:[
@@ -1696,6 +1717,9 @@ function initGame(classIdx) {
   lastClassIdx = classIdx;
   cam = { x:-GW/2, y:-GH/2 };
   tutorialTimer = 5.0;
+  // Weapon enhancement bonus applied at game start
+  const _enhBonus = getTotalWeaponEnhBonus();
+  if(_enhBonus > 0) setTimeout(()=>{ if(gs?.player) gs.player.weapEnhMult = 1+_enhBonus; },100);
 
   const p = {
     x:0, y:0,
@@ -2171,6 +2195,7 @@ function hitEnemy(enemy, rawDmg, _noProc) {
   if ((p.reaperGunMult||1) !== 1) mult *= p.reaperGunMult;
   if ((p.santaAtkTimer||0) > 0) mult *= 1.25;
   if ((p.chosenLuckDmgMult||1) > 1) mult *= p.chosenLuckDmgMult;
+  if ((p.weapEnhMult||1) > 1) mult *= p.weapEnhMult;
   // Kirby thunder/ice procs
   if (!_noProc && CLASSES[p.classIdx]?.id === 'kirby') {
     const kirbyW = getWeapon('kirby_copy');
@@ -5313,7 +5338,7 @@ function renderMenuCoins() {
 
 // Coins earned per game: 10 base + 8 per wave + 1 per 10 kills (bonus)
 function calcCoinsEarned(waveNum, kills) {
-  return Math.floor(10 + waveNum * 8 + Math.floor((kills||0)/10));
+  return Math.floor(60 + waveNum * 30 + Math.floor((kills||0)/4));
 }
 
 // ── Unlock helpers ──
@@ -6391,6 +6416,8 @@ document.getElementById('btn-codex-back').addEventListener('click',()=>showOverl
 document.getElementById('btn-gacha-back').addEventListener('click',()=>showOverlay('o-menu'));
 document.getElementById('btn-pet-back').addEventListener('click',()=>showOverlay('o-menu'));
 document.getElementById('btn-pet').addEventListener('click',()=>{ renderPetOverlay(); showOverlay('o-pet'); });
+document.getElementById('btn-forge').addEventListener('click',()=>{ renderForge(); showOverlay('o-forge'); });
+document.getElementById('btn-forge-back').addEventListener('click',()=>showOverlay('o-menu'));
 document.getElementById('btn-pet-deploy').addEventListener('click',()=>{
   const sel=document.querySelector('#pet-list-panel .pet-slot.pet-sel');
   if(!sel) return;
@@ -6627,6 +6654,62 @@ const _origUpdatePendingExplosions_pet = updatePendingExplosions;
 function getGachaTickets(){ try{ return Math.max(0,parseInt(localStorage.getItem('pw_gacha_tickets')||'0',10)); }catch{ return 0; } }
 function spendGachaTicket(){ try{ const t=getGachaTickets(); if(t<=0)return false; localStorage.setItem('pw_gacha_tickets',String(t-1)); return true; }catch{ return false; } }
 
+// ── Weapon Fragment & Enhancement system ──
+function getWeaponFrags(){ try{ return Math.max(0,parseInt(localStorage.getItem('pw_wfrags')||'0')||0); }catch{ return 0; } }
+function addWeaponFrags(n){ try{ localStorage.setItem('pw_wfrags',String(getWeaponFrags()+n)); renderForgeFragCount(); }catch{} }
+function spendWeaponFrags(n){ try{ const c=getWeaponFrags(); if(c<n) return false; localStorage.setItem('pw_wfrags',String(c-n)); renderForgeFragCount(); return true; }catch{ return false; } }
+const _WENH_IDS=['shotgun','gatling','sword','arrow_rain','heal_drone','missile_drone','sniper','flying_sword'];
+const _WENH_COSTS=[10,25,50,80,120];
+const _WENH_MAX=5;
+function getWeaponEnhLevel(id){ try{ return Math.max(0,Math.min(_WENH_MAX,parseInt(localStorage.getItem('pw_wenh_'+id)||'0')||0)); }catch{ return 0; } }
+function setWeaponEnhLevel(id,lv){ try{ localStorage.setItem('pw_wenh_'+id,String(lv)); }catch{} }
+function getTotalWeaponEnhBonus(){ return _WENH_IDS.reduce((s,id)=>s+getWeaponEnhLevel(id),0)*0.08; }
+function renderForgeFragCount(){ const el=document.getElementById('forge-frags'); if(el) el.textContent=getWeaponFrags(); }
+
+function renderForge(){
+  renderForgeFragCount();
+  const frags=getWeaponFrags();
+  const WLIST=[
+    {id:'shotgun',    icon:'🔫',name:'散弹枪'},
+    {id:'gatling',    icon:'⚡',name:'加特林'},
+    {id:'sword',      icon:'⚔', name:'剑阵'},
+    {id:'arrow_rain', icon:'🏹',name:'箭雨'},
+    {id:'heal_drone', icon:'💊',name:'治疗无人机'},
+    {id:'missile_drone',icon:'🚀',name:'导弹无人机'},
+    {id:'sniper',     icon:'🔭',name:'狙击枪'},
+    {id:'flying_sword',icon:'🗡',name:'飞剑'},
+  ];
+  const list=document.getElementById('forge-weapon-list');
+  if(!list) return;
+  list.innerHTML=WLIST.map(w=>{
+    const lv=getWeaponEnhLevel(w.id);
+    const stars='★'.repeat(lv)+'<span style="color:#333">'+'★'.repeat(_WENH_MAX-lv)+'</span>';
+    const bonus=Math.round(lv*8)+'%';
+    const canUp=lv<_WENH_MAX;
+    const cost=canUp?_WENH_COSTS[lv]:0;
+    const ok2=frags>=cost;
+    return '<div style="display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid #1e2030">'+
+      '<span style="font-size:20px">'+w.icon+'</span>'+
+      '<div style="flex:1;text-align:left">'+
+        '<div style="font-size:11px;color:#eee">'+w.name+' <span style="color:#fd4;font-size:13px">'+stars+'</span></div>'+
+        '<div style="font-size:9px;color:#4f8">伤害 +'+bonus+'</div>'+
+      '</div>'+
+      (canUp
+        ?'<button onclick="forgeUpgrade(''+w.id+'')" style="padding:5px 10px;font-size:10px;background:#1a1a2e;border:1.5px solid '+(ok2?'#fd4':'#333')+';border-radius:4px;color:'+(ok2?'#fd4':'#555')+';cursor:'+(ok2?'pointer':'default')+';font-family:'Courier New',monospace">🔩'+cost+'</button>'
+        :'<span style="font-size:10px;color:#4f8;padding:5px 8px;border:1px solid #4f8;border-radius:4px">MAX</span>'
+      )+'</div>';
+  }).join('');
+}
+
+function forgeUpgrade(weapId){
+  const lv=getWeaponEnhLevel(weapId);
+  if(lv>=_WENH_MAX) return;
+  const cost=_WENH_COSTS[lv];
+  if(!spendWeaponFrags(cost)){ return; }
+  setWeaponEnhLevel(weapId,lv+1);
+  renderForge();
+}
+
 function getGachaPity(){ try{ return Math.max(0,parseInt(localStorage.getItem('pw_gacha_pity')||'0',10)); }catch{ return 0; } }
 function setGachaPity(n){ try{ localStorage.setItem('pw_gacha_pity',String(n)); }catch{} }
 function hasGachaFlyingSword(){ try{ return localStorage.getItem('pw_gacha_fs')==='1'; }catch{ return false; } }
@@ -6646,19 +6729,21 @@ function updateGachaPityUI(){
 }
 
 const GACHA_POOL = [
-  { w:35, icon:'🪙', name:'金币 ×50',   apply:()=>{ addCoins(50); return {rarity:'normal'}; } },
-  { w:30, icon:'🪙', name:'金币 ×120',  apply:()=>{ addCoins(120); return {rarity:'normal'}; } },
-  { w:12, icon:'❤',  name:'最大HP +20', apply:()=>{ if(gs?.player){ gs.player.maxHp+=20; healPlayer(20); } return {rarity:'rare'}; } },
+  { w:28, icon:'🪙', name:'金币 ×120',  apply:()=>{ addCoins(120);  return {rarity:'normal'}; } },
+  { w:22, icon:'🪙', name:'金币 ×300',  apply:()=>{ addCoins(300);  return {rarity:'normal'}; } },
+  { w:11, icon:'❤',  name:'最大HP +20', apply:()=>{ if(gs?.player){ gs.player.maxHp+=20; healPlayer(20); } return {rarity:'rare'}; } },
   { w:10, icon:'💪', name:'伤害 +15%',  apply:()=>{ if(gs?.player){ gs.player.dmgMult=+((gs.player.dmgMult||1)*1.15).toFixed(4); } return {rarity:'rare'}; } },
-  { w:8,  icon:'⏱',  name:'CD -10%',    apply:()=>{ if(gs?.player){ gs.player.cdMult=Math.max(0.2,+((gs.player.cdMult||1)*0.90).toFixed(4)); } return {rarity:'rare'}; } },
+  { w:7,  icon:'⏱',  name:'CD -10%',    apply:()=>{ if(gs?.player){ gs.player.cdMult=Math.max(0.2,+((gs.player.cdMult||1)*0.90).toFixed(4)); } return {rarity:'rare'}; } },
   { w:5,  icon:'🍀',  name:'幸运 +30',  apply:()=>{ if(gs?.player){ gs.player.luck=(gs.player.luck||0)+30; updateDerivedStats(gs.player); } return {rarity:'epic'}; } },
+  { w:12, icon:'🔩', name:'武器碎片 ×3', apply:()=>{ addWeaponFrags(3); return {rarity:'rare'}; } },
+  { w:5,  icon:'⚙',  name:'武器碎片 ×10',apply:()=>{ addWeaponFrags(10); return {rarity:'epic'}; } },
 ];
 
 function gachaDraw(){
   let pity=getGachaPity();
   const hasSword=hasGachaFlyingSword();
   pity++;
-  const isSwordPull = (!hasSword && pity>=100);
+  const isSwordPull = !hasSword && (pity>=100 || Math.random()<0.02);
   setGachaPity(isSwordPull ? 0 : pity);
 
   if(isSwordPull){
@@ -6775,7 +6860,7 @@ function petGachaDraw(){
   let pity=getPetPity();
   const has=hasDragonPet();
   pity++;
-  const isDragon = (!has && pity>=100);
+  const isDragon = !has && (pity>=100 || Math.random()<0.02);
   setPetPity(isDragon ? 0 : pity);
   if(isDragon){
     setDragonPet(); _addPet('dragon');
