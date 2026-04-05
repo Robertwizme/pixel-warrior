@@ -1001,6 +1001,25 @@ document.addEventListener('click',    _tryStartMusic, {passive:true});
 document.addEventListener('keydown',  _tryStartMusic, {passive:true});
 document.addEventListener('touchstart',_tryStartMusic, {passive:true});
 
+// ── 横屏全屏 ──
+function _requestFullscreen() {
+  const el = document.documentElement;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+  if (req && !document.fullscreenElement && !document.webkitFullscreenElement) {
+    req.call(el).catch(()=>{});
+  }
+}
+function _checkLandscapeFullscreen() {
+  const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) || window.innerWidth <= 900;
+  const isLandscape = window.innerWidth > window.innerHeight;
+  if (isMobile && isLandscape) _requestFullscreen();
+}
+// 横屏时自动全屏；用户第一次触摸时也尝试（浏览器需要手势触发）
+screen.orientation && screen.orientation.addEventListener('change', _checkLandscapeFullscreen);
+window.addEventListener('orientationchange', _checkLandscapeFullscreen);
+window.addEventListener('resize', _checkLandscapeFullscreen);
+document.addEventListener('touchstart', _checkLandscapeFullscreen, {passive:true, once:false});
+
 // ═══════════════════════════════════════════════════════
 // §1  Canvas + resize + input
 // ═══════════════════════════════════════════════════════
@@ -1247,7 +1266,7 @@ function getWavePlan(n) {
 // ═══════════════════════════════════════════════════════
 // §0  版本号 & 更新公告  ← 每次更新只需修改这里
 // ═══════════════════════════════════════════════════════
-const GAME_VERSION = 'v0.5.3';
+const GAME_VERSION = 'v0.5.4';
 document.getElementById('load-version').textContent = GAME_VERSION;
 const CHANGELOG = [
   { version:'v0.5.0', date:'2026-04-04', items:[
