@@ -8,7 +8,7 @@
 <title>像素勇士 – 肉鸽版</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#0d0d1a;color:#eee;font-family:'Courier New',monospace;overflow:hidden;user-select:none;touch-action:none}
+body{background:#0d0d1a;color:#eee;font-family:'Courier New',monospace;overflow:hidden;user-select:none}
 @media screen and (max-width:900px) and (orientation:portrait){
   body::before{content:'请旋转手机为横屏模式';position:fixed;inset:0;background:#0d0d1a;color:#fd4;
     font-size:18px;font-family:"Courier New",monospace;display:flex;align-items:center;justify-content:center;
@@ -16,8 +16,8 @@ body{background:#0d0d1a;color:#eee;font-family:'Courier New',monospace;overflow:
   body > *{display:none!important}
   body::before{display:flex!important}
 }
-#wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
-#gc{image-rendering:pixelated;image-rendering:crisp-edges;display:block}
+#wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;touch-action:none}
+#gc{image-rendering:pixelated;image-rendering:crisp-edges;display:block;pointer-events:none;touch-action:none}
 
 /* ── HUD top ── */
 #hud{position:fixed;top:0;left:0;width:100%;pointer-events:none;display:none;z-index:10}
@@ -1266,7 +1266,7 @@ function getWavePlan(n) {
 // ═══════════════════════════════════════════════════════
 // §0  版本号 & 更新公告  ← 每次更新只需修改这里
 // ═══════════════════════════════════════════════════════
-const GAME_VERSION = 'v0.5.4';
+const GAME_VERSION = 'v0.5.5';
 document.getElementById('load-version').textContent = GAME_VERSION;
 const CHANGELOG = [
   { version:'v0.5.0', date:'2026-04-04', items:[
