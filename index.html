@@ -1305,7 +1305,7 @@ function getWavePlan(n) {
 // ═══════════════════════════════════════════════════════
 // §0  版本号 & 更新公告  ← 每次更新只需修改这里
 // ═══════════════════════════════════════════════════════
-const GAME_VERSION = 'v0.7.1';
+const GAME_VERSION = 'v0.7.2';
 document.getElementById('load-version').textContent = GAME_VERSION;
 const CHANGELOG = [
   { version:'v0.5.0', date:'2026-04-04', items:[
@@ -4415,46 +4415,44 @@ function getUpgradeOptions() {
   if (flyingW && [4,7,8].includes(flyingW.level+1) && flyingW.level < WEAPON_DEFS.flying_sword.maxLv)
     return getFlyingSwordUpgradeCards(flyingW).slice(0, cardCount);
 
-  // ── Build weapon pool ──
-  const weapPool = [];
+  // ── Build weapon pools (priority: owned upgrades → new weapons) ──
+  const upgradePool = []; // upgrades for weapons player already owns
+  const newWeapPool = []; // new weapons player doesn't have yet
 
-  // Branching weapon random-tier cards
+  // Branching weapon random-tier cards → upgradePool (owned)
   if (shotgunW && shotgunW.level < WEAPON_DEFS.shotgun.maxLv)
-    getShotgunUpgradeCards(shotgunW).forEach(c => weapPool.push(c));
+    getShotgunUpgradeCards(shotgunW).forEach(c => upgradePool.push(c));
   if (gatlingW && gatlingW.level < WEAPON_DEFS.gatling.maxLv)
-    getGatlingUpgradeCards(gatlingW).forEach(c => weapPool.push(c));
+    getGatlingUpgradeCards(gatlingW).forEach(c => upgradePool.push(c));
   if (droneW && droneW.level < WEAPON_DEFS.heal_drone.maxLv)
-    getHealDroneUpgradeCards(droneW).forEach(c => weapPool.push(c));
-  // Missile drone: random tiers (exclude fixed 4/7, exclude Lv8 which is super supply only)
+    getHealDroneUpgradeCards(droneW).forEach(c => upgradePool.push(c));
   if (missileW && ![4,7,8].includes(missileW.level+1) && missileW.level < WEAPON_DEFS.missile_drone.maxLv - 1)
-    getMissileDroneUpgradeCards(missileW).forEach(c => weapPool.push(c));
-  // Sniper: random tiers (exclude fixed 4/7, exclude Lv8 which is super supply only)
+    getMissileDroneUpgradeCards(missileW).forEach(c => upgradePool.push(c));
   if (sniperW && ![4,7,8].includes(sniperW.level+1) && sniperW.level < WEAPON_DEFS.sniper.maxLv - 1)
-    getSniperUpgradeCards(sniperW).forEach(c => weapPool.push(c));
-  // 飞剑: random tiers (no new weapon — only upgrades after gacha unlock)
+    getSniperUpgradeCards(sniperW).forEach(c => upgradePool.push(c));
   if (flyingW && ![4,7,8].includes(flyingW.level+1) && flyingW.level < WEAPON_DEFS.flying_sword.maxLv)
-    getFlyingSwordUpgradeCards(flyingW).forEach(c => weapPool.push(c));
+    getFlyingSwordUpgradeCards(flyingW).forEach(c => upgradePool.push(c));
 
-  // Other upgradable weapons (exclude missile_drone as handled above, exclude kirby_copy which is skill-only)
+  // Other upgradable weapons → upgradePool
   gs.weapons
     .filter(w => !['shotgun','gatling','heal_drone','missile_drone','kirby_copy','sniper','flying_sword'].includes(w.id) && w.level < WEAPON_DEFS[w.id].maxLv)
     .forEach(w => {
       const def = WEAPON_DEFS[w.id];
-      weapPool.push({ type:'wepup', weapId:w.id, icon:def.icon,
+      upgradePool.push({ type:'wepup', weapId:w.id, icon:def.icon,
         name:`${def.name} Lv.${w.level}→Lv.${w.level+1}`, desc:describeWeapon(w.id,w.level+1) });
     });
 
-  // New weapons (up to 6 total)
+  // New weapons → newWeapPool (only shown when upgrade pool exhausted)
   if (gs.weapons.length < 8) {
     const owned = new Set(gs.weapons.map(w => w.id));
     shuffled(Object.keys(WEAPON_DEFS).filter(id => !owned.has(id) && id !== 'kirby_copy' && id !== 'flying_sword')).forEach(wid => {
       const def = WEAPON_DEFS[wid];
-      weapPool.push({ type:'wepadd', weapId:wid, icon:def.icon,
+      newWeapPool.push({ type:'wepadd', weapId:wid, icon:def.icon,
         name:`获得 ${def.name}`, desc:describeWeapon(wid,1) });
     });
   }
 
-  // ── Build stat pool (fallback only) ──
+  // ── Build stat pool (last resort fallback) ──
   const isDoctor  = CLASSES[p.classIdx]?.id === 'doctor';
   const isScholar = CLASSES[p.classIdx]?.id === 'scholar';
   const statPool = shuffled(STAT_UPGRADES)
@@ -4466,12 +4464,14 @@ function getUpgradeOptions() {
     })
     .map(s => ({ type:'stat', id:s.id, icon:s.icon, name:s.name, desc:s.desc }));
 
-  // ── Fill cards: weapons first, stats only when weapon pool exhausted ──
-  const wShuf = shuffled(weapPool);
+  // ── Fill cards: owned upgrades first → new weapons → stats ──
+  const wUpgShuf = shuffled(upgradePool);
+  const wNewShuf = shuffled(newWeapPool);
   const result = [];
-  let wi = 0, si = 0;
+  let ui = 0, ni = 0, si = 0;
   for (let i = 0; i < cardCount; i++) {
-    if (wi < wShuf.length) result.push(wShuf[wi++]);
+    if (ui < wUpgShuf.length)      result.push(wUpgShuf[ui++]);
+    else if (ni < wNewShuf.length) result.push(wNewShuf[ni++]);
     else if (si < statPool.length) result.push(statPool[si++]);
   }
   return result;
@@ -4674,16 +4674,16 @@ function getLevelUpOptions() {
   if (Math.random() < 0.15) pool.push({ type:'lvstat', id:'dodge5',   icon:'💨', name:'幻影步伐', desc:'+5% 闪避率' });
   if (Math.random() < 0.15) pool.push({ type:'lvstat', id:'dmgred5',  icon:'🛡', name:'铁皮强化', desc:'+5% 伤害减免' });
 
-  // ~45% chance to also offer one weapon upgrade
-  if (gs?.weapons && Math.random()<0.45) {
+  // ~80% chance to offer a weapon upgrade (prioritise owned weapons)
+  if (gs?.weapons && Math.random()<0.80) {
     const _owned = new Set(gs.weapons.map(w=>w.id));
     const _upgW = gs.weapons.filter(w => WEAPON_DEFS[w.id] && w.level<WEAPON_DEFS[w.id].maxLv
-      && !['shotgun','gatling','heal_drone','missile_drone','sniper','flying_sword','kirby_copy'].includes(w.id));
+      && !['kirby_copy'].includes(w.id));
     if (_upgW.length>0) {
       const _rw = _upgW[Math.floor(Math.random()*_upgW.length)];
       pool.push({ type:'wepup', weapId:_rw.id, icon:WEAPON_DEFS[_rw.id].icon,
-        name:'升级 '+WEAPON_DEFS[_rw.id].name+' → Lv.'+(_rw.level+1), desc:describeWeapon(_rw.id,_rw.level+1) });
-    } else if (gs.weapons.length<6) {
+        name:WEAPON_DEFS[_rw.id].name+' Lv.'+_rw.level+'→Lv.'+(_rw.level+1), desc:describeWeapon(_rw.id,_rw.level+1) });
+    } else if (gs.weapons.length<8) {
       const _avail = shuffled(Object.keys(WEAPON_DEFS).filter(id=>!_owned.has(id)&&!['kirby_copy','flying_sword'].includes(id)));
       if (_avail.length>0) pool.push({ type:'wepadd', weapId:_avail[0], icon:WEAPON_DEFS[_avail[0]].icon,
         name:'获得 '+WEAPON_DEFS[_avail[0]].name, desc:describeWeapon(_avail[0],1) });
