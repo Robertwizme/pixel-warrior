@@ -1271,7 +1271,7 @@ function getWavePlan(n) {
 // ═══════════════════════════════════════════════════════
 // §0  版本号 & 更新公告  ← 每次更新只需修改这里
 // ═══════════════════════════════════════════════════════
-const GAME_VERSION = 'v0.7.5';
+const GAME_VERSION = 'v0.7.6';
 document.getElementById('load-version').textContent = GAME_VERSION;
 const CHANGELOG = [
   { version:'v0.7.5', date:'2026-04-06', items:[
@@ -1576,15 +1576,15 @@ const WEAPON_DEFS = {
     name:'狙击枪', icon:'🔭', maxLv:8, type:'normal', fire:fireSniper,
     startDesc:'每5秒狙击最近敌人·穿透1次',
     levels: [
-      {cd:5000,dmg:120},{cd:5000,dmg:120},{cd:5000,dmg:120},{cd:5000,dmg:120},
-      {cd:5000,dmg:120},{cd:5000,dmg:120},{cd:5000,dmg:120},{cd:4000,dmg:120},
+      {cd:3500,dmg:120},{cd:3500,dmg:120},{cd:3500,dmg:120},{cd:3200,dmg:120},
+      {cd:3200,dmg:120},{cd:3200,dmg:120},{cd:3000,dmg:120},{cd:2500,dmg:120},
     ],
     describe: lv => {
       const w = gs?.weapons?.find(x=>x.id==='sniper');
       const parts = [];
       const dmg = Math.round(120*(1+(w?.sniperDmgBonus||0))*(w?.heavySniper?3:1)*(1+(w?.growingBonus||0)/100)*(w?.alloyBullet?1.5:1));
       parts.push(`伤害${dmg}`);
-      const cd = lv>=8 ? 4 : 5;
+      const cd = lv>=8?2.5:lv>=7?3:lv>=4?3.2:3.5;
       parts.push(`${cd}秒/发`);
       const extras = [];
       if (w?.sniperExtraBullets) extras.push(`×${1+w.sniperExtraBullets}连狙`);
