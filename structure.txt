@@ -1,0 +1,4 @@
+Folder PATH listing for volume Local Disk
+Volume serial number is FA6D-708E
+C:.
+\---.claude
