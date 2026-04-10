@@ -305,8 +305,9 @@
       <span id="gacha-tickets-txt">🎟 抽奖券: 0张</span>
     </div>
     <!-- Pool tabs -->
-    <div style="display:flex;gap:6px;margin-bottom:10px;justify-content:center">
+    <div style="display:flex;gap:6px;margin-bottom:10px;justify-content:center;flex-wrap:wrap">
       <button id="gacha-tab-sword" onclick="switchGachaTab('sword')" style="padding:5px 14px;font-size:11px;background:#1a0f00;border:1.5px solid #f8a;border-radius:5px;color:#f8a;cursor:pointer;font-family:'Courier New',monospace">🗡 飞剑池</button>
+      <button id="gacha-tab-tortoise" onclick="switchGachaTab('tortoise')" style="padding:5px 14px;font-size:11px;background:#0a1a0a;border:1.5px solid #4fd;border-radius:5px;color:#4fd;cursor:pointer;font-family:'Courier New',monospace">🐢 玄武池</button>
       <button id="gacha-tab-odds" onclick="switchGachaTab('odds')" style="padding:5px 14px;font-size:11px;background:#0a0a1a;border:1.5px solid #88f;border-radius:5px;color:#88f;cursor:pointer;font-family:'Courier New',monospace">📊 概率</button>
     </div>
     <!-- Flying Sword pool -->
@@ -318,6 +319,16 @@
         <div id="gacha-pity-fill" style="height:100%;background:linear-gradient(90deg,#f8a,#fd4);border-radius:4px;width:0%;transition:width .4s"></div>
       </div>
       <div id="gacha-pity-txt" style="font-size:9px;color:#666">保底进度: 0/100</div>
+    </div>
+    <!-- Black Tortoise pool -->
+    <div id="gacha-panel-tortoise" style="display:none;border-radius:10px;padding:14px;margin-bottom:10px;border:1px solid #1a3a2a;background:rgba(0,80,40,0.05)">
+      <div id="tortoise-pool-content"></div>
+      <!-- Draw buttons (shown when unlocked) -->
+      <div id="tortoise-draw-btns" style="display:none;flex-wrap:wrap;gap:6px;margin-top:10px;justify-content:center">
+        <button class="btn" id="btn-tortoise-x1" style="flex:1;min-width:80px;padding:8px;font-size:11px;border-color:#4fd;color:#4fd">金币抽×1<br><span style="font-size:9px;color:#888">100金币</span></button>
+        <button class="btn" id="btn-tortoise-x10" style="flex:1;min-width:80px;padding:8px;font-size:11px;border-color:#4ef;color:#4ef">金币抽×10<br><span style="font-size:9px;color:#888">1000金币</span></button>
+        <button class="btn" id="btn-tortoise-ticket1" style="flex:1;min-width:80px;padding:8px;font-size:11px;border-color:#aef;color:#aef">券抽×1<br><span style="font-size:9px;color:#888">1张券</span></button>
+      </div>
     </div>
     <!-- Odds panel -->
     <div id="gacha-panel-odds" style="display:none;background:rgba(10,10,30,0.8);border:1px solid #223;border-radius:10px;padding:12px;margin-bottom:10px;text-align:left;font-size:10px;max-height:180px;overflow-y:auto">

@@ -375,7 +375,7 @@ const WORLD_W = 700, WORLD_H = 480; // Player movement bounds (centered at 0,0)
 // ── WEAPON DEFS ───────────────────────────────────────────────────────────
 const WEAPON_DEFS = {
   shotgun: {
-    name:'散弹枪', icon:'💥', maxLv:8, type:'normal', fire: (...a)=>fireShotgun(...a),
+    name:'散弹枪', icon:'💥', maxLv:8, type:'normal', wepCat:'gun', fire: (...a)=>fireShotgun(...a),
     startDesc: '扇形5颗子弹·近战强势',
     levels: [
       {dmg:10, cd:1400, count:5},
@@ -398,7 +398,7 @@ const WEAPON_DEFS = {
     }
   },
   gatling: {
-    name:'加特林', icon:'🔴', maxLv:8, type:'normal', fire: (...a)=>fireGatling(...a),
+    name:'加特林', icon:'🔴', maxLv:8, type:'normal', wepCat:'gun', fire: (...a)=>fireGatling(...a),
     startDesc: '8连发弹幕后短暂休息',
     levels: [
       {dmg:26, cd:900},
@@ -421,7 +421,7 @@ const WEAPON_DEFS = {
     }
   },
   sword: {
-    name:'剑阵', icon:'⚔', maxLv:7, type:'orbit',
+    name:'剑阵', icon:'⚔', maxLv:7, type:'orbit', wepCat:'phys',
     levels: [
       {orbs:2, dmg:10, radius:40, rotSpeed:2.2, color:'#fd4'},
       {orbs:2, dmg:14, radius:42, rotSpeed:2.4, color:'#fd4'},
@@ -434,7 +434,7 @@ const WEAPON_DEFS = {
     describe: lv => { const s=WEAPON_DEFS.sword.levels[lv-1]; return `${s.orbs}轨道 | 伤害${s.dmg} | 半径${s.radius}`; }
   },
   arrow_rain: {
-    name:'箭雨', icon:'🏹', maxLv:7, type:'normal', fire: (...a)=>fireArrowRain(...a),
+    name:'箭雨', icon:'🏹', maxLv:7, type:'normal', wepCat:'phys', fire: (...a)=>fireArrowRain(...a),
     levels: [
       {dmg:20, cd:2400, count:7,  radius:50},
       {dmg:25, cd:2200, count:5,  radius:54},
@@ -447,7 +447,7 @@ const WEAPON_DEFS = {
     describe: lv => { const s=WEAPON_DEFS.arrow_rain.levels[lv-1]; return `伤害${s.dmg} | ×${s.count}箭 | CD${s.cd}ms`; }
   },
   heal_drone: {
-    name:'治疗无人机', icon:'💚', maxLv:8, type:'drone', fire: (...a)=>fireHealDrone(...a),
+    name:'治疗无人机', icon:'💚', maxLv:8, type:'drone', wepCat:'magic', fire: (...a)=>fireHealDrone(...a),
     startDesc: '定期在脚下生成治疗光圈',
     levels: [
       {healPs:4,  circleCd:10, circleR:38, circleDur:5.5},
@@ -469,7 +469,7 @@ const WEAPON_DEFS = {
     }
   },
   missile_drone: {
-    name:'导弹无人机', icon:'🚀', maxLv:8, type:'drone', fire: (...a)=>fireMissileDrone(...a),
+    name:'导弹无人机', icon:'🚀', maxLv:8, type:'drone', wepCat:'gun', fire: (...a)=>fireMissileDrone(...a),
     startDesc: '每5秒发射6枚导弹·范围爆炸',
     levels: [
       {cd:4000},{cd:4000},{cd:4000},{cd:4000},
@@ -492,7 +492,7 @@ const WEAPON_DEFS = {
     }
   },
   sniper: {
-    name:'狙击枪', icon:'🔭', maxLv:8, type:'normal', fire: (...a)=>fireSniper(...a),
+    name:'狙击枪', icon:'🔭', maxLv:8, type:'normal', wepCat:'gun', fire: (...a)=>fireSniper(...a),
     startDesc:'每5秒狙击最近敌人·穿透1次',
     levels: [
       {cd:3500,dmg:120},{cd:3500,dmg:120},{cd:3500,dmg:120},{cd:3200,dmg:120},
@@ -523,7 +523,7 @@ const WEAPON_DEFS = {
     }
   },
   flying_sword: {
-    name:'飞剑', icon:'🗡', maxLv:8, type:'normal', fire: (...a)=>fireFlyingSword(...a),
+    name:'飞剑', icon:'🗡', maxLv:8, type:'normal', wepCat:'phys', fire: (...a)=>fireFlyingSword(...a),
     startDesc: '每2秒锁定最近敌人发射4把飞剑·50伤害·40%暴击×3倍',
     levels: [
       {cd:2000},{cd:2000},{cd:2000},{cd:2000},
@@ -558,7 +558,7 @@ const WEAPON_DEFS = {
     }
   },
   black_tortoise: {
-    name:'召唤术·玄武', icon:'🐢', maxLv:8, type:'summon',
+    name:'召唤术·玄武', icon:'🐢', maxLv:8, type:'summon', wepCat:'magic',
     startDesc: '每10秒召唤玄武·每3秒发射3颗水球·每60秒为玩家护盾',
     levels: [
       {ballDmg:18},{ballDmg:23},{ballDmg:29},{ballDmg:36},
@@ -576,16 +576,18 @@ const WEAPON_DEFS = {
 
 // ── STAT UPGRADES ──────────────────────────────────────
 const STAT_UPGRADES = [
-  { id:'maxhp',  icon:'❤',  name:'强化体魄',  desc:'+30 最大HP，恢复30HP' },
-  { id:'speed',  icon:'👟', name:'疾风步法',  desc:'+20 移动速度' },
-  { id:'dmg',    icon:'⚔',  name:'力量强化',  desc:'+15% 伤害倍率' },
-  { id:'area',   icon:'💥', name:'扩展攻击',  desc:'+15% AoE范围倍率' },
-  { id:'cd',     icon:'⚡', name:'急速出手',  desc:'-12% 冷却 (最低0.2)' },
-  { id:'heal',   icon:'💊', name:'即时治愈',  desc:'立刻恢复60%最大HP' },
-  { id:'pickup', icon:'🧲', name:'磁力场',    desc:'+40 拾取半径' },
-  { id:'luck',   icon:'🍀', name:'幸运加成',  desc:'+25 幸运值 (无上限)' },
-  { id:'dodge',  icon:'💨', name:'闪避训练',  desc:'+6% 基础闪避 (上限60%)' },
-  { id:'dmgred', icon:'🛡', name:'硬化皮肤',  desc:'+5% 基础减伤 (上限60%)' },
+  { id:'maxhp',    icon:'❤',  name:'强化体魄',    desc:'+30 最大HP，恢复30HP' },
+  { id:'speed',    icon:'👟', name:'疾风步法',    desc:'+20 移动速度' },
+  { id:'physdmg',  icon:'⚔',  name:'物理强化',    desc:'物理武器伤害+30%（剑阵/箭雨/飞剑）' },
+  { id:'magicdmg', icon:'✨', name:'法术强化',    desc:'法术武器伤害+30%（玄武/治疗机）' },
+  { id:'gundmg',   icon:'🔫', name:'枪械强化',    desc:'枪械武器伤害+30%（散弹/加特林/狙击/导弹）' },
+  { id:'area',     icon:'💥', name:'扩展攻击',    desc:'+15% AoE范围倍率' },
+  { id:'cd',       icon:'⚡', name:'急速出手',    desc:'-12% 冷却 (最低0.2)' },
+  { id:'heal',     icon:'💊', name:'即时治愈',    desc:'立刻恢复60%最大HP' },
+  { id:'pickup',   icon:'🧲', name:'磁力场',      desc:'+40 拾取半径' },
+  { id:'luck',     icon:'🍀', name:'幸运加成',    desc:'+25 幸运值 (无上限)' },
+  { id:'dodge',    icon:'💨', name:'闪避训练',    desc:'+6% 基础闪避 (上限60%)' },
+  { id:'dmgred',   icon:'🛡', name:'硬化皮肤',    desc:'+5% 基础减伤 (上限60%)' },
 ];
 
 // ── SUPPLY TALENTS (boss wave rewards) ─────────────────

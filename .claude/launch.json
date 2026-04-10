@@ -1,12 +1,1 @@
-{
-  "version": "0.0.1",
-  "configurations": [
-    {
-      "name": "Python HTTP Server",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["serve", "."],
-      "port": 3000,
-      "autoPort": true
-    }
-  ]
-}
+{"version":"0.0.1","configurations":[{"name":"pixel-rpg-idle","runtimeExecutable":"npx","runtimeArgs":["serve","-l","5173","."],"port":5173}]}

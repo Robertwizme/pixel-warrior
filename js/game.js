@@ -34,7 +34,9 @@ function initGame(classIdx) {
     reaperChanneling: false, reaperChannel: 0,
     physDmgMult: 1.0,
     magicDmgMult: 1.0,
+    gunDmgMult: 1.0,
     reaperGunMult: 1.0,
+    pickedStatIds: new Set(),
     kirbyForm: null,
     santaAtkTimer: 0,
     santaCdTimer: 0,
@@ -102,6 +104,8 @@ function initGame(classIdx) {
     smokeClouds: [],
     santaGifts: [],
     fallingGifts: [],
+    spawnWarnings: [],
+    waveAnnounce: { text:'', timer:0 },
     kills: 0,
     score: 0,
     talents: new Set(),
@@ -319,7 +323,7 @@ function updateKirbyWeapon(dt) {
           const key=`kirby_sw_${i}_${ei}`;
           if (!w.swordHitTimers) w.swordHitTimers={};
           if (!(w.swordHitTimers[key]>0)) {
-            hitEnemy(e, stats.swordDmg);
+            hitEnemy(e, stats.swordDmg, false, false, 'phys');
             w.swordHitTimers[key]=0.4;
           }
         }
@@ -462,6 +466,25 @@ function startWave(num) {
     const j = Math.floor(Math.random()*(i+1));
     [queue[i],queue[j]] = [queue[j],queue[i]];
   }
+  // Enforce minimum enemy counts per wave tier
+  if (!isBoss) {
+    const _minCount = num <= 5 ? 10 : num <= 15 ? 20 : 30;
+    while (queue.length < _minCount) {
+      const _et = plan[Math.floor(Math.random()*plan.length)];
+      if (_et && !(_et.type.startsWith('boss'))) queue.push({ type:_et.type, scale:sf, waveNum:num });
+      else break;
+    }
+  }
+  // Boss waves: add 4-8 escort minions
+  if (isBoss) {
+    const _escortMap = { 10:['orc','wolf'], 20:['demon','troll'], 30:['demon','troll'] };
+    const _eTypes = _escortMap[num] || ['orc'];
+    const _eCount = 4 + Math.floor(Math.random()*5);
+    for (let i=0; i<_eCount; i++) {
+      const _et = _eTypes[Math.floor(Math.random()*_eTypes.length)];
+      queue.push({ type:_et, scale:Math.pow(1.15, num-1), waveNum:num });
+    }
+  }
   gs.wave.total    = queue.length;
   gs.wave.spawnQueue = queue;
   gs.wave.spawnTimer = 0;
@@ -472,18 +495,24 @@ function startWave(num) {
   gs.enemies      = [];
   gs.projectiles  = [];
   gs.healCircles  = [];
+  gs.spawnWarnings = [];
+  // Wave announcement
+  if (isBoss) {
+    gs.waveAnnounce = { text:'☠ BOSS來了！', timer:1.5 };
+  } else if (num % 5 === 0) {
+    gs.waveAnnounce = { text:'⚠ 一大波敵人即將來袭！', timer:1.5 };
+  } else if (num <= 4) {
+    gs.waveAnnounce = { text:'敵人來襲！', timer:1.5 };
+  } else {
+    gs.waveAnnounce = { text:'敵人來襲！', timer:1.5 };
+  }
   updateHUD();
 }
 
 // ═══════════════════════════════════════════════════════
 // §7  Spawn / hit / heal / particles
 // ═══════════════════════════════════════════════════════
-function spawnNextEnemy() {
-  if (!gs.wave.spawnQueue.length) return;
-  const entry = gs.wave.spawnQueue.shift();
-  const def = ENEMY_TYPES[entry.type];
-  if (!def) return;
-  const sf = entry.scale;
+function calcSpawnPos() {
   const margin = 50;
   let ex, ey;
   const edge = Math.floor(Math.random()*4);
@@ -491,10 +520,15 @@ function spawnNextEnemy() {
   else if (edge===1){ ex=cam.x-margin+Math.random()*(GW+margin*2); ey=cam.y+GH+margin; }
   else if (edge===2){ ex=cam.x-margin;      ey=cam.y-margin+Math.random()*(GH+margin*2); }
   else              { ex=cam.x+GW+margin;   ey=cam.y-margin+Math.random()*(GH+margin*2); }
-  // Clamp to world bounds
   ex = Math.max(-WORLD_W/2, Math.min(WORLD_W/2, ex));
   ey = Math.max(-WORLD_H/2, Math.min(WORLD_H/2, ey));
+  return { ex, ey };
+}
 
+function spawnEnemyAt(entry, ex, ey) {
+  const def = ENEMY_TYPES[entry.type];
+  if (!def) return;
+  const sf = entry.scale;
   gs.enemies.push({
     type: entry.type,
     name: def.bossName || '',
@@ -520,16 +554,24 @@ function spawnNextEnemy() {
   });
 }
 
-function hitEnemy(enemy, rawDmg, _noProc, _isCrit) {
+function spawnNextEnemy() {
+  if (!gs.wave.spawnQueue.length) return;
+  const entry = gs.wave.spawnQueue.shift();
+  const { ex, ey } = calcSpawnPos();
+  spawnEnemyAt(entry, ex, ey);
+}
+
+function hitEnemy(enemy, rawDmg, _noProc, _isCrit, wepCat) {
   if (enemy.dead) return;
   const p = gs.player;
   let mult = p.dmgMult;
   if (gs.talents.has('death_wish') && p.hp < p.maxHp*0.25) mult *= 3;
   if (gs.talents.has('berserker'))  mult *= (1 + p.berserkerKills*0.003);
   if (CLASSES[p.classIdx]?.id === 'berserker' && p.berserkActive) mult *= 2;
-  if ((p.physDmgMult||1) !== 1) mult *= p.physDmgMult;
-  if ((p.magicDmgMult||1) !== 1) mult *= p.magicDmgMult;
-  if ((p.reaperGunMult||1) !== 1) mult *= p.reaperGunMult;
+  if (wepCat === 'phys'  && (p.physDmgMult||1) !== 1) mult *= p.physDmgMult;
+  if (wepCat === 'magic' && (p.magicDmgMult||1) !== 1) mult *= p.magicDmgMult;
+  if (wepCat === 'gun'   && (p.gunDmgMult||1)   !== 1) mult *= p.gunDmgMult;
+  if (wepCat === 'gun'   && (p.reaperGunMult||1) !== 1) mult *= p.reaperGunMult;
   if ((p.santaAtkTimer||0) > 0) mult *= 1.25;
   if ((p.chosenLuckDmgMult||1) > 1) mult *= p.chosenLuckDmgMult;
   if ((p.weapEnhMult||1) > 1) mult *= p.weapEnhMult;
@@ -1161,7 +1203,7 @@ function fireShotgun(w, stats, p) {
   const spread = mods.includes('aspd') ? 0.85 : 1.0; // aspd on shotgun → tighter spread fires faster (via cd)
   const shoot = (a, d) => gs.projectiles.push({
     x:p.x, y:p.y, vx:Math.cos(a)*260, vy:Math.sin(a)*260,
-    dmg:d, radius:4, color:col, life:0.85, type:'bullet',
+    dmg:d, radius:4, color:col, life:0.85, type:'bullet', wepCat:'gun',
     pierce:beff==='pierce', bounce:beff==='bounce', bounceCount:2,
     splitOnHit:beff==='split', element:elem,
   });
@@ -1186,7 +1228,7 @@ function fireGatling(w, stats, p) {
   const dmg     = Math.floor(stats.dmg * (mods.includes('dmg_20') ? 1.2 : 1.0));
   const shoot = (x, y, a) => gs.projectiles.push({
     x, y, vx:Math.cos(a)*310, vy:Math.sin(a)*310,
-    dmg, radius:3, color:col, life:1.3, type:'bullet', element:elem,
+    dmg, radius:3, color:col, life:1.3, type:'bullet', wepCat:'gun', element:elem,
   });
   const fireBurst = () => {
     if (hasDual) {
@@ -1273,7 +1315,7 @@ function fireArrowRain(w, stats, p) {
     const oy = tgt.y + (Math.random()-.5)*area*2;
     gs.projectiles.push({ x:ox, y:oy-90,
       vx:0, vy:340,
-      dmg:stats.dmg, radius:3, color:'#fa4', life:0.55, type:'arrow', pierce:true, maxPierce:1 });
+      dmg:stats.dmg, radius:3, color:'#fa4', life:0.55, type:'arrow', wepCat:'phys', pierce:true, maxPierce:1 });
   }
 }
 
@@ -1287,7 +1329,7 @@ function missileDroneExplosion(x, y, radius, dmg, weapRef) {
     if (e.dead) return;
     const dx=e.x-x, dy=e.y-y;
     if (dx*dx+dy*dy < r2) {
-      hitEnemy(e, dmg);
+      hitEnemy(e, dmg, false, false, 'gun');
       if (weapRef) {
         if (weapRef.warhead==='stun' && !e.isBoss) {
           e.stunStacks = Math.min(10,(e.stunStacks||0)+1);
@@ -1350,7 +1392,7 @@ function fireMissileDrone(w, stats, p) {
     for (let i=0; i<4; i++) {
       const a=ang+(Math.random()-.5)*0.4;
       gs.projectiles.push({ x:p.x,y:p.y, vx:Math.cos(a)*290,vy:Math.sin(a)*290,
-        dmg:0, radius:4, color:col, life:0.7, type:'missile', pierce:false,
+        dmg:0, radius:4, color:col, life:0.7, type:'missile', wepCat:'gun', pierce:false,
         explodeR:baseR, explodeDmg:Math.round(baseDmg*0.7), missileW:w,
         onHit:(proj)=>{ missileDroneExplosion(proj.x,proj.y,proj.explodeR,proj.explodeDmg,proj.missileW); proj.dead=true; },
         onExpire:(proj)=>{ missileDroneExplosion(proj.x,proj.y,proj.explodeR,proj.explodeDmg,proj.missileW); },
@@ -1458,7 +1500,7 @@ function fireSniper(w, stats, p) {
       w.dragonShotCount = 0;
       const dmg = stats.dmg * (1+(w.sniperDmgBonus||0)) * (w.heavySniper?3:1) * (1+(w.growingBonus||0)/100) * (w.alloyBullet?1.5:1) * 8;
       gs.projectiles.push({ x:p.x, y:p.y, vx:Math.cos(ang)*spd, vy:Math.sin(ang)*spd,
-        dmg, radius:10, color:'#fd4', life:2.5, type:'bullet', pierce:true, maxPierce:9999, isDragon:true });
+        dmg, radius:10, color:'#fd4', life:2.5, type:'bullet', wepCat:'gun', pierce:true, maxPierce:9999, isDragon:true });
       if (settings.particles) spawnParticles(p.x, p.y, ['#fd4','#fa0','#f80'], 12, 120, 0.6, 5);
       return;
     }
@@ -1473,7 +1515,7 @@ function fireSniper(w, stats, p) {
     gs.projectiles.push({
       x:p.x, y:p.y,
       vx:Math.cos(spreadAng)*spd, vy:Math.sin(spreadAng)*spd,
-      dmg:baseDmg, radius:3, color:'#aef', life:2.2, type:'bullet',
+      dmg:baseDmg, radius:3, color:'#aef', life:2.2, type:'bullet', wepCat:'gun',
       pierce:true, maxPierce:maxPierces,
       splitBullet: w.splitBullet||false,
       wallBounce: w.lvl8Bounce||false,
@@ -1549,7 +1591,7 @@ function updateOrbits(dt) {
         if (dx*dx+dy*dy < (8+e.radius)**2) {
           const key=`${w.id}_${i}_${ei}`;
           if (!w.swordHitTimers[key]||w.swordHitTimers[key]<=0) {
-            hitEnemy(e, stats.dmg);
+            hitEnemy(e, stats.dmg, false, false, 'phys');
             w.swordHitTimers[key] = 0.45;
             if (settings.particles)
               spawnParticles(ox, oy, stats.color||'#fd4', 2, 80, 0.25, 3);
@@ -1670,7 +1712,7 @@ function updateProjectiles(dt) {
             hitDmg *= (_p.critDmgMult||1.5);
             _projCrit = true;
           }
-          hitEnemy(e, hitDmg, false, _projCrit);
+          hitEnemy(e, hitDmg, false, _projCrit, proj.wepCat);
           // Reaper instakill (sniper passive)
           if (proj.reaperKill && !e.isBoss && Math.random() < 0.005) {
             killEnemy(e);
@@ -2296,6 +2338,44 @@ function render() {
   ctx.globalAlpha = 1;
   ctx.textAlign = 'left';
 
+  // Spawn warning markers (red ✕)
+  if (gs.spawnWarnings && gs.spawnWarnings.length>0) {
+    for (const _sw of gs.spawnWarnings) {
+      const _sx = Math.floor(_sw.x - cam.x);
+      const _sy = Math.floor(_sw.y - cam.y);
+      const _pulse = 0.55 + 0.45 * Math.sin((_sw.timer) * Math.PI * 6);
+      ctx.globalAlpha = _pulse;
+      ctx.strokeStyle = '#f00';
+      ctx.lineWidth = 2;
+      const _r = 7;
+      ctx.beginPath();
+      ctx.moveTo(_sx - _r, _sy - _r); ctx.lineTo(_sx + _r, _sy + _r);
+      ctx.moveTo(_sx + _r, _sy - _r); ctx.lineTo(_sx - _r, _sy + _r);
+      ctx.stroke();
+      ctx.lineWidth = 1;
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // Wave announcement text
+  if (gs.waveAnnounce && gs.waveAnnounce.timer > 0) {
+    gs.waveAnnounce.timer -= dt;
+    const _t = gs.waveAnnounce.timer;
+    const _alpha = _t > 1.2 ? 1 : _t / 1.2;
+    ctx.globalAlpha = Math.max(0, _alpha);
+    ctx.font = 'bold 18px monospace';
+    ctx.textAlign = 'center';
+    const _tw = ctx.measureText(gs.waveAnnounce.text).width;
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(GW/2 - _tw/2 - 10, GH/2 - 22, _tw + 20, 28);
+    ctx.fillStyle = gs.waveAnnounce.text.startsWith('☠') ? '#f55' :
+                    gs.waveAnnounce.text.startsWith('⚠') ? '#fa0' : '#7ef';
+    ctx.fillText(gs.waveAnnounce.text, GW/2, GH/2 - 2);
+    ctx.textAlign = 'left';
+    ctx.globalAlpha = 1;
+    if (gs.waveAnnounce.timer <= 0) gs.waveAnnounce.timer = 0;
+  }
+
   // Tutorial hint
   if (tutorialTimer>0) {
     tutorialTimer -= 1/60;
@@ -2322,14 +2402,37 @@ function gameLoop(ts) {
 
   if (gs) {
     if (gs.phase==='playing') {
-      // Spawn from queue
+      // Spawn from queue — with 0.8s warning markers
       if (gs.wave.spawning && gs.wave.spawnQueue.length>0) {
         gs.wave.spawnTimer -= dt;
         if (gs.wave.spawnTimer<=0) {
           gs.wave.spawnTimer = BOSS_WAVES.has(gs.wave.num) ? 0.1 : 0.55;
-          spawnNextEnemy();
+          const _wEntry = gs.wave.spawnQueue.shift();
+          const { ex:_wx, ey:_wy } = calcSpawnPos();
+          gs.spawnWarnings.push({ x:_wx, y:_wy, timer:0.8, entry:_wEntry });
           if (gs.wave.spawnQueue.length===0) gs.wave.spawning=false;
         }
+      }
+      // Update spawn warnings
+      if (gs.spawnWarnings && gs.spawnWarnings.length>0) {
+        const _p = gs.player;
+        const _toKeep = [];
+        for (const _sw of gs.spawnWarnings) {
+          _sw.timer -= dt;
+          if (_sw.timer <= 0) {
+            const _dx = _p.x - _sw.x, _dy = _p.y - _sw.y;
+            if (_dx*_dx + _dy*_dy < 60*60) {
+              // Player too close — retry with new position
+              const { ex:_nx, ey:_ny } = calcSpawnPos();
+              _toKeep.push({ x:_nx, y:_ny, timer:0.8, entry:_sw.entry });
+            } else {
+              spawnEnemyAt(_sw.entry, _sw.x, _sw.y);
+            }
+          } else {
+            _toKeep.push(_sw);
+          }
+        }
+        gs.spawnWarnings = _toKeep;
       }
 
       updatePlayer(dt);

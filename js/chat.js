@@ -1061,6 +1061,8 @@ function updateGachaPityUI(){
   document.getElementById('gacha-coins').textContent=getCoins();
   const tkEl=document.getElementById('gacha-tickets-txt');
   if(tkEl) tkEl.textContent='🎟 抽奖券: '+getGachaTickets()+'张';
+  // Update tortoise panel if visible
+  if(document.getElementById('gacha-panel-tortoise')?.style.display !== 'none') updateGachaTortoisePanel();
 }
 
 const GACHA_POOL = [
@@ -1161,11 +1163,90 @@ function showGachaModal(results){
   document.body.appendChild(overlay);
 }
 
-// Gacha tab system (simplified — pet pool removed)
+// ── Black Tortoise pool helpers ──
+function hasGachaBlackTortoise(){ try{ return localStorage.getItem('pw_gacha_bt')==='1'; }catch{ return false; } }
+function setGachaBlackTortoise(){ try{ localStorage.setItem('pw_gacha_bt','1'); }catch{} }
+function getTortoisePity(){ try{ return Math.max(0,parseInt(localStorage.getItem('pw_gacha_bt_pity')||'0',10)); }catch{ return 0; } }
+function setTortoisePity(n){ try{ localStorage.setItem('pw_gacha_bt_pity',String(n)); }catch{} }
+function isTortoisePoolUnlocked(){ try{ const b=loadBest(); return b&&(b.wave||0)>=8; }catch{ return false; } }
+
+function updateGachaTortoisePanel(){
+  const content = document.getElementById('tortoise-pool-content');
+  const drawBtns = document.getElementById('tortoise-draw-btns');
+  if (!content) return;
+  const unlocked = isTortoisePoolUnlocked();
+  const hasBT = hasGachaBlackTortoise();
+  const pity = getTortoisePity();
+
+  if (!unlocked) {
+    content.innerHTML =
+      '<div style="font-size:28px;margin-bottom:6px;filter:grayscale(1);opacity:.5">🔒🐢</div>'+
+      '<div style="font-size:12px;color:#555;font-weight:bold;margin-bottom:4px">召唤术·玄武奖池</div>'+
+      '<div style="font-size:10px;color:#444;border:1px solid #333;border-radius:6px;padding:6px 10px;display:inline-block">通关第8波后解锁</div>';
+    if (drawBtns) drawBtns.style.display = 'none';
+  } else {
+    const pct = Math.min(100, pity);
+    content.innerHTML =
+      '<div style="font-size:30px;margin-bottom:5px">🐢</div>'+
+      '<div style="font-size:13px;color:#4fd;margin-bottom:4px;font-weight:bold">玄武奖池</div>'+
+      '<div style="font-size:9px;color:#888;margin-bottom:8px">单抽必出金币/补给 · 50抽保底玄武</div>'+
+      (hasBT
+        ? '<div style="font-size:10px;color:#4fd;margin-bottom:6px">✓ 召唤术·玄武 已解锁</div>'
+        : '')+
+      '<div style="background:#1a1a2a;border-radius:4px;height:5px;margin-bottom:3px;overflow:hidden">'+
+        '<div style="height:100%;background:linear-gradient(90deg,#4fd,#4ef);border-radius:4px;width:'+pct+'%;transition:width .4s"></div>'+
+      '</div>'+
+      '<div style="font-size:9px;color:#666">'+(hasBT?'保底进度: 已解锁玄武 ✓':'保底进度: '+pity+'/50')+'</div>';
+    if (drawBtns) drawBtns.style.display = 'flex';
+  }
+}
+
+function tortoiseDraw(){
+  let pity = getTortoisePity();
+  const hasBT = hasGachaBlackTortoise();
+  pity++;
+  const isBTPull = !hasBT && (pity >= 50 || Math.random() < 0.03);
+  setTortoisePity(isBTPull ? 0 : pity);
+
+  if (isBTPull) {
+    setGachaBlackTortoise();
+    return { icon:'🐢', name:'召唤术·玄武', rarity:'legendary', msg:'玄武已解锁！下局第5波通关后可选择。' };
+  }
+  // Consolation: same pool as sword gacha
+  let total = GACHA_POOL.reduce((s,x)=>s+x.w,0);
+  let r = Math.random()*total;
+  for (const item of GACHA_POOL) {
+    r -= item.w;
+    if (r <= 0) { const res=item.apply(); return { icon:item.icon, name:item.name, rarity:res.rarity||'normal' }; }
+  }
+  const fb=GACHA_POOL[0]; fb.apply(); return { icon:fb.icon, name:fb.name, rarity:'normal' };
+}
+
+function doTortoiseGacha(times, useTickets){
+  if (!isTortoisePoolUnlocked()){
+    showGachaModal([{icon:'🔒',name:'通关第8波后解锁',rarity:'normal'}]);
+    return;
+  }
+  if (useTickets) {
+    const tix = getGachaTickets();
+    if (tix < times){ showGachaModal([{icon:'❌',name:'抽奖券不足！需要'+times+'张，当前'+tix+'张',rarity:'normal'}]); return; }
+    for (let i=0;i<times;i++) spendGachaTicket();
+  } else {
+    if (!spendCoins(times*100)){ showGachaModal([{icon:'❌',name:'金币不足！需要'+(times*100)+' 金币',rarity:'normal'}]); return; }
+  }
+  const results = [];
+  for (let i=0;i<times;i++) results.push(tortoiseDraw());
+  updateGachaPityUI();
+  showGachaModal(results);
+}
+
+// Gacha tab system
 function switchGachaTab(tab){
-  document.getElementById('gacha-panel-sword').style.display = tab==='sword'?'':'none';
-  document.getElementById('gacha-panel-odds').style.display  = tab==='odds'?'':'none';
-  document.getElementById('gacha-draw-btns').style.display   = tab==='odds'?'none':'flex';
+  document.getElementById('gacha-panel-sword').style.display     = tab==='sword'    ?'':'none';
+  document.getElementById('gacha-panel-tortoise').style.display  = tab==='tortoise' ?'':'none';
+  document.getElementById('gacha-panel-odds').style.display      = tab==='odds'     ?'':'none';
+  document.getElementById('gacha-draw-btns').style.display       = tab==='sword'    ?'flex':'none';
+  if (tab==='tortoise') updateGachaTortoisePanel();
 }
 
 
@@ -1174,6 +1255,9 @@ document.getElementById('btn-gacha-x1').addEventListener('click',()=>{ doGacha(1
 document.getElementById('btn-gacha-x10').addEventListener('click',()=>{ doGacha(10); });
 document.getElementById('btn-gacha-ticket1').addEventListener('click',()=>{ doGacha(1,true); });
 document.getElementById('btn-gacha-ticket10').addEventListener('click',()=>{ doGacha(10,true); });
+document.getElementById('btn-tortoise-x1').addEventListener('click',()=>{ doTortoiseGacha(1); });
+document.getElementById('btn-tortoise-x10').addEventListener('click',()=>{ doTortoiseGacha(10); });
+document.getElementById('btn-tortoise-ticket1').addEventListener('click',()=>{ doTortoiseGacha(1,true); });
 document.getElementById('btn-friends').addEventListener('click',()=>{
   _friendTab='list';showOverlay('o-friends');
 });

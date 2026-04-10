@@ -341,7 +341,7 @@ function updateFlyingSwords(dt) {
           const isCrit = Math.random()<critRate;
           let dmg = Math.round(baseDmg*dmgMult*(p.dmgMult||1));
           if (isCrit) { dmg=Math.round(dmg*3); if(settings.particles) addFloatingText('暴击!',e.x,e.y-12,'#fd4',0.5); }
-          hitEnemy(e, dmg);
+          hitEnemy(e, dmg, false, isCrit, 'phys');
           if (w.fsElement==='flame')  e.flameStacks  = Math.min(10,(e.flameStacks||0)+2);
           if (w.fsElement==='frost')  e.frostStacks  = Math.min(10,(e.frostStacks||0)+2);
           if (w.fsElement==='poison') e.poisonStacks = Math.min(10,(e.poisonStacks||0)+2);
@@ -483,7 +483,7 @@ function updateBlackTortoise(dt) {
     }
     if (w.btEntity.charging) {
       w.btEntity.chargeDur-=dt; w.btEntity.x+=w.btEntity.chargeVx*dt; w.btEntity.y+=w.btEntity.chargeVy*dt;
-      gs.enemies.forEach(e=>{if(e.dead)return;const dx=e.x-w.btEntity.x,dy=e.y-w.btEntity.y;if(dx*dx+dy*dy<(22*sizeMult)**2){hitEnemy(e,Math.round(ballDmg*3));e.stunStacks=Math.min(10,(e.stunStacks||0)+1);}});
+      gs.enemies.forEach(e=>{if(e.dead)return;const dx=e.x-w.btEntity.x,dy=e.y-w.btEntity.y;if(dx*dx+dy*dy<(22*sizeMult)**2){hitEnemy(e,Math.round(ballDmg*3),false,false,'magic');e.stunStacks=Math.min(10,(e.stunStacks||0)+1);}});
       if(w.btEntity.chargeDur<=0)w.btEntity.charging=false;
     }
   }
@@ -501,7 +501,7 @@ function updateBlackTortoise(dt) {
     if (w.btUltraAnims) {
       w.btUltraAnims=w.btUltraAnims.filter(ua=>{
         ua.timer-=dt;
-        if(!ua.hitDone&&ua.timer<0.2){ua.hitDone=true;const r2=80*80;gs.enemies.forEach(e=>{if(e.dead)return;const dx=e.x-ua.x,dy=e.y-ua.y;if(dx*dx+dy*dy<r2){hitEnemy(e,Math.round(ballDmg*5));const kd=Math.sqrt(dx*dx+dy*dy)||1;e.x+=(dx/kd)*40;e.y+=(dy/kd)*40;e.stunStacks=Math.min(10,(e.stunStacks||0)+2);}});if(settings.particles)spawnParticles(ua.x,ua.y,['#4af','#8cf','#aaf','#fff'],20,140,1.0,6);}
+        if(!ua.hitDone&&ua.timer<0.2){ua.hitDone=true;const r2=80*80;gs.enemies.forEach(e=>{if(e.dead)return;const dx=e.x-ua.x,dy=e.y-ua.y;if(dx*dx+dy*dy<r2){hitEnemy(e,Math.round(ballDmg*5),false,false,'magic');const kd=Math.sqrt(dx*dx+dy*dy)||1;e.x+=(dx/kd)*40;e.y+=(dy/kd)*40;e.stunStacks=Math.min(10,(e.stunStacks||0)+2);}});if(settings.particles)spawnParticles(ua.x,ua.y,['#4af','#8cf','#aaf','#fff'],20,140,1.0,6);}
         return ua.timer>0;
       });
     }
@@ -518,12 +518,12 @@ function updateBlackTortoise(dt) {
     ball.life-=dt; if(ball.life<=0)return false;
     ball.x+=ball.vx*dt; ball.y+=ball.vy*dt;
     ball.hitCd=Math.max(0,(ball.hitCd||0)-dt);
-    if(ball.hitCd<=0){const hit=gs.enemies.find(e=>!e.dead&&(e.x-ball.x)**2+(e.y-ball.y)**2<(7+e.radius)**2);if(hit){hitEnemy(hit,ball.dmg);if(ball.poison){hit.poisonStacks=Math.min(10,(hit.poisonStacks||0)+3);if(!w.btPuddles)w.btPuddles=[];w.btPuddles.push({x:ball.x,y:ball.y,timer:3.5,tickTimer:0.4});}return false;}}
+    if(ball.hitCd<=0){const hit=gs.enemies.find(e=>!e.dead&&(e.x-ball.x)**2+(e.y-ball.y)**2<(7+e.radius)**2);if(hit){hitEnemy(hit,ball.dmg,false,false,'magic');if(ball.poison){hit.poisonStacks=Math.min(10,(hit.poisonStacks||0)+3);if(!w.btPuddles)w.btPuddles=[];w.btPuddles.push({x:ball.x,y:ball.y,timer:3.5,tickTimer:0.4});}return false;}}
     return true;
   });
   // Update poison puddles
   if (w.btPuddles) {
-    w.btPuddles=w.btPuddles.filter(pd=>{pd.timer-=dt;if(pd.timer<=0)return false;pd.tickTimer-=dt;if(pd.tickTimer<=0){pd.tickTimer=0.4;gs.enemies.forEach(e=>{if(e.dead)return;const dx=e.x-pd.x,dy=e.y-pd.y;if(dx*dx+dy*dy<28*28){e.poisonStacks=Math.min(10,(e.poisonStacks||0)+1);hitEnemy(e,Math.round(ballDmg*0.15));}});}return true;});
+    w.btPuddles=w.btPuddles.filter(pd=>{pd.timer-=dt;if(pd.timer<=0)return false;pd.tickTimer-=dt;if(pd.tickTimer<=0){pd.tickTimer=0.4;gs.enemies.forEach(e=>{if(e.dead)return;const dx=e.x-pd.x,dy=e.y-pd.y;if(dx*dx+dy*dy<28*28){e.poisonStacks=Math.min(10,(e.poisonStacks||0)+1);hitEnemy(e,Math.round(ballDmg*0.15),false,false,'magic');}});}return true;});
   }
 }
 function renderBlackTortoise(ctx, cam) {
@@ -676,6 +676,7 @@ function getUpgradeOptions() {
       if (isDoctor  && s.id === 'maxhp') return false;
       if (isScholar && s.id === 'speed') return false;
       if (s.id === 'dodge' || s.id === 'dmgred') return lv >= 30 && Math.random() < 0.25;
+      if ((p.pickedStatIds||new Set()).has(s.id)) return false; // dedup
       return true;
     })
     .map(s => ({ type:'stat', id:s.id, icon:s.icon, name:s.name, desc:s.desc }));
@@ -772,16 +773,20 @@ function applyDropSupplyUpgrade(opt) {
 function applyUpgradeEffect(opt) {
   const p = gs.player;
   if (opt.type === 'stat') {
-    if      (opt.id==='maxhp')  { p.maxHp+=30; healPlayer(30); }
-    else if (opt.id==='speed')  p.spd+=20;
-    else if (opt.id==='dmg')    p.dmgMult   = +(p.dmgMult *1.15).toFixed(4);
-    else if (opt.id==='area')   p.areaMult  = +(p.areaMult*1.15).toFixed(4);
-    else if (opt.id==='cd')     p.cdMult    = Math.max(0.2,+(p.cdMult*0.88).toFixed(4));
-    else if (opt.id==='heal')   healPlayer(p.maxHp*0.6);
-    else if (opt.id==='pickup') p.pickupR  += 40;
-    else if (opt.id==='luck')   p.luck     += 25;
-    else if (opt.id==='dodge')  p.baseDodge   = Math.min(0.6,p.baseDodge  +0.06);
-    else if (opt.id==='dmgred') p.baseDmgRed  = Math.min(0.6,p.baseDmgRed+0.05);
+    if      (opt.id==='maxhp')    { p.maxHp+=30; healPlayer(30); }
+    else if (opt.id==='speed')    p.spd+=20;
+    else if (opt.id==='physdmg')  p.physDmgMult = Math.min(2.0, +(((p.physDmgMult||1)*1.30).toFixed(4)));
+    else if (opt.id==='magicdmg') p.magicDmgMult = Math.min(2.0, +(((p.magicDmgMult||1)*1.30).toFixed(4)));
+    else if (opt.id==='gundmg')   p.gunDmgMult = Math.min(2.0, +(((p.gunDmgMult||1)*1.30).toFixed(4)));
+    else if (opt.id==='area')     p.areaMult  = +(p.areaMult*1.15).toFixed(4);
+    else if (opt.id==='cd')       p.cdMult    = Math.max(0.2,+(p.cdMult*0.88).toFixed(4));
+    else if (opt.id==='heal')     healPlayer(p.maxHp*0.6);
+    else if (opt.id==='pickup')   p.pickupR  += 40;
+    else if (opt.id==='luck')     p.luck     += 25;
+    else if (opt.id==='dodge')    p.baseDodge   = Math.min(0.6,p.baseDodge  +0.06);
+    else if (opt.id==='dmgred')   p.baseDmgRed  = Math.min(0.6,p.baseDmgRed+0.05);
+    // Track picked stat (dedup)
+    if (p.pickedStatIds && opt.id !== 'heal') p.pickedStatIds.add(opt.id);
     updateDerivedStats(p);
   } else if (opt.type === 'wepup') {
     const w = getWeapon(opt.weapId);
@@ -931,7 +936,9 @@ function getLevelUpOptions() {
         name:'获得 '+WEAPON_DEFS[_avail[0]].name, desc:describeWeapon(_avail[0],1) });
     }
   }
-  return shuffled(pool).slice(0, 3);
+  // Dedup: remove lvstat entries already picked
+  const _picked = p.pickedStatIds || new Set();
+  return shuffled(pool.filter(o => o.type !== 'lvstat' || !_picked.has(o.id))).slice(0, 3);
 }
 
 function showLevelUpScreen() {
@@ -973,6 +980,8 @@ function applyLevelUpUpgrade(opt) {
       p.baseDodge  = Math.min(0.6, p.baseDodge  + 0.05);
       p.baseDmgRed = Math.min(0.6, p.baseDmgRed + 0.05);
     }
+    // Track picked lvstat (dedup); skip one-time use IDs
+    if (p.pickedStatIds && !['maxhp','heal'].includes(opt.id)) p.pickedStatIds.add(opt.id);
     updateDerivedStats(p);
   } else {
     applyUpgradeEffect(opt);
