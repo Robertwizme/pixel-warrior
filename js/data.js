@@ -175,9 +175,14 @@ function getWavePlan(n) {
 // ═══════════════════════════════════════════════════════
 // §0  版本号 & 更新公告  ← 每次更新只需修改这里
 // ═══════════════════════════════════════════════════════
-const GAME_VERSION = 'v0.7.7';
+const GAME_VERSION = 'v0.7.9';
 document.getElementById('load-version').textContent = GAME_VERSION;
 const CHANGELOG = [
+  { version:'v0.7.9', date:'2026-04-11', items:[
+    '修復致命bug：波次公告（waveAnnounce）timer遞減誤放在render()內，導致ReferenceError炸掉遊戲迴圈，玩家無法移動且怪物不生成',
+    'timer遞減移至gameLoop update區塊（有dt的地方），render()僅負責讀值繪製',
+    '順帶修正GAME_VERSION版本號與CHANGELOG同步',
+  ]},
   { version:'v0.7.8', date:'2026-04-11', items:[
     '怪物實體圖片：史萊姆/哥布林/骷髏兵改用真實圖片顯示（canvas與圖鑑同步）',
     '圖鑑雙欄佈局：左欄縮圖網格4列，右欄詳細資訊撐滿剩餘空間',

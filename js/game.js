@@ -2076,9 +2076,11 @@ function render() {
     const rows=SPRITES[e.sprite];
     const _eImg=ENEMY_IMG_MAP[e.sprite];
     const _useImg=_eImg&&_eImg.complete&&_eImg.naturalWidth>0;
-    const _iSz=_useImg?(e.radius*3|0):0;
-    const sw=_useImg?_iSz:(rows?rows[0].length*sc:16);
-    const sh=_useImg?_iSz:(rows?rows.length*sc:16);
+    // Maintain natural aspect ratio: use radius*3 as display height, scale width proportionally
+    const _iH=_useImg?(e.radius*3|0):0;
+    const _iW=_useImg?Math.round(_iH*_eImg.naturalWidth/_eImg.naturalHeight):0;
+    const sw=_useImg?_iW:(rows?rows[0].length*sc:16);
+    const sh=_useImg?_iH:(rows?rows.length*sc:16);
     const sx=Math.floor(e.x-cam.x-sw/2), sy=Math.floor(e.y-cam.y-sh/2);
     // Slow tint
     if (e.slowTimer>0) { ctx.globalAlpha=0.7; }

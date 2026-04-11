@@ -566,9 +566,13 @@ function renderBlackTortoise(ctx, cam) {
   // Draw single tortoise helper
   const drawT=(ent,sc)=>{
     const tx=Math.floor(ent.x-cam.x),ty=Math.floor(ent.y-cam.y);
-    const dw=Math.round(32*sc),dh=Math.round(32*sc);
     const _bti=typeof IMG_BLACK_TORTOISE!=='undefined'&&IMG_BLACK_TORTOISE.complete&&IMG_BLACK_TORTOISE.naturalWidth>0;
+    // Maintain aspect ratio: use 32*sc as display height, scale width from natural ratio
+    const dh=Math.round(32*sc);
+    const dw=_bti?Math.round(dh*IMG_BLACK_TORTOISE.naturalWidth/IMG_BLACK_TORTOISE.naturalHeight):dh;
     ctx.save(); ctx.translate(tx,ty);
+    // Image faces left by default — flip horizontally when moving right
+    ctx.scale(-1,1);
     if(!ent.facingRight)ctx.scale(-1,1);
     if(_bti){ctx.drawImage(IMG_BLACK_TORTOISE,-dw/2,-dh/2,dw,dh);}
     else{ctx.fillStyle='#2a5a3a';ctx.beginPath();ctx.arc(0,0,dw/2,0,Math.PI*2);ctx.fill();ctx.fillStyle='#3d8a55';ctx.beginPath();ctx.arc(0,0,dw/3,0,Math.PI*2);ctx.fill();ctx.fillStyle='#5fc47a';ctx.fillRect(-3,-3,6,6);}
