@@ -677,9 +677,9 @@ async function sendDmMsg(){
 
 // §28 Codex (图鉴)
 const _CODEX_ENEMY_META = {
-  slime:      { icon:'🟢', name:'史莱姆',    waveFirst:1,  waveDesc:'第1波起出现，全程都有',             special:'无特殊行为，直线冲向玩家，数量最多',                        desc:'成群结队的绿色软体怪，血薄速慢，适合练手阶段' },
-  goblin:     { icon:'👺', name:'哥布林',    waveFirst:2,  waveDesc:'第2波起出现',                       special:'移速较快，常与史莱姆混编出现',                               desc:'狡猾的小妖精，速度较快，常与史莱姆混编出现' },
-  skeleton:   { icon:'💀', name:'骷髅兵',    waveFirst:4,  waveDesc:'第4波起出现',                       special:'无特殊行为，均衡型普通怪',                                    desc:'不死亡灵，血量中等，攻击力适中，是中期的标准威胁' },
+  slime:      { icon:'🟢', img:'photo/Slime.png',    name:'史莱姆',    waveFirst:1,  waveDesc:'第1波起出现，全程都有',             special:'无特殊行为，直线冲向玩家，数量最多',                        desc:'成群结队的绿色软体怪，血薄速慢，适合练手阶段' },
+  goblin:     { icon:'👺', img:'photo/goblin.png',   name:'哥布林',    waveFirst:2,  waveDesc:'第2波起出现',                       special:'移速较快，常与史莱姆混编出现',                               desc:'狡猾的小妖精，速度较快，常与史莱姆混编出现' },
+  skeleton:   { icon:'💀', img:'photo/Skeleton.png', name:'骷髅兵',    waveFirst:4,  waveDesc:'第4波起出现',                       special:'无特殊行为，均衡型普通怪',                                    desc:'不死亡灵，血量中等，攻击力适中，是中期的标准威胁' },
   bat:        { icon:'🦇', name:'吸血蝙蝠',  waveFirst:5,  waveDesc:'第5波起出现',                       special:'移动速度极高，难以用慢速武器击中，成群时威胁极大',              desc:'移速极快，难以追踪，成群来袭时威胁极大' },
   orc:        { icon:'👹', name:'兽人勇士',  waveFirst:6,  waveDesc:'第6波起出现',                       special:'高HP高伤害，需优先消灭，避免贴身',                              desc:'强壮的战士，高血量高伤害，但行动迟缓' },
   wolf:       { icon:'🐺', name:'野狼',      waveFirst:8,  waveDesc:'第8波起出现，中后期大量出现',       special:'极速冲锋，成群围攻，大范围AoE武器克制效果好',                  desc:'速度极快的猛兽，以群体围攻方式猎杀目标' },
@@ -828,8 +828,9 @@ function _codexMonsterDetail(k){
   if(!e||!m) return _cdxDetail('<div style="color:#555;padding:40px 0;text-align:center">暂无数据</div>');
   const nameColor=e.isBoss?'#f84':'#eee';
   const waveTag=e.isBoss?'<span style="font-size:9px;color:#f44;font-weight:400;margin-left:6px">BOSS</span>':'';
+  const _bigIcon=m.img?'<div class="cdx-big-icon"><img src="'+m.img+'" class="cdx-enemy-img-lg"></div>':'<div class="cdx-big-icon">'+m.icon+'</div>';
   return _cdxDetail(
-    '<div class="cdx-big-icon">'+m.icon+'</div>'+
+    _bigIcon+
     '<div class="cdx-item-name" style="color:'+nameColor+'">'+m.name+waveTag+'</div>'+
     '<div class="cdx-item-sub">'+m.waveDesc+'</div>'+
     _cdxStat('❤ HP', e.hp)+
@@ -922,7 +923,7 @@ function renderCodexContent(){
       ?['boss_10','boss_10_cat','boss_10_dog','boss_20','boss_30']
       :['slime','goblin','skeleton','bat','orc','wolf','troll','demon','archer'];
     items=keys.map(k=>({k}));
-    iconFn=it=>(_CODEX_ENEMY_META[it.k]||{icon:'?'}).icon;
+    iconFn=it=>{ const m=_CODEX_ENEMY_META[it.k]||{icon:'?'}; return m.img?'<img src="'+m.img+'" class="cdx-enemy-img-sm">':m.icon; };
     nameFn=it=>(_CODEX_ENEMY_META[it.k]||{name:'?'}).name;
     detailFn=it=>_codexMonsterDetail(it.k);
   } else if(_codexTab==='char'){

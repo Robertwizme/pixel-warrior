@@ -10,6 +10,14 @@ let selectedClassIdx = -1;
 let lastClassIdx = 0;
 let tutorialTimer = 5.0;
 
+// ── Enemy sprite image overrides (preloaded) ──
+const ENEMY_IMG_MAP = (function(){
+  const _src = { slime:'photo/Slime.png', goblin:'photo/goblin.png', skeleton:'photo/Skeleton.png' };
+  const _map = {};
+  for (const k in _src) { const i=new Image(); i.src=_src[k]; _map[k]=i; }
+  return _map;
+})();
+
 function initGame(classIdx) {
   const cls = CLASSES[classIdx];
   lastClassIdx = classIdx;
@@ -2066,11 +2074,16 @@ function render() {
     if (e.dead) return;
     const sc=e.scale;
     const rows=SPRITES[e.sprite];
-    const sw=rows?rows[0].length*sc:16, sh=rows?rows.length*sc:16;
+    const _eImg=ENEMY_IMG_MAP[e.sprite];
+    const _useImg=_eImg&&_eImg.complete&&_eImg.naturalWidth>0;
+    const _iSz=_useImg?(e.radius*3|0):0;
+    const sw=_useImg?_iSz:(rows?rows[0].length*sc:16);
+    const sh=_useImg?_iSz:(rows?rows.length*sc:16);
     const sx=Math.floor(e.x-cam.x-sw/2), sy=Math.floor(e.y-cam.y-sh/2);
     // Slow tint
     if (e.slowTimer>0) { ctx.globalAlpha=0.7; }
-    drawSprite(e.sprite, sx, sy, sc);
+    if (_useImg) ctx.drawImage(_eImg, sx, sy, sw, sh);
+    else drawSprite(e.sprite, sx, sy, sc);
     ctx.globalAlpha=1;
     // HP bar
     const bw=e.isBoss?50:Math.max(14,sw); const bh=e.isBoss?5:3;

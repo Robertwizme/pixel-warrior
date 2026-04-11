@@ -205,6 +205,8 @@ body.theme-light input{background:#f5f7ff !important;color:#111 !important;borde
 @keyframes cdxFadeIn{from{opacity:0;transform:translateX(6px)}to{opacity:1;transform:translateX(0)}}
 .cdx-detail-inner{animation:cdxFadeIn .18s ease both}
 .cdx-big-icon{font-size:54px;line-height:1;margin-bottom:10px;text-align:center}
+.cdx-enemy-img-sm{width:28px;height:28px;object-fit:contain;display:block}
+.cdx-enemy-img-lg{width:72px;height:72px;object-fit:contain;display:block;margin:0 auto}
 .cdx-item-name{font-size:18px;font-weight:900;margin-bottom:4px;letter-spacing:1px}
 .cdx-item-sub{font-size:9px;color:#555;margin-bottom:12px;letter-spacing:.5px}
 .cdx-stat-row{display:flex;justify-content:space-between;align-items:center;
