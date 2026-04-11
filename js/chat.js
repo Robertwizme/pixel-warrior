@@ -980,6 +980,8 @@ document.getElementById('btn-dm-back').addEventListener('click',()=>{
 document.getElementById('btn-codex').addEventListener('click',()=>openCodex());
 document.getElementById('btn-gacha').addEventListener('click',()=>{
   updateGachaPityUI();
+  renderGachaPoolList();
+  switchGachaTab('sword');
   showOverlay('o-gacha');
 });
 
@@ -1061,7 +1063,8 @@ function updateGachaPityUI(){
   document.getElementById('gacha-coins').textContent=getCoins();
   const tkEl=document.getElementById('gacha-tickets-txt');
   if(tkEl) tkEl.textContent='🎟 抽奖券: '+getGachaTickets()+'张';
-  // Update tortoise panel if visible
+  // Refresh sidebar and tortoise panel if visible
+  renderGachaPoolList();
   if(document.getElementById('gacha-panel-tortoise')?.style.display !== 'none') updateGachaTortoisePanel();
 }
 
@@ -1240,13 +1243,47 @@ function doTortoiseGacha(times, useTickets){
   showGachaModal(results);
 }
 
-// Gacha tab system
+// ── Gacha two-column pool system ──
+const _GACHA_POOLS = [
+  { id:'sword',     icon:'🗡', name:'飞剑池',   unlocked:()=>true },
+  { id:'tortoise',  icon:'🐢', name:'玄武池',   unlocked:()=>isTortoisePoolUnlocked() },
+  { id:'odds',      icon:'📊', name:'概率',     unlocked:()=>true },
+];
+
+function renderGachaPoolList(){
+  const list = document.getElementById('gacha-pool-list');
+  if (!list) return;
+  // Split into unlocked/locked then render unlocked first, locked at bottom
+  const unlocked = _GACHA_POOLS.filter(p => p.unlocked());
+  const locked   = _GACHA_POOLS.filter(p => !p.unlocked());
+  const current  = list.dataset.active || 'sword';
+  list.innerHTML = '';
+  const makeItem = (p, isLocked) => {
+    const el = document.createElement('div');
+    el.className = 'gacha-pool-item' + (p.id === current ? ' active' : '') + (isLocked ? ' gpi-locked' : '');
+    el.dataset.pool = p.id;
+    el.innerHTML = '<span class="gpi-icon">'+p.icon+'</span><span>'+p.name+'</span>';
+    if (!isLocked) el.addEventListener('click', ()=>switchGachaTab(p.id));
+    list.appendChild(el);
+  };
+  unlocked.forEach(p => makeItem(p, false));
+  locked.forEach(p => makeItem(p, true));
+}
+
 function switchGachaTab(tab){
-  document.getElementById('gacha-panel-sword').style.display     = tab==='sword'    ?'':'none';
-  document.getElementById('gacha-panel-tortoise').style.display  = tab==='tortoise' ?'':'none';
-  document.getElementById('gacha-panel-odds').style.display      = tab==='odds'     ?'':'none';
-  document.getElementById('gacha-draw-btns').style.display       = tab==='sword'    ?'flex':'none';
-  if (tab==='tortoise') updateGachaTortoisePanel();
+  ['sword','tortoise','odds'].forEach(id => {
+    const el = document.getElementById('gacha-panel-'+id);
+    if (el) el.style.display = id === tab ? '' : 'none';
+  });
+  // Update active state in sidebar
+  const list = document.getElementById('gacha-pool-list');
+  if (list) {
+    list.dataset.active = tab;
+    list.querySelectorAll('.gacha-pool-item').forEach(el => {
+      el.classList.toggle('active', el.dataset.pool === tab);
+    });
+  }
+  if (tab === 'tortoise') updateGachaTortoisePanel();
 }
 
 
