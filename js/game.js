@@ -2372,7 +2372,6 @@ function render() {
 
   // Wave announcement text
   if (gs.waveAnnounce && gs.waveAnnounce.timer > 0) {
-    gs.waveAnnounce.timer -= dt;
     const _t = gs.waveAnnounce.timer;
     const _alpha = _t > 1.2 ? 1 : _t / 1.2;
     ctx.globalAlpha = Math.max(0, _alpha);
@@ -2386,7 +2385,6 @@ function render() {
     ctx.fillText(gs.waveAnnounce.text, GW/2, GH/2 - 2);
     ctx.textAlign = 'left';
     ctx.globalAlpha = 1;
-    if (gs.waveAnnounce.timer <= 0) gs.waveAnnounce.timer = 0;
   }
 
   // Tutorial hint
@@ -2471,6 +2469,8 @@ function gameLoop(ts) {
       updateProjectiles(dt);
       updateParticles(dt);
       gs.wave.timer += dt;
+      if (gs.waveAnnounce && gs.waveAnnounce.timer > 0)
+        gs.waveAnnounce.timer = Math.max(0, gs.waveAnnounce.timer - dt);
       updateHUD();
       checkWaveComplete();
     } else if (gs.phase==='upgrading'||gs.phase==='supply'||gs.phase==='dead'||gs.phase==='levelup'||gs.phase==='paused') {
