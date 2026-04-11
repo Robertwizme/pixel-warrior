@@ -150,7 +150,7 @@
 
 <!-- ANNOUNCE (内容由 renderAnnounce() 动态生成) -->
 <div class="overlay" id="o-announce">
-  <div class="panel" style="max-width:420px;text-align:left">
+  <div class="panel panel-fs" style="text-align:left">
     <div style="font-size:18px;color:#f84;margin-bottom:4px;text-align:center;letter-spacing:2px">📢 更新公告</div>
     <div id="announce-version" style="font-size:10px;color:#555;text-align:center;margin-bottom:14px"></div>
     <div id="announce-log" style="max-height:320px;overflow-y:auto;margin-bottom:14px"></div>
@@ -162,7 +162,7 @@
 
 <!-- MAILBOX -->
 <div class="overlay" id="o-mailbox">
-  <div class="panel" style="max-width:420px;text-align:left">
+  <div class="panel panel-fs" style="text-align:left">
     <div style="font-size:18px;color:#4ef;margin-bottom:4px;text-align:center;letter-spacing:2px">📬 邮箱</div>
     <div style="font-size:10px;color:#555;text-align:center;margin-bottom:14px">官方礼包 · 活动奖励</div>
     <div id="mailbox-list" style="max-height:340px;overflow-y:auto;margin-bottom:14px"></div>
@@ -174,7 +174,7 @@
 
 <!-- ACTIVITY -->
 <div class="overlay" id="o-activity">
-  <div class="panel" style="max-width:440px;text-align:left">
+  <div class="panel panel-fs" style="text-align:left">
     <div style="font-size:18px;color:#4fd;margin-bottom:4px;text-align:center;letter-spacing:2px">🎪 限时活动</div>
     <div style="font-size:10px;color:#555;text-align:center;margin-bottom:14px">特殊挑战 · 限时奖励</div>
     <div id="activity-list" style="max-height:380px;overflow-y:auto;margin-bottom:14px;text-align:center">
@@ -280,7 +280,7 @@
 
 <!-- FORGE -->
 <div class="overlay" id="o-forge">
-  <div class="panel" style="max-width:440px;width:92%;text-align:center;padding:16px 20px">
+  <div class="panel panel-fs" style="text-align:center;display:flex;flex-direction:column;overflow:hidden;padding:16px 20px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
       <div style="font-size:15px;color:#fd4;font-weight:700;letter-spacing:1px">⚒ 武器强化</div>
       <button class="btn" id="btn-forge-back" style="padding:4px 10px;font-size:11px">← 返回</button>
@@ -292,7 +292,7 @@
     <div style="font-size:9px;color:#555;margin-bottom:10px;text-align:left;background:#0d1322;border-radius:6px;padding:6px 10px">
       每级强化提升 <span style="color:#fd4">+8%</span> 全局武器伤害（最高5级 = +40%）
     </div>
-    <div id="forge-weapon-list" style="max-height:55vh;overflow-y:auto"></div>
+    <div id="forge-weapon-list" style="flex:1;overflow-y:auto"></div>
   </div>
 </div>
 
@@ -375,7 +375,7 @@
 
 <!-- FRIENDS -->
 <div class="overlay" id="o-friends">
-  <div class="panel" style="max-width:420px;width:94%;max-height:82vh;display:flex;flex-direction:column;padding:0;overflow:hidden">
+  <div class="panel panel-fs" style="display:flex;flex-direction:column;padding:0;overflow:hidden">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid #222;flex-shrink:0">
       <div style="color:#4ef;font-size:16px;font-weight:700">👥 好友</div>
       <button class="btn" id="btn-friends-back" style="padding:4px 10px;font-size:11px">← 返回</button>
@@ -403,7 +403,7 @@
 
 <!-- SHOP -->
 <div class="overlay" id="o-shop">
-  <div class="panel" style="max-width:440px;text-align:left">
+  <div class="panel panel-fs" style="text-align:left">
     <div style="font-size:18px;color:#fd4;margin-bottom:2px;text-align:center;letter-spacing:2px">🏪 角色商城</div>
     <div style="font-size:10px;color:#888;text-align:center;margin-bottom:6px">用金币解锁职业或完成指定条件</div>
     <div style="font-size:12px;color:#fd4;text-align:center;margin-bottom:12px">
@@ -467,7 +467,7 @@
 
 <!-- SETTINGS -->
 <div class="overlay" id="o-settings">
-  <div class="panel" style="max-width:360px">
+  <div class="panel panel-fs">
     <div id="settings-title" style="font-size:18px;color:#fd4;margin-bottom:16px">⚙ 设置</div>
     <div class="setting-row"><span>🎵 背景音乐</span><div class="toggle on" id="tog-music"></div></div>
     <div class="setting-row"><span>✨ 粒子效果</span><div class="toggle on" id="tog-particles"></div></div>
@@ -492,7 +492,7 @@
 
 <!-- ACHIEVEMENTS -->
 <div class="overlay" id="o-achieve">
-  <div class="panel" style="max-width:440px">
+  <div class="panel panel-fs">
     <div style="font-size:18px;color:#fd4;margin-bottom:12px">🏆 成就</div>
     <div class="ach-list" id="ach-list"></div>
     <button class="btn" id="btn-achieve-back" style="margin-top:10px">← 返回</button>
