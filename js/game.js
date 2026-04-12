@@ -12,7 +12,7 @@ let tutorialTimer = 5.0;
 
 // ── Enemy sprite image overrides (preloaded) ──
 const ENEMY_IMG_MAP = (function(){
-  const _src = { slime:'photo/Slime.png', goblin:'photo/goblin.png', skeleton:'photo/Skeleton.png' };
+  const _src = { slime:'photo/Slime.png', goblin:'photo/goblin.png', skeleton:'photo/Skeleton.png', bat:'photo/bat.png', orc:'photo/orc.png' };
   const _map = {};
   for (const k in _src) { const i=new Image(); i.src=_src[k]; _map[k]=i; }
   return _map;
