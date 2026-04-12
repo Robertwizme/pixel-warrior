@@ -1323,7 +1323,7 @@ function fireArrowRain(w, stats, p) {
     const oy = tgt.y + (Math.random()-.5)*area*2;
     gs.projectiles.push({ x:ox, y:oy-90,
       vx:0, vy:340,
-      dmg:stats.dmg, radius:3, color:'#fa4', life:0.55, type:'arrow', wepCat:'phys', pierce:true, maxPierce:1 });
+      dmg:stats.dmg, radius:3, color:'#fa4', life:0.55, type:'arrow', wepCat:'phys', pierce:true, maxPierce:2 });
   }
 }
 
@@ -1516,7 +1516,7 @@ function fireSniper(w, stats, p) {
 
   const baseDmg = stats.dmg * (1+(w.sniperDmgBonus||0)) * (w.heavySniper?3:1) * (1+(w.growingBonus||0)/100) * (w.alloyBullet?1.5:1);
   const bulletCount = 1 + (w.sniperExtraBullets||0);
-  const maxPierces = w.alloyBullet ? 9999 : 1;
+  const maxPierces = w.alloyBullet ? 9999 : 2; // 穿透1次 = 最多打到第2隻
 
   for (let b = 0; b < bulletCount; b++) {
     const spreadAng = b === 0 ? ang : ang + (b%2===0?1:-1)*Math.ceil(b/2)*0.06;
