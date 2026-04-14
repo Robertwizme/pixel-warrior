@@ -2290,9 +2290,10 @@ function render() {
   const spr = _sprMap[_clsId2] || 'player_warrior';
 
   // Use original PNG images for doctor / mage / reaper
-  const _imgSpr = (_clsId2==='doctor' && IMG_DOCTOR.complete && IMG_DOCTOR.naturalWidth) ? IMG_DOCTOR
-                : (_clsId2==='mage'   && IMG_MAGE.complete   && IMG_MAGE.naturalWidth  ) ? IMG_MAGE
-                : (_clsId2==='reaper' && IMG_REAPER.complete  && IMG_REAPER.naturalWidth ) ? IMG_REAPER
+  const _imgSpr = (_clsId2==='doctor'    && IMG_DOCTOR.complete    && IMG_DOCTOR.naturalWidth   ) ? IMG_DOCTOR
+                : (_clsId2==='mage'      && IMG_MAGE.complete      && IMG_MAGE.naturalWidth     ) ? IMG_MAGE
+                : (_clsId2==='reaper'    && IMG_REAPER.complete     && IMG_REAPER.naturalWidth   ) ? IMG_REAPER
+                : (_clsId2==='berserker' && IMG_BERSERKER.complete  && IMG_BERSERKER.naturalWidth) ? IMG_BERSERKER
                 : null;
   let pw, ph;
   if (_imgSpr) {

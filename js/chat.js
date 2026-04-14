@@ -677,45 +677,59 @@ async function sendDmMsg(){
 
 // §28 Codex (图鉴)
 const _CODEX_ENEMY_META = {
-  slime:      { icon:'🟢', img:'photo/Slime.png',    name:'史莱姆',    waveFirst:1,  waveDesc:'第1波起出现，全程都有',             special:'无特殊行为，直线冲向玩家，数量最多',                        desc:'成群结队的绿色软体怪，血薄速慢，适合练手阶段' },
-  goblin:     { icon:'👺', img:'photo/goblin.png',   name:'哥布林',    waveFirst:2,  waveDesc:'第2波起出现',                       special:'移速较快，常与史莱姆混编出现',                               desc:'狡猾的小妖精，速度较快，常与史莱姆混编出现' },
-  skeleton:   { icon:'💀', img:'photo/Skeleton.png', name:'骷髅兵',    waveFirst:4,  waveDesc:'第4波起出现',                       special:'无特殊行为，均衡型普通怪',                                    desc:'不死亡灵，血量中等，攻击力适中，是中期的标准威胁' },
-  bat:        { icon:'🦇', img:'photo/bat.png', name:'吸血蝙蝠',  waveFirst:5,  waveDesc:'第5波起出现',                       special:'移动速度极高，难以用慢速武器击中，成群时威胁极大',              desc:'移速极快，难以追踪，成群来袭时威胁极大' },
-  orc:        { icon:'👹', img:'photo/orc.png', name:'兽人勇士',  waveFirst:6,  waveDesc:'第6波起出现',                       special:'高HP高伤害，需优先消灭，避免贴身',                              desc:'强壮的战士，高血量高伤害，但行动迟缓' },
-  wolf:       { icon:'🐺', name:'野狼',      waveFirst:8,  waveDesc:'第8波起出现，中后期大量出现',       special:'极速冲锋，成群围攻，大范围AoE武器克制效果好',                  desc:'速度极快的猛兽，以群体围攻方式猎杀目标' },
-  troll:      { icon:'🗿', name:'石魔',      waveFirst:12, waveDesc:'第12波起出现',                      special:'血量极高但移速最慢，适合用射程武器持续消耗',                    desc:'岩石巨型生物，血量庞大但移动极为迟缓' },
-  demon:      { icon:'😈', name:'恶魔',      waveFirst:13, waveDesc:'第13波起出现，后期成为主力',        special:'均衡属性，后期数量极多，需要强力AoE才能有效应对',               desc:'来自地狱的存在，各属性均衡，综合威胁极高' },
-  archer:     { icon:'🏹', name:'弓箭手',    waveFirst:6,  waveDesc:'第6波起混入编队（2～7只）',         special:'保持约180px距离持续射箭，玄武护盾可抵挡其弓箭，近战武器难以追上', desc:'远程攻击型怪物，保持安全距离向玩家射箭' },
-  boss_10:    { icon:'🐉', name:'暗影龙王',  waveFirst:10, waveDesc:'第10波随机50%概率出现',             special:'生命值极高，移速较慢，优先叠DPS，剑阵/散弹对其效果佳',          desc:'第10波Boss之一，速度较慢但生命极高' },
-  boss_10_cat:{ icon:'🐱', name:'暴食猫王',  waveFirst:10, waveDesc:'第10波随机50%概率出现',             special:'速度快、伤害高，需保持移动并配合治疗无人机续命',                desc:'第10波Boss之一，攻击频率高，行动敏捷' },
-  boss_10_dog:{ icon:'🐶', name:'狂野犬王',  waveFirst:10, waveDesc:'第10波随机50%概率出现',             special:'三个10波Boss中最危险，高速+高伤，建议配合闪避天赋',             desc:'第10波Boss之一，移速最快，伤害最高，极难躲避' },
-  boss_20:    { icon:'🌋', name:'熔岩霸主',  waveFirst:20, waveDesc:'第20波固定出现',                    special:'HP 14000、伤害75，需满级武器+多重天赋方可正面硬撼',             desc:'第20波大Boss，体型巨大，需要全套强化才能应对' },
-  boss_30:    { icon:'🌌', name:'虚空领主',  waveFirst:30, waveDesc:'第30波最终Boss',                    special:'HP 38000、伤害130，击败后通关游戏，推荐飞剑+天才搭配',          desc:'最终Boss，最强大的存在，击败它意味着征服全部30波' },
+  slime:      { icon:'🟢', img:'photo/Slime.png',    name:'史莱姆',    waveFirst:1,  waveDesc:'第1波起出现，全程都有',             special:'无特殊行为，直线冲向玩家，数量最多',                        desc:'成群结队的绿色软体怪，血薄速慢，适合练手阶段',
+    weakness:{tags:['穿透','散射'], tip:'成群聚集，穿透类武器可一次贯穿多只；推荐：散弹枪（多发散射）、狙击枪（开启穿透后）'} },
+  goblin:     { icon:'👺', img:'photo/goblin.png',   name:'哥布林',    waveFirst:2,  waveDesc:'第2波起出现',                       special:'移速较快，常与史莱姆混编出现',                               desc:'狡猾的小妖精，速度较快，常与史莱姆混编出现',
+    weakness:{tags:['範圍'], tip:'移速快但分布密集，大范围AoE武器覆盖效果佳；推荐：箭雨、剑阵、飞剑'} },
+  skeleton:   { icon:'💀', img:'photo/Skeleton.png', name:'骷髅兵',    waveFirst:4,  waveDesc:'第4波起出现',                       special:'无特殊行为，均衡型普通怪',                                    desc:'不死亡灵，血量中等，攻击力适中，是中期的标准威胁',
+    weakness:{tags:['法術'], tip:'无特殊抗性，法术系武器效率最高；推荐：箭雨、模仿者（闪电/火球形态）'} },
+  bat:        { icon:'🦇', img:'photo/bat.png', name:'吸血蝙蝠',  waveFirst:5,  waveDesc:'第5波起出现',                       special:'移动速度极高，难以用慢速武器击中，成群时威胁极大',              desc:'移速极快，难以追踪，成群来袭时威胁极大',
+    weakness:{tags:['追蹤'], tip:'移速极快难以用直线武器命中，追踪类武器可精准锁定；推荐：导弹无人机'} },
+  orc:        { icon:'👹', img:'photo/orc.png', name:'兽人勇士',  waveFirst:6,  waveDesc:'第6波起出现',                       special:'高HP高伤害，需优先消灭，避免贴身',                              desc:'强壮的战士，高血量高伤害，但行动迟缓',
+    weakness:{tags:['持續','穿透'], tip:'血量高需要持续输出，移速慢易被狙击单点；推荐：狙击枪、加特林持续压制'} },
+  wolf:       { icon:'🐺', name:'野狼',      waveFirst:8,  waveDesc:'第8波起出现，中后期大量出现',       special:'极速冲锋，成群围攻，大范围AoE武器克制效果好',                  desc:'速度极快的猛兽，以群体围攻方式猎杀目标',
+    weakness:{tags:['範圍','爆炸'], tip:'群体冲锋覆盖范围大，爆炸/AoE武器可一次清群；推荐：导弹无人机、箭雨、飞剑'} },
+  troll:      { icon:'🗿', name:'石魔',      waveFirst:12, waveDesc:'第12波起出现',                      special:'血量极高但移速最慢，适合用射程武器持续消耗',                    desc:'岩石巨型生物，血量庞大但移动极为迟缓',
+    weakness:{tags:['任意'], tip:'移速极慢，任何武器都有充足时间持续输出；保持距离慢慢磨，推荐：狙击枪远程点射'} },
+  demon:      { icon:'😈', name:'恶魔',      waveFirst:13, waveDesc:'第13波起出现，后期成为主力',        special:'均衡属性，后期数量极多，需要强力AoE才能有效应对',               desc:'来自地狱的存在，各属性均衡，综合威胁极高',
+    weakness:{tags:['範圍'], tip:'后期数量极多，需要强力AoE才能有效清场；推荐：飞剑、剑阵、箭雨大范围覆盖'} },
+  archer:     { icon:'🏹', name:'弓箭手',    waveFirst:6,  waveDesc:'第6波起混入编队（2～7只）',         special:'保持约180px距离持续射箭，玄武护盾可抵挡其弓箭，近战武器难以追上', desc:'远程攻击型怪物，保持安全距离向玩家射箭',
+    weakness:{tags:['近身'], tip:'近距离时无法维持射箭，快速靠近可打断其攻击节奏；推荐：提高移速快速接近，玄武护盾可格挡弓箭'} },
+  boss_10:    { icon:'🐉', name:'暗影龙王',  waveFirst:10, waveDesc:'第10波随机50%概率出现',             special:'生命值极高，移速较慢，优先叠DPS，剑阵/散弹对其效果佳',          desc:'第10波Boss之一，速度较慢但生命极高',
+    weakness:{tags:['持續','高DPS'], tip:'速度较慢是最大弱点，保持距离持续输出即可；推荐：狙击枪+剑阵持续叠伤'} },
+  boss_10_cat:{ icon:'🐱', name:'暴食猫王',  waveFirst:10, waveDesc:'第10波随机50%概率出现',             special:'速度快、伤害高，需保持移动并配合治疗无人机续命',                desc:'第10波Boss之一，攻击频率高，行动敏捷',
+    weakness:{tags:['範圍','追蹤'], tip:'速度快需要广覆盖武器；推荐：导弹无人机锁定+大范围AoE持续压制'} },
+  boss_10_dog:{ icon:'🐶', name:'狂野犬王',  waveFirst:10, waveDesc:'第10波随机50%概率出现',             special:'三个10波Boss中最危险，高速+高伤，建议配合闪避天赋',             desc:'第10波Boss之一，移速最快，伤害最高，极难躲避',
+    weakness:{tags:['追蹤'], tip:'移速最快的Boss，追踪类武器是核心克制手段；推荐：导弹无人机，配合闪避天赋求生'} },
+  boss_20:    { icon:'🌋', name:'熔岩霸主',  waveFirst:20, waveDesc:'第20波固定出现',                    special:'HP 14000、伤害75，需满级武器+多重天赋方可正面硬撼',             desc:'第20波大Boss，体型巨大，需要全套强化才能应对',
+    weakness:{tags:['全輸出'], tip:'HP 14000需要满级武器全力输出；推荐：全套武器升满+多重天赋叠加，狂战士/狙神职业效果佳'} },
+  boss_30:    { icon:'🌌', name:'虚空领主',  waveFirst:30, waveDesc:'第30波最终Boss',                    special:'HP 38000、伤害130，击败后通关游戏，推荐飞剑+天才搭配',          desc:'最终Boss，最强大的存在，击败它意味着征服全部30波',
+    weakness:{tags:['全輸出'], tip:'HP 38000终局Boss；推荐：飞剑+天才职业搭配，开局备好主动技能，全力爆发'} },
 };
 
 const _CODEX_CLASS_META = {
-  doctor:    { icon:'💊', regen:5,  xpBonus:0,
+  doctor:    { icon:'💊', img:'photo/doctor.png',      regen:5,  xpBonus:0,
     passive:'每次从任何来源回复100HP时，永久+5%全局伤害（可无限叠加）',
     skillName:'妙手回春', skillEffect:'立刻回复100HP', skillCd:30 },
-  berserker: { icon:'⚔',  regen:2,  xpBonus:0,
+  berserker: { icon:'⚔',  img:'photo/Berserker.png',  regen:2,  xpBonus:0,
     passive:'每次升级，最大HP永久+5',
     skillName:'狂暴', skillEffect:'20秒内所有伤害×2', skillCd:50 },
-  blacksmith:{ icon:'⚒',  regen:1,  xpBonus:0,
+  blacksmith:{ icon:'⚒',  img:'photo/blacksmith.png', regen:1,  xpBonus:0,
     passive:'所有物理系武器（散弹/加特林/狙击）伤害永久+50%',
     skillName:'临阵磨枪', skillEffect:'10秒内所有武器冷却-40%', skillCd:50 },
-  mage:      { icon:'🔮', regen:1,  xpBonus:0,
+  mage:      { icon:'🔮', img:'photo/mage.png',        regen:1,  xpBonus:0,
     passive:'所有魔法系武器（箭雨/剑阵）伤害永久+50%',
     skillName:'法力无天', skillEffect:'10秒内所有AoE范围+30%', skillCd:45 },
-  scholar:   { icon:'🎓', regen:1,  xpBonus:50,
+  scholar:   { icon:'🎓', img:'photo/Doctorate.png',  regen:1,  xpBonus:50,
     passive:'无法通过升级卡获得移速加成，但经验获取速度比任何职业都快',
     skillName:'经验老道', skillEffect:'瞬间吸取全场所有飘落的经验球', skillCd:50 },
-  reaper:    { icon:'🎯', regen:1,  xpBonus:0,
+  reaper:    { icon:'🎯', img:'photo/simo.png', regen:1,  xpBonus:0,
     passive:'枪械武器伤害+50%，且所有武器冷却时间永久×0.75（即-25%）',
     skillName:'狙神', skillEffect:'瞄准7.49秒后，秒杀当前HP最高的目标', skillCd:542 },
   kirby:     { icon:'🌀', regen:1,  xpBonus:0,
     passive:'拥有四种形态：🔥火焰（火球）/ ⚔剑士（轨道剑）/ ⚡雷电（闪电）/ ❄冰冻（冰球）',
     skillName:'模仿', skillEffect:'吞下最近的怪物，随机切换一种形态', skillCd:120 },
-  santa:     { icon:'🎅', regen:1,  xpBonus:0,
+  santa:     { icon:'🎅', img:'photo/santa.png', regen:1,  xpBonus:0,
     passive:'初始幸运+5；场上有0.5%概率随机生成超大礼盒（含大量道具）',
     skillName:'圣诞礼物', skillEffect:'在附近随机生成多个礼盒掉落道具', skillCd:60 },
   chosen:    { icon:'⭐', regen:1,  xpBonus:0,
@@ -822,6 +836,11 @@ function _cdxDetail(html){ return '<div class="cdx-detail-inner">'+html+'</div>'
 function _cdxStat(label,val){ return '<div class="cdx-stat-row"><span class="cdx-stat-label">'+label+'</span><b class="cdx-stat-val">'+val+'</b></div>'; }
 function _cdxSection(title){ return '<div class="cdx-section-title">'+title+'</div>'; }
 function _cdxDesc(text){ return '<div class="cdx-desc-block">'+text+'</div>'; }
+function _cdxWeakness(w){
+  const _colors={'穿透':'#f84','散射':'#fd4','範圍':'#a4f','法術':'#4ef','追蹤':'#4f8','持續':'#f55','爆炸':'#f64','近身':'#bbb','任意':'#888','高DPS':'#f84','全輸出':'#fda'};
+  const tags=w.tags.map(t=>{const c=_colors[t]||'#888';return '<span class="cdx-wtag" style="color:'+c+';border-color:'+c+'40;background:'+c+'18">'+t+'</span>';}).join('');
+  return '<div class="cdx-wtags">'+tags+'</div>'+_cdxDesc(w.tip);
+}
 
 function _codexMonsterDetail(k){
   const e=ENEMY_TYPES[k]; const m=_CODEX_ENEMY_META[k];
@@ -838,14 +857,16 @@ function _codexMonsterDetail(k){
     _cdxStat('⚔ 攻击', e.dmg)+
     _cdxStat('✨ 经验', e.xp+' xp')+
     _cdxSection('描述')+_cdxDesc(m.desc)+
-    _cdxSection('特殊行为')+_cdxDesc(m.special)
+    _cdxSection('特殊行为')+_cdxDesc(m.special)+
+    (m.weakness?_cdxSection('⚠ 弱点')+_cdxWeakness(m.weakness):'')
   );
 }
 
 function _codexClassDetail(c){
   const m=_CODEX_CLASS_META[c.id]||{icon:'⚔',regen:1,xpBonus:0,passive:'—',skillName:'—',skillEffect:'—',skillCd:0};
+  const _clsBigIcon=m.img?'<div class="cdx-big-icon"><img src="'+m.img+'" class="cdx-enemy-img-lg"></div>':'<div class="cdx-big-icon">'+m.icon+'</div>';
   return _cdxDetail(
-    '<div class="cdx-big-icon">'+m.icon+'</div>'+
+    _clsBigIcon+
     '<div class="cdx-item-name" style="color:#fd4">'+c.name+'</div>'+
     _cdxStat('❤ HP', c.hp)+
     _cdxStat('⚡ 速度', c.spd)+
@@ -928,7 +949,7 @@ function renderCodexContent(){
     detailFn=it=>_codexMonsterDetail(it.k);
   } else if(_codexTab==='char'){
     items=CLASSES;
-    iconFn=c=>(_CODEX_CLASS_META[c.id]||{icon:'⚔'}).icon;
+    iconFn=c=>{ const m=_CODEX_CLASS_META[c.id]||{icon:'⚔'}; return m.img?'<img src="'+m.img+'" class="cdx-enemy-img-sm">':m.icon; };
     nameFn=c=>c.name;
     detailFn=c=>_codexClassDetail(c);
   } else if(_codexTab==='weapon'){

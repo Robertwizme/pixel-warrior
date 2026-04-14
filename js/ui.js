@@ -1391,7 +1391,7 @@ updateMailBadge();
 (function() {
   const MENU_CLASSES = [
     { label:'医生',     sprite:'player_doctor' },
-    { label:'狂战士',   icon:'⚔' },
+    { label:'狂战士',   sprite:'player_berserker' },
     { label:'法师',     sprite:'player_mage' },
     { label:'模仿者',   icon:'🌀' },
     { label:'西蒙·海耶', sprite:'player_reaper' },
@@ -1408,7 +1408,7 @@ updateMailBadge();
     const c2 = cv.getContext('2d');
 
     // Use original PNG images for doctor / mage
-    const imgMap = { player_doctor: IMG_DOCTOR, player_mage: IMG_MAGE, player_reaper: IMG_REAPER };
+    const imgMap = { player_doctor: IMG_DOCTOR, player_mage: IMG_MAGE, player_reaper: IMG_REAPER, player_berserker: IMG_BERSERKER };
     const imgSpr = imgMap[sprName];
     if (imgSpr && imgSpr.complete && imgSpr.naturalWidth) {
       const tgtH = 160;
@@ -1449,7 +1449,7 @@ updateMailBadge();
     if (cls.sprite) {
       if (iconEl)  iconEl.style.display  = 'none';
       if (canvEl)  canvEl.style.display  = 'block';
-      const imgMap2 = { player_doctor: IMG_DOCTOR, player_mage: IMG_MAGE, player_reaper: IMG_REAPER };
+      const imgMap2 = { player_doctor: IMG_DOCTOR, player_mage: IMG_MAGE, player_reaper: IMG_REAPER, player_berserker: IMG_BERSERKER };
       const img2 = imgMap2[cls.sprite];
       if (img2 && img2.complete && img2.naturalWidth) {
         drawMenuSprite(cls.sprite);
