@@ -590,6 +590,23 @@ const WEAPON_DEFS = {
       return `水球x3 伤害${dmg} | 护盾CD${scd}s`;
     }
   },
+  turret: {
+    name:'⚙ 炮台', icon:'⚙', maxLv:4, type:'turret', wepCat:'phys',
+    startDesc: '每波放置炮台·自动攻击附近敌人',
+    levels: [
+      { maxCount:1, dmg:35, cd:1.2,  range:180 },
+      { maxCount:2, dmg:35, cd:0.92, range:190 },
+      { maxCount:3, dmg:53, cd:0.92, range:200, pierce:true },
+      { maxCount:4, dmg:53, cd:0.92, range:210, explosive:true },
+    ],
+    describe: lv => {
+      const s = WEAPON_DEFS.turret.levels[lv-1];
+      const parts = [`×${s.maxCount}炮台 伤害${s.dmg} CD${s.cd}s 射程${s.range}`];
+      if (s.pierce) parts.push('穿透1');
+      if (s.explosive) parts.push('爆炸弹');
+      return parts.join(' · ');
+    }
+  },
 };
 
 // ── STAT UPGRADES ──────────────────────────────────────
@@ -604,8 +621,14 @@ const STAT_UPGRADES = [
   { id:'heal',     icon:'💊', name:'即时治愈',    desc:'立刻恢复60%最大HP' },
   { id:'pickup',   icon:'🧲', name:'磁力场',      desc:'+40 拾取半径' },
   { id:'luck',     icon:'🍀', name:'幸运加成',    desc:'+25 幸运值 (无上限)' },
-  { id:'dodge',    icon:'💨', name:'闪避训练',    desc:'+6% 基础闪避 (上限60%)' },
-  { id:'dmgred',   icon:'🛡', name:'硬化皮肤',    desc:'+5% 基础减伤 (上限60%)' },
+  { id:'dodge',        icon:'💨', name:'闪避训练',    desc:'+6% 基础闪避 (上限60%)' },
+  { id:'dmgred',       icon:'🛡', name:'硬化皮肤',    desc:'+5% 基础减伤 (上限60%)' },
+  { id:'magnet_boost', icon:'🧲', name:'磁场增幅',    desc:'拾取范围永久+50%' },
+  { id:'wave_shield',  icon:'🔰', name:'波次护盾',    desc:'每波开始获得一次格挡，可完全抵消一次伤害' },
+  { id:'ghost_shadow', icon:'👻', name:'残影',        desc:'每0.5秒在当前位置留下残影，对经过怪物造成伤害' },
+  { id:'land_mine',    icon:'💣', name:'地雷阵',      desc:'每波在地图生成3颗地雷，怪物踩到爆炸造成范围伤害' },
+  { id:'ice_armor',    icon:'🧊', name:'冰甲',        desc:'被攻击时20%概率冻结攻击者1.5秒' },
+  { id:'overload',     icon:'⚡', name:'过载',        desc:'每击杀50只怪物触发爆发，3秒内所有伤害翻倍' },
 ];
 
 // ── SUPPLY TALENTS (boss wave rewards) ─────────────────

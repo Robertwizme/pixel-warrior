@@ -68,6 +68,12 @@ function initGame(classIdx) {
     // Magnet timer
     magnetTimer: 0,
     berserkerMutBonus: 0,
+    // Supply upgrades
+    hasWaveShield: false, waveShieldUp: false,
+    hasGhostShadow: false, ghostTimer: 0,
+    hasMines: false,
+    hasIceArmor: false,
+    hasOverload: false, overloadKills: 0, overloadTimer: 0, overloadActive: false,
     // Level / XP
     level: 1,
     xp: 0,
@@ -114,6 +120,11 @@ function initGame(classIdx) {
     fallingGifts: [],
     spawnWarnings: [],
     waveAnnounce: { text:'', timer:0 },
+    chestPopup: null,
+    pickedSupplyIds: new Set(),
+    ghosts: [],
+    mines: [],
+    turrets: [],
     kills: 0,
     score: 0,
     talents: new Set(),
@@ -504,6 +515,35 @@ function startWave(num) {
   gs.projectiles  = [];
   gs.healCircles  = [];
   gs.spawnWarnings = [];
+  gs.ghosts = [];
+  // Wave shield: refresh one block per wave
+  if (gs.player.hasWaveShield) { gs.player.waveShieldUp = true; addFloatingText('🔰', gs.player.x, gs.player.y-20, '#7ef', 0.8); }
+  // Land mines: spawn 3 at random positions around player
+  if (gs.player.hasMines) {
+    gs.mines = [];
+    for (let _i=0; _i<3; _i++) {
+      const _a=Math.random()*Math.PI*2, _d=160+Math.random()*280;
+      gs.mines.push({x:gs.player.x+Math.cos(_a)*_d, y:gs.player.y+Math.sin(_a)*_d});
+    }
+  }
+  // Turrets: refresh positions each wave
+  const _turretW = gs.weapons.find(w => w.id === 'turret');
+  if (_turretW) {
+    const _ts = weaponStats(_turretW);
+    gs.turrets = [];
+    for (let _ti = 0; _ti < _ts.maxCount; _ti++) {
+      const _ta = (_ti / Math.max(1, _ts.maxCount)) * Math.PI * 2;
+      const _td = 52 + Math.random() * 26;
+      gs.turrets.push({
+        x: gs.player.x + Math.cos(_ta) * _td,
+        y: gs.player.y + Math.sin(_ta) * _td,
+        aimAngle: _ta + Math.PI,
+        fireTimer: _ti * (_ts.cd / Math.max(1, _ts.maxCount)),
+      });
+    }
+  } else {
+    gs.turrets = [];
+  }
   // Wave announcement
   if (isBoss) {
     gs.waveAnnounce = { text:'☠ BOSS來了！', timer:1.5 };
@@ -583,6 +623,7 @@ function hitEnemy(enemy, rawDmg, _noProc, _isCrit, wepCat) {
   if ((p.santaAtkTimer||0) > 0) mult *= 1.25;
   if ((p.chosenLuckDmgMult||1) > 1) mult *= p.chosenLuckDmgMult;
   if ((p.weapEnhMult||1) > 1) mult *= p.weapEnhMult;
+  if (p.overloadActive) mult *= 2;
   // Kirby thunder/ice procs
   if (!_noProc && CLASSES[p.classIdx]?.id === 'kirby') {
     const kirbyW = getWeapon('kirby_copy');
@@ -642,6 +683,16 @@ function killEnemy(enemy) {
   gs.gems.push({ x:enemy.x, y:enemy.y, xp:enemy.xp });
   SFX.play(enemy.isBoss ? 'wave' : 'death');
   if (gs.talents.has('berserker')) gs.player.berserkerKills++;
+  // Overload: count kills, trigger burst every 50
+  const _op = gs.player;
+  if (_op.hasOverload && !_op.overloadActive) {
+    _op.overloadKills = (_op.overloadKills||0) + 1;
+    if (_op.overloadKills >= 50) {
+      _op.overloadKills = 0; _op.overloadActive = true; _op.overloadTimer = 3.0;
+      addFloatingText('⚡ 过载！', _op.x, _op.y-32, '#ff0', 2.0);
+      if (settings.particles) spawnParticles(_op.x, _op.y, ['#ff0','#f80','#fff'], 14, 110, 0.7, 4);
+    }
+  }
   if (settings.particles) {
     const cols = enemy.isBoss ? ['#f44','#fd4','#f84','#fff'] : [enemy.color,'#fd4'];
     spawnParticles(enemy.x, enemy.y, cols, enemy.isBoss?24:8, enemy.isBoss?140:80,
@@ -755,15 +806,27 @@ function autoApplyChest(dropType) {
   if (rarity === 'rainbow') gs._rainbowChests = (gs._rainbowChests||0) + 1;
 
   const pool = shuffled([...CHEST_STAT_POOL]);
+  const _popupItems = [];
   pool.slice(0, statCount).forEach((s, i) => {
     s.apply(p);
     addFloatingText(s.icon + ' ' + s.name, p.x + (i-1)*18, p.y - 20 - i*14, chestColor, 2.0);
+    _popupItems.push({ icon: s.icon, name: s.name });
   });
 
   // Purple: 25% chance of random talent
-  if (rarity === 'purple' && Math.random() < 0.25) tryGrantRandomTalent(p);
+  if (rarity === 'purple' && Math.random() < 0.25) {
+    const _sz = gs.talents.size;
+    tryGrantRandomTalent(p);
+    if (gs.talents.size > _sz) _popupItems.push({ icon:'✨', name:'获得随机天赋' });
+  }
   // Rainbow: 75% chance of random talent
-  if (rarity === 'rainbow' && Math.random() < 0.75) tryGrantRandomTalent(p);
+  if (rarity === 'rainbow' && Math.random() < 0.75) {
+    const _sz = gs.talents.size;
+    tryGrantRandomTalent(p);
+    if (gs.talents.size > _sz) _popupItems.push({ icon:'✨', name:'获得随机天赋' });
+  }
+
+  gs.chestPopup = { label: chestLabel, items: _popupItems, color: chestColor, timer: 2.0 };
 
   if (settings.particles) spawnParticles(p.x, p.y, chestColor, 12, 100, 0.7, 3);
   updateDerivedStats(p);
@@ -860,6 +923,19 @@ function updatePlayer(dt) {
   if (p.berserkActive) {
     p.berserkTimer = Math.max(0, p.berserkTimer - dt);
     if (p.berserkTimer <= 0) p.berserkActive = false;
+  }
+  // Ghost shadow: spawn ghost every 0.5s
+  if (p.hasGhostShadow) {
+    p.ghostTimer = Math.max(0, (p.ghostTimer||0) - dt);
+    if (p.ghostTimer <= 0) {
+      gs.ghosts.push({x:p.x, y:p.y, timer:1.8, hitSet:new Set()});
+      p.ghostTimer = 0.5;
+    }
+  }
+  // Overload: tick burst timer
+  if (p.overloadActive) {
+    p.overloadTimer = Math.max(0, p.overloadTimer - dt);
+    if (p.overloadTimer <= 0) p.overloadActive = false;
   }
   if (p.sharpenActive) {
     p.sharpenTimer = Math.max(0, p.sharpenTimer - dt);
@@ -1157,11 +1233,25 @@ function updateEnemies(dt) {
           addFloatingText('🛡 护盾！',p.x,p.y-22,'#4af',0.9);
           continue;
         }
+        // Wave shield: absorbs one hit per wave
+        if (p.waveShieldUp) {
+          p.waveShieldUp = false;
+          e.attackTimer = 0.75; p.invincible = 0.3; updateHUD();
+          if (settings.particles) spawnParticles(p.x,p.y,['#7ef','#4af','#fff'],6,70,0.4,2);
+          addFloatingText('🔰 格挡！',p.x,p.y-22,'#7ef',0.9);
+          continue;
+        }
         // Damage reduction
         const actualDmg = e.dmg * (1 - p.dmgReduction) * (1 - Math.min(0.8,(e.paralysisStacks||0)*0.08));
         p.hp -= actualDmg;
         addFloatingText('-'+String(Math.round(actualDmg)), p.x+(Math.random()-0.5)*12, p.y-14, '#f66', 0.7);
         SFX.play('playerhit');
+        // Ice armor: 20% chance to freeze attacker
+        if (p.hasIceArmor && !e.isBoss && Math.random() < 0.2) {
+          e.frozenTimer = Math.max(e.frozenTimer||0, 1.5);
+          if (settings.particles) spawnParticles(e.x,e.y,['#8ef','#4af','#fff'],5,55,0.3,2);
+          addFloatingText('🧊',e.x,e.y-14,'#8ef',0.6);
+        }
         gs._damageTaken = (gs._damageTaken||0) + actualDmg;
         p.invincible = 0.5 * (p.invincMult||1);
         spawnParticles(p.x, p.y, '#f44', 6, 90, 0.4, 2);
@@ -1448,6 +1538,107 @@ function updatePendingExplosions(dt) {
     }
     return true;
   });
+}
+
+// Update ghost shadows
+function updateGhosts(dt) {
+  if (!gs.ghosts?.length) return;
+  const p = gs.player;
+  gs.ghosts = gs.ghosts.filter(g => {
+    g.timer -= dt;
+    if (g.timer <= 0) return false;
+    const ghostDmg = Math.round(20 * (p.dmgMult||1));
+    for (const e of gs.enemies) {
+      if (e.dead || g.hitSet.has(e)) continue;
+      const dx=e.x-g.x, dy=e.y-g.y;
+      if (dx*dx+dy*dy < (e.radius+18)*(e.radius+18)) {
+        g.hitSet.add(e);
+        hitEnemy(e, ghostDmg, true, false, 'phys');
+      }
+    }
+    return true;
+  });
+}
+
+// Update land mines
+function updateMines(dt) {
+  if (!gs.mines?.length) return;
+  const p = gs.player;
+  gs.mines = gs.mines.filter(m => {
+    for (const e of gs.enemies) {
+      if (e.dead) continue;
+      const dx=e.x-m.x, dy=e.y-m.y;
+      if (dx*dx+dy*dy < 22*22) {
+        // Explode: AoE 90px
+        const mineDmg = Math.round(80*(p.dmgMult||1));
+        gs.enemies.forEach(ne => {
+          if (ne.dead) return;
+          const ndx=ne.x-m.x, ndy=ne.y-m.y;
+          if (ndx*ndx+ndy*ndy < 90*90) hitEnemy(ne, mineDmg, true, false, 'phys');
+        });
+        if (settings.particles) spawnParticles(m.x,m.y,['#f84','#fd4','#f44','#fff'],18,140,0.9,5);
+        addFloatingText('💥',m.x,m.y-22,'#fd4',0.8);
+        SFX.play('wave');
+        return false;
+      }
+    }
+    return true;
+  });
+}
+
+// Update turrets
+function updateTurrets(dt) {
+  if (!gs.turrets?.length) return;
+  const p = gs.player;
+  const _tw = gs.weapons.find(w => w.id === 'turret');
+  if (!_tw) { gs.turrets = []; return; }
+  const _ts = weaponStats(_tw);
+  // Enforce max count (replace oldest if leveled up mid-wave)
+  while (gs.turrets.length > _ts.maxCount) gs.turrets.shift();
+  const _range = _ts.range || 180;
+  const _range2 = _range * _range;
+  const _dmg = Math.round((_ts.dmg||35) * (p.dmgMult||1) * (p.physDmgMult||1));
+  const _cdBase = (_ts.cd||1.2) * (p.cdMult||1);
+  const _pierce = _ts.pierce;
+  const _explosive = _ts.explosive;
+  for (const t of gs.turrets) {
+    t.fireTimer -= dt;
+    // Find nearest enemy in range
+    let best = null, bestDist = _range2;
+    for (const e of gs.enemies) {
+      if (e.dead) continue;
+      const dx = e.x - t.x, dy = e.y - t.y;
+      const d = dx*dx + dy*dy;
+      if (d < bestDist) { bestDist = d; best = e; }
+    }
+    if (best) t.aimAngle = Math.atan2(best.y - t.y, best.x - t.x);
+    if (t.fireTimer <= 0 && best) {
+      t.fireTimer = _cdBase;
+      const ang = t.aimAngle;
+      const spd = 350;
+      const proj = {
+        x: t.x, y: t.y,
+        vx: Math.cos(ang)*spd, vy: Math.sin(ang)*spd,
+        dmg: _dmg, radius: 4, color: '#fa8',
+        life: _range / spd + 0.15,
+        type: 'bullet', wepCat: 'phys',
+        pierce: !!_pierce, maxPierce: _pierce ? 2 : undefined,
+      };
+      if (_explosive) {
+        const _exDmg = _dmg;
+        proj.onHit = (pr) => {
+          if (!pr._exploded) {
+            pr._exploded = true;
+            triggerExplosion(pr.x, pr.y, 60, Math.round(_exDmg * 0.6));
+          }
+        };
+      }
+      gs.projectiles.push(proj);
+      if (settings.particles) spawnParticles(t.x, t.y, ['#fa8','#fd4'], 2, 75, 0.18, 2);
+    } else if (t.fireTimer < 0) {
+      t.fireTimer = 0;
+    }
+  }
 }
 
 // Update floating texts
@@ -1880,6 +2071,70 @@ function render() {
     });
   }
 
+  // Ghost shadows
+  if (gs.ghosts?.length) {
+    const _now = performance.now()/1000;
+    gs.ghosts.forEach(g => {
+      const gx=Math.floor(g.x-cam.x), gy=Math.floor(g.y-cam.y);
+      const _fa = Math.min(0.55, g.timer * 0.4);
+      ctx.globalAlpha = _fa;
+      ctx.fillStyle = '#88f';
+      ctx.strokeStyle = '#ccf';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(gx, gy, 9, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+      // Inner cross
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.globalAlpha = _fa * 0.6;
+      ctx.beginPath(); ctx.moveTo(gx-4,gy); ctx.lineTo(gx+4,gy); ctx.moveTo(gx,gy-4); ctx.lineTo(gx,gy+4); ctx.stroke();
+      ctx.globalAlpha = 1;
+    });
+  }
+
+  // Land mines
+  if (gs.mines?.length) {
+    gs.mines.forEach(m => {
+      const mx=Math.floor(m.x-cam.x), my=Math.floor(m.y-cam.y);
+      // Body
+      ctx.fillStyle='#444'; ctx.strokeStyle='#f44'; ctx.lineWidth=1.5;
+      ctx.fillRect(mx-6,my-5,12,10); ctx.strokeRect(mx-6,my-5,12,10);
+      // Spike top
+      ctx.fillStyle='#f44';
+      ctx.beginPath(); ctx.moveTo(mx-3,my-5); ctx.lineTo(mx,my-9); ctx.lineTo(mx+3,my-5); ctx.closePath(); ctx.fill();
+      // Blink dot
+      const _blink = Math.sin(performance.now()/250) > 0;
+      if (_blink) { ctx.fillStyle='#f00'; ctx.beginPath(); ctx.arc(mx,my,2,0,Math.PI*2); ctx.fill(); }
+    });
+  }
+
+
+  // Turrets
+  if (gs.turrets?.length) {
+    gs.turrets.forEach(t => {
+      const tx = Math.floor(t.x - cam.x), ty = Math.floor(t.y - cam.y);
+      ctx.save();
+      ctx.translate(tx, ty);
+      // Barrel (drawn first so base body overlaps inner part)
+      ctx.save();
+      ctx.rotate(t.aimAngle);
+      ctx.fillStyle = '#66889a';
+      ctx.fillRect(0, -2.5, 15, 5);
+      ctx.fillStyle = '#8aafc0';
+      ctx.fillRect(9, -3, 6, 6);
+      ctx.restore();
+      // Base body
+      ctx.fillStyle = '#2a3a4a';
+      ctx.strokeStyle = '#4af';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+      ctx.restore();
+      // Gear icon
+      ctx.save();
+      ctx.font = '9px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('⚙', tx, ty);
+      ctx.restore();
+    });
+  }
 
   // Smoke clouds
   (gs.smokeClouds||[]).forEach(sc => {
@@ -2390,6 +2645,45 @@ function render() {
     ctx.globalAlpha = 1;
   }
 
+  // Chest pickup popup
+  if (gs.chestPopup && gs.chestPopup.timer > 0) {
+    const _cp = gs.chestPopup;
+    const TOTAL = 2.0, FADE = 0.3;
+    const _alpha = Math.min(1, (TOTAL - _cp.timer) / FADE, _cp.timer / FADE);
+    ctx.globalAlpha = Math.max(0, _alpha);
+    const _lineH = 20, _padX = 18, _padY = 10;
+    const _lines = [null, ..._cp.items]; // null = title row
+    const _boxW = 200, _boxH = _padY*2 + 24 + _lines.length * _lineH;
+    const _bx = GW/2 - _boxW/2, _by = GH/2 - _boxH/2 - 30;
+    // Background
+    ctx.fillStyle = 'rgba(0,0,0,0.68)';
+    const _r = 8;
+    ctx.beginPath();
+    ctx.moveTo(_bx+_r,_by); ctx.lineTo(_bx+_boxW-_r,_by);
+    ctx.quadraticCurveTo(_bx+_boxW,_by,_bx+_boxW,_by+_r);
+    ctx.lineTo(_bx+_boxW,_by+_boxH-_r);
+    ctx.quadraticCurveTo(_bx+_boxW,_by+_boxH,_bx+_boxW-_r,_by+_boxH);
+    ctx.lineTo(_bx+_r,_by+_boxH); ctx.quadraticCurveTo(_bx,_by+_boxH,_bx,_by+_boxH-_r);
+    ctx.lineTo(_bx,_by+_r); ctx.quadraticCurveTo(_bx,_by,_bx+_r,_by);
+    ctx.closePath(); ctx.fill();
+    // Border
+    ctx.strokeStyle = _cp.color; ctx.lineWidth = 1.5; ctx.stroke();
+    // Title
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 14px monospace';
+    ctx.fillStyle = _cp.color;
+    ctx.fillText(_cp.label, GW/2, _by + _padY + 14);
+    // Divider
+    ctx.strokeStyle = _cp.color + '55'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(_bx+_padX, _by+_padY+22); ctx.lineTo(_bx+_boxW-_padX, _by+_padY+22); ctx.stroke();
+    // Items
+    ctx.font = '12px monospace'; ctx.fillStyle = '#ddd';
+    _cp.items.forEach((item, i) => {
+      ctx.fillText(item.icon + ' ' + item.name, GW/2, _by + _padY + 22 + (i+1)*_lineH);
+    });
+    ctx.textAlign = 'left'; ctx.globalAlpha = 1;
+  }
+
   // Tutorial hint
   if (tutorialTimer>0) {
     tutorialTimer -= 1/60;
@@ -2469,11 +2763,16 @@ function gameLoop(ts) {
       updateSantaGifts(dt);
       updateFallingGifts(dt);
       updateFloatingTexts(dt);
+      updateGhosts(dt);
+      updateMines(dt);
+      updateTurrets(dt);
       updateProjectiles(dt);
       updateParticles(dt);
       gs.wave.timer += dt;
       if (gs.waveAnnounce && gs.waveAnnounce.timer > 0)
         gs.waveAnnounce.timer = Math.max(0, gs.waveAnnounce.timer - dt);
+      if (gs.chestPopup && gs.chestPopup.timer > 0)
+        gs.chestPopup.timer = Math.max(0, gs.chestPopup.timer - dt);
       updateHUD();
       checkWaveComplete();
     } else if (gs.phase==='upgrading'||gs.phase==='supply'||gs.phase==='dead'||gs.phase==='levelup'||gs.phase==='paused') {

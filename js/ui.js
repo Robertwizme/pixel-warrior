@@ -746,16 +746,41 @@ function showDropSupplyScreen(dropType) {
   document.getElementById('o-upgrade').classList.add('active');
 }
 
+// Gold fallback card when supply pool exhausted
+function _supplyGoldCard(dropType) {
+  const amt = {supply_green:30, supply_blue:60, supply_purple:100, supply_rainbow:200}[dropType] || 30;
+  return {type:'gold', id:'_gold', icon:'💰', name:`+${amt} 金币`, desc:'所有补给已获取，补偿金币奖励', amount:amt};
+}
+
 function getDropSupplyOptions(dropType) {
   const cards = DROP_DEFS[dropType]?.cards || 1;
+  const _picked = gs.pickedSupplyIds || new Set();
+
   if (dropType === 'supply_rainbow') {
-    // Rainbow: cards from SUPPLY_TALENTS pool (like boss reward, rare!)
+    // Rainbow: talents only, deduplicated by gs.talents
     const available = SUPPLY_TALENTS.filter(t => !gs.talents.has(t.id));
-    return shuffled(available).slice(0, 3)
+    const opts = shuffled(available).slice(0, cards)
       .map(t => ({ type:'talent', id:t.id, icon:t.icon, name:t.name, desc:t.desc, _talent:t }));
+    while (opts.length < cards) opts.push(_supplyGoldCard(dropType));
+    return opts;
   }
-  // Green/Blue/Purple: stat & weapon upgrades
-  return getUpgradeOptions().slice(0, cards);
+
+  // Green/Blue/Purple:
+  // Stat pool: STAT_UPGRADES filtered by pickedSupplyIds (per-game chest dedup)
+  const statOpts = shuffled(STAT_UPGRADES.filter(s => !_picked.has(s.id)))
+    .map(s => ({type:'stat', id:s.id, icon:s.icon, name:s.name, desc:s.desc}));
+  // Weapon pool: from getUpgradeOptions(), keep only weapon-type entries
+  const weapOpts = getUpgradeOptions().filter(o => o.type !== 'stat');
+
+  // Fill: prefer 1 stat first, then weapons, then more stats, then gold fallback
+  const result = [];
+  const stats = [...statOpts], weaps = [...weapOpts];
+  if (stats.length > 0) result.push(stats.shift());
+  while (result.length < cards && weaps.length > 0) result.push(weaps.shift());
+  while (result.length < cards && stats.length > 0) result.push(stats.shift());
+  while (result.length < cards) result.push(_supplyGoldCard(dropType));
+
+  return shuffled(result);
 }
 
 function applyDropSupplyUpgrade(opt) {
@@ -764,7 +789,12 @@ function applyDropSupplyUpgrade(opt) {
     gs.talents.add(opt.id);
     opt._talent.apply(gs.player);
     updateDerivedStats(gs.player);
+  } else if (opt.type === 'gold') {
+    addCoins(opt.amount);
+    addFloatingText('💰 +' + opt.amount, gs.player.x, gs.player.y - 24, '#fd4', 1.8);
   } else {
+    // Track stat picks to prevent re-offering
+    if (opt.type === 'stat' && gs.pickedSupplyIds) gs.pickedSupplyIds.add(opt.id);
     applyUpgradeEffect(opt);
   }
   gs.phase = 'playing';
@@ -788,7 +818,18 @@ function applyUpgradeEffect(opt) {
     else if (opt.id==='pickup')   p.pickupR  += 40;
     else if (opt.id==='luck')     p.luck     += 25;
     else if (opt.id==='dodge')    p.baseDodge   = Math.min(0.6,p.baseDodge  +0.06);
-    else if (opt.id==='dmgred')   p.baseDmgRed  = Math.min(0.6,p.baseDmgRed+0.05);
+    else if (opt.id==='dmgred')       p.baseDmgRed  = Math.min(0.6,p.baseDmgRed+0.05);
+    else if (opt.id==='magnet_boost') p.pickupR = Math.round(p.pickupR * 1.5);
+    else if (opt.id==='wave_shield')  { p.hasWaveShield = true; p.waveShieldUp = true; }
+    else if (opt.id==='ghost_shadow') p.hasGhostShadow = true;
+    else if (opt.id==='land_mine') {
+      p.hasMines = true;
+      if (gs.mines) { gs.mines = [];
+        for (let _i=0;_i<3;_i++){const _a=Math.random()*Math.PI*2,_d=160+Math.random()*280; gs.mines.push({x:p.x+Math.cos(_a)*_d,y:p.y+Math.sin(_a)*_d});}
+      }
+    }
+    else if (opt.id==='ice_armor') p.hasIceArmor = true;
+    else if (opt.id==='overload')  { p.hasOverload = true; p.overloadKills = 0; }
     // Track picked stat (dedup)
     if (p.pickedStatIds && opt.id !== 'heal') p.pickedStatIds.add(opt.id);
     updateDerivedStats(p);

@@ -354,4 +354,21 @@ input[type=range]{width:120px;accent-color:#48f}
   .upg-card{width:140px}
   .sup-card{width:150px}
 }
+
+/* Desktop: enlarge fonts in full-screen panels */
+@media (min-width:900px){
+  .codex-name{font-size:16px}
+  .codex-desc{font-size:13px}
+  .codex-stats{font-size:12px}
+  .cdx-big-icon{font-size:72px}
+  .cdx-grid-item{font-size:13px}
+  .panel h2,.panel>div:first-child{font-size:22px}
+  .btn{font-size:15px}
+  .ach-item{font-size:13px}
+  .mail-title{font-size:15px}
+  .mail-content{font-size:12px}
+  .shop-name{font-size:15px}
+  .shop-cond{font-size:11px}
+  .gacha-btn{font-size:15px}
+}
 </style>
