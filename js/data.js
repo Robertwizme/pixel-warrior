@@ -180,6 +180,26 @@ function getWavePlan(n) {
 const GAME_VERSION = 'v0.7.9';
 document.getElementById('load-version').textContent = GAME_VERSION;
 const CHANGELOG = [
+  { version:'v0.8.2', date:'2026-04-16', items:[
+    '图鉴·武器Tab 炮台词条更新：补充各等级效果说明/弱点提示/搭配建议',
+  ]},
+  { version:'v0.8.1', date:'2026-04-16', items:[
+    '炮台死亡重生机制：炮台死亡时5秒后在玩家附近自动补充，同时显示「⚙ 5s后补充」提示',
+    '每波开始全量补足：startWave时清空重生队列并重新召唤至当前上限',
+    '超出上限的旧炮台自动移除（multi_build升级时保证正确数量）',
+  ]},
+  { version:'v0.8.0', date:'2026-04-16', items:[
+    '新武器 ⚙ 炮台（物理）：每波在玩家周围召唤炮台·炮台有独立HP·8级升级树',
+    '炮台Lv1-3/5-6：随机速射+25%/多重建造+1台/弹药升级（子弹→激光→炸弹→火箭）',
+    '炮台Lv4三选一：治疗炮台·自爆机器人·机枪炮台',
+    '炮台Lv7三选一：更多炮台(+3台+3特殊)/防御炮台(嘲讽+免死)/元素炮台(随机debuff)',
+    '炮台Lv8：地雷炮台·+5台上限·死亡时原地留雷',
+    '新补给×6：闪避训练/硬化皮肤/磁场增幅/波次护盾/残影/地雷阵/冰甲（Boss天赋扩充）',
+    '手机横屏修复：三重方向检测（screen.orientation/window.orientation/matchMedia）iOS/Android全兼容',
+    '竖屏旋转提示：触控设备竖持时显示旋转动画提示',
+    '怪物实体图片：史莱姆/哥布林/骷髅兵/蝙蝠/兽人均使用真实图片（canvas与图鉴同步）',
+    '全屏面板：设定/成就/商店等10个面板改为100vw×100vh显示',
+  ]},
   { version:'v0.7.9', date:'2026-04-11', items:[
     '修復致命bug：波次公告（waveAnnounce）timer遞減誤放在render()內，導致ReferenceError炸掉遊戲迴圈，玩家無法移動且怪物不生成',
     'timer遞減移至gameLoop update區塊（有dt的地方），render()僅負責讀值繪製',

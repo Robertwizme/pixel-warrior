@@ -450,6 +450,7 @@ function addWeapon(id) {
     w._specialNeedsSpawn = false;
     w._lastLevel        = 1;
     w._nextUpgrade      = _rollTurretUpgrade(w);
+    w._respawnQueue     = []; // mid-wave respawn timers (each = seconds remaining)
     _ensureTurretHud();
   }
   gs.weapons.push(w);
@@ -555,6 +556,7 @@ function startWave(num) {
       _turretW._lastLevel = _turretW.level;
     }
     _turretW._specialNeedsSpawn = false; // startWave handles the spawn below
+    _turretW._respawnQueue = [];         // clear mid-wave respawn queue on new wave
     gs.turrets = _spawnTurrets(_turretW, gs.player);
     if (_turretW.specialType) _spawnSpecialTurrets(_turretW, gs.player);
   } else {
@@ -1957,6 +1959,10 @@ function updateTurrets(dt) {
                 gs.mines.push({ x: t.x, y: t.y });
                 addFloatingText('💣', t.x, t.y-10, '#fd4', 0.9);
               }
+              // Mid-wave respawn: queue a replacement after 5 seconds
+              if (!_tw._respawnQueue) _tw._respawnQueue = [];
+              _tw._respawnQueue.push(5.0);
+              addFloatingText('⚙ 5s后补充', t.x, t.y-32, '#4af', 1.4);
               return false; // remove turret
             }
           }
@@ -2002,6 +2008,26 @@ function updateTurrets(dt) {
     }
     return true;
   });
+
+  // ── Mid-wave respawn queue ──
+  if (_tw._respawnQueue?.length) {
+    const _still = [];
+    for (let _i = 0; _i < _tw._respawnQueue.length; _i++) {
+      _tw._respawnQueue[_i] -= dt;
+      if (_tw._respawnQueue[_i] <= 0) {
+        // Only spawn if still under cap (cap may have changed via upgrades)
+        if (gs.turrets.length < _maxCount) {
+          _addOneTurret(_tw, p);
+          addFloatingText('⚙ 炮台已补充!', p.x, p.y-36, '#4af', 1.4);
+          if (settings.particles) spawnParticles(p.x, p.y, ['#4af','#8cf','#fff'], 5, 70, 0.4, 3);
+        }
+        // If already at cap (e.g. another respawn fired earlier), just discard
+      } else {
+        _still.push(_tw._respawnQueue[_i]);
+      }
+    }
+    _tw._respawnQueue = _still;
+  }
 
   _updateTurretHud();
 }
