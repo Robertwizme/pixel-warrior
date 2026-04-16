@@ -125,6 +125,9 @@ function initGame(classIdx) {
     ghosts: [],
     mines: [],
     turrets: [],
+    healTurrets: [],
+    kamikazeBots: [],
+    minigunTurrets: [],
     kills: 0,
     score: 0,
     talents: new Set(),
@@ -138,6 +141,8 @@ function initGame(classIdx) {
   waveCompleteTriggered = false;
   // Auto-add flying sword if unlocked via gacha
   if (hasGachaFlyingSword()) addWeapon('flying_sword');
+  // Ensure turret HUD element exists
+  _ensureTurretHud();
   // Show correct skill in HUD immediately
   updateHUD();
 
@@ -429,10 +434,25 @@ function addFloatingText(text, x, y, color, duration) {
 
 function addWeapon(id) {
   if (!WEAPON_DEFS[id]) return;
-  gs.weapons.push({ id, level:1, timer:0, angle:0, swordHitTimers:{}, shotTimer:0,
+  const w = { id, level:1, timer:0, angle:0, swordHitTimers:{}, shotTimer:0,
     variant:null, variantMods:[], bulletEffect:null, element:null, extraGun:false,
     burstCount:0, burstPhase:'rest',
-    healMult:1, rangeMult:1, cdMultLocal:1, follows:false });
+    healMult:1, rangeMult:1, cdMultLocal:1, follows:false };
+  if (id === 'turret') {
+    w.rapidFireCount    = 0; // 速射 picks (each ×1.25 fire rate)
+    w.extraTurrets      = 0; // 多重建造 picks (each +1 cap)
+    w.ammoLevel         = 0; // 0=bullet 1=laser 2=bomb 3=rocket
+    w.specialType       = null; // 'heal'|'kamikaze'|'minigun' (set at Lv4)
+    w.specialCount      = 1; // how many special units to spawn per wave
+    w.defenceTurretMode = false; // Lv7: enemies prefer turrets; turrets have 1 death shield
+    w.elementTurretMode = false; // Lv7: bullets randomly apply flame/frost/poison
+    w.mineTurretMode    = false; // Lv8: turrets leave a mine on death
+    w._specialNeedsSpawn = false;
+    w._lastLevel        = 1;
+    w._nextUpgrade      = _rollTurretUpgrade(w);
+    _ensureTurretHud();
+  }
+  gs.weapons.push(w);
 }
 function getWeapon(id)     { return gs.weapons.find(w=>w.id===id); }
 function weaponStats(w)    { return WEAPON_DEFS[w.id].levels[w.level-1]; }
@@ -526,21 +546,17 @@ function startWave(num) {
       gs.mines.push({x:gs.player.x+Math.cos(_a)*_d, y:gs.player.y+Math.sin(_a)*_d});
     }
   }
-  // Turrets: refresh positions each wave
+  // Turrets: apply any pending level-up first, then refresh positions each wave
   const _turretW = gs.weapons.find(w => w.id === 'turret');
+  gs.healTurrets = []; gs.kamikazeBots = []; gs.minigunTurrets = [];
   if (_turretW) {
-    const _ts = weaponStats(_turretW);
-    gs.turrets = [];
-    for (let _ti = 0; _ti < _ts.maxCount; _ti++) {
-      const _ta = (_ti / Math.max(1, _ts.maxCount)) * Math.PI * 2;
-      const _td = 52 + Math.random() * 26;
-      gs.turrets.push({
-        x: gs.player.x + Math.cos(_ta) * _td,
-        y: gs.player.y + Math.sin(_ta) * _td,
-        aimAngle: _ta + Math.PI,
-        fireTimer: _ti * (_ts.cd / Math.max(1, _ts.maxCount)),
-      });
+    if (_turretW._lastLevel !== undefined && _turretW.level !== _turretW._lastLevel) {
+      _applyTurretLevelUp(_turretW);
+      _turretW._lastLevel = _turretW.level;
     }
+    _turretW._specialNeedsSpawn = false; // startWave handles the spawn below
+    gs.turrets = _spawnTurrets(_turretW, gs.player);
+    if (_turretW.specialType) _spawnSpecialTurrets(_turretW, gs.player);
   } else {
     gs.turrets = [];
   }
@@ -1077,6 +1093,12 @@ function updateEnemies(dt) {
   const p = gs.player;
   const alive = gs.enemies.filter(e=>!e.dead);
 
+  // Pre-compute defence turret taunt (Lv7) — cache before per-enemy loop
+  const _defTurretActive = !!(gs.weapons?.find(w => w.id==='turret' && w.defenceTurretMode));
+  const _tauntPool = _defTurretActive ? [
+    ...(gs.turrets||[]), ...(gs.healTurrets||[]), ...(gs.minigunTurrets||[]),
+  ] : null;
+
   for (let i=0; i<alive.length; i++) {
     const e = alive[i];
 
@@ -1138,7 +1160,14 @@ function updateEnemies(dt) {
     // Smoke cloud: enemies inside smoke move randomly
     const inSmoke = (gs.smokeClouds||[]).some(sc => sc.phase==='active' &&
       (e.x-sc.x)**2+(e.y-sc.y)**2 < sc.radius*sc.radius);
-    const moveAng = inSmoke ? (Math.random()*Math.PI*2) : Math.atan2(p.y-e.y, p.x-e.x);
+    // Defence turret mode: redirect non-boss enemies toward nearest turret
+    let _mtX = p.x, _mtY = p.y;
+    if (!inSmoke && !e.isBoss && _defTurretActive && _tauntPool?.length) {
+      let _nT=null, _nD=Infinity;
+      for (const _t of _tauntPool) { const _d=(_t.x-e.x)**2+(_t.y-e.y)**2; if(_d<_nD){_nD=_d;_nT=_t;} }
+      if (_nT) { _mtX=_nT.x; _mtY=_nT.y; }
+    }
+    const moveAng = inSmoke ? (Math.random()*Math.PI*2) : Math.atan2(_mtY-e.y, _mtX-e.x);
     const mdx = Math.cos(moveAng), mdy = Math.sin(moveAng);
 
     if (e.bossType === 'dog' && e.charging) {
@@ -1586,24 +1615,356 @@ function updateMines(dt) {
   });
 }
 
-// Update turrets
-function updateTurrets(dt) {
-  if (!gs.turrets?.length) return;
+// ── Turret helpers ────────────────────────────────────────
+// Roll the next upgrade option for the turret (called on init and after each pick)
+function _rollTurretUpgrade(w) {
+  const pool = ['rapid_fire', 'multi_build'];
+  if ((w.ammoLevel||0) < 3) pool.push('ammo_up');
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+// Apply the pre-rolled upgrade and re-roll for next time
+function _applyTurretLevelUp(w) {
+  const up = w._nextUpgrade;
+  if (up === 'rapid_fire') {
+    w.rapidFireCount = (w.rapidFireCount||0) + 1;
+    addFloatingText('⏩ 速射!', gs.player.x, gs.player.y-32, '#fd4', 1.4);
+  } else if (up === 'multi_build') {
+    w.extraTurrets = (w.extraTurrets||0) + 1;
+    addFloatingText('🔧 新炮台!', gs.player.x, gs.player.y-32, '#4af', 1.4);
+  } else if (up === 'ammo_up') {
+    w.ammoLevel = Math.min(3, (w.ammoLevel||0) + 1);
+    const _names = ['⚡激光', '💣炸弹', '🚀火箭'];
+    addFloatingText(`🔄 ${_names[w.ammoLevel-1]}!`, gs.player.x, gs.player.y-32, '#4fd', 1.4);
+  }
+  w._nextUpgrade = _rollTurretUpgrade(w);
+}
+
+// Spawn turrets around player for a new wave
+function _spawnTurrets(tw, p) {
+  const _base = WEAPON_DEFS.turret.levels[0];
+  const _maxCount = 1 + (tw.extraTurrets||0);
+  const _rapidMult = Math.pow(1.25, tw.rapidFireCount||0);
+  const _cdBase = (_base.cd / _rapidMult) * (p.cdMult||1);
+  const arr = [];
+  for (let _ti = 0; _ti < _maxCount; _ti++) {
+    const _ta = (_ti / Math.max(1, _maxCount)) * Math.PI * 2;
+    const _td = 52 + Math.random() * 26;
+    arr.push({
+      x: p.x + Math.cos(_ta) * _td,
+      y: p.y + Math.sin(_ta) * _td,
+      aimAngle: _ta + Math.PI,
+      fireTimer: _ti * (_cdBase / Math.max(1, _maxCount)),
+      hp: Math.round(p.maxHp * 0.5),
+      maxHp: Math.round(p.maxHp * 0.5),
+      _hitCds: new Map(),
+      shield: tw.defenceTurretMode ? true : false,
+    });
+  }
+  return arr;
+}
+
+// Add new turret beside player when multi_build taken mid-wave
+function _addOneTurret(tw, p) {
+  const _ang = Math.random() * Math.PI * 2;
+  const _td  = 52 + Math.random() * 26;
+  const _dMode = gs.weapons?.find(w=>w.id==='turret')?.defenceTurretMode||false;
+  gs.turrets.push({
+    x: p.x + Math.cos(_ang) * _td,
+    y: p.y + Math.sin(_ang) * _td,
+    aimAngle: _ang + Math.PI,
+    fireTimer: 0.3,
+    hp: Math.round(p.maxHp * 0.5),
+    maxHp: Math.round(p.maxHp * 0.5),
+    _hitCds: new Map(),
+    shield: _dMode,
+  });
+}
+
+// Spawn the Lv4 special turret(s) around player
+// tw.specialCount controls how many to spawn (default 1; Lv7 "更多炮台" raises it)
+function _spawnSpecialTurrets(tw, p) {
+  const _baseHp  = Math.round(p.maxHp * 0.5);
+  const _cnt     = tw.specialCount || 1;
+  const _shield  = tw.defenceTurretMode;
+  if (tw.specialType === 'heal') {
+    gs.healTurrets = [];
+    for (let _i = 0; _i < _cnt; _i++) {
+      const _a = (_i / _cnt) * Math.PI * 2 + Math.random() * 0.4;
+      gs.healTurrets.push({
+        x: p.x+Math.cos(_a)*68, y: p.y+Math.sin(_a)*68,
+        aimAngle:0, fireTimer:0.8 + _i*0.3,
+        hp:_baseHp, maxHp:_baseHp, _hitCds:new Map(),
+        shield:_shield,
+      });
+    }
+  } else if (tw.specialType === 'kamikaze') {
+    // kamikaze base = 3; specialCount acts as additive bonus
+    const _kCnt = 3 + (_cnt - 1) * 3; // specialCount 1→3, 4→12
+    gs.kamikazeBots = [];
+    for (let _i = 0; _i < _kCnt; _i++) {
+      const _a = (_i / _kCnt) * Math.PI * 2;
+      gs.kamikazeBots.push({
+        x: p.x+Math.cos(_a)*68, y: p.y+Math.sin(_a)*68,
+        hp:Math.round(p.maxHp*0.3), maxHp:Math.round(p.maxHp*0.3),
+        _hitCds:new Map(),
+      });
+    }
+  } else if (tw.specialType === 'minigun') {
+    gs.minigunTurrets = [];
+    for (let _i = 0; _i < _cnt; _i++) {
+      const _a = (_i / _cnt) * Math.PI * 2 + Math.random() * 0.4;
+      gs.minigunTurrets.push({
+        x: p.x+Math.cos(_a)*68, y: p.y+Math.sin(_a)*68,
+        aimAngle:0, fireTimer:0.1 + _i*0.2,
+        hp:_baseHp, maxHp:_baseHp, _hitCds:new Map(),
+        shield:_shield,
+      });
+    }
+  }
+}
+
+// ── Special turret update functions ──────────────────────
+
+// Heal turret: homing bullet → heals player 5% HP on hit
+function updateHealTurrets(dt) {
+  if (!gs.healTurrets?.length) return;
   const p = gs.player;
   const _tw = gs.weapons.find(w => w.id === 'turret');
-  if (!_tw) { gs.turrets = []; return; }
-  const _ts = weaponStats(_tw);
-  // Enforce max count (replace oldest if leveled up mid-wave)
-  while (gs.turrets.length > _ts.maxCount) gs.turrets.shift();
-  const _range = _ts.range || 180;
-  const _range2 = _range * _range;
-  const _dmg = Math.round((_ts.dmg||35) * (p.dmgMult||1) * (p.physDmgMult||1));
-  const _cdBase = (_ts.cd||1.2) * (p.cdMult||1);
-  const _pierce = _ts.pierce;
-  const _explosive = _ts.explosive;
-  for (const t of gs.turrets) {
+  const _dmg = Math.round(25 * (p.dmgMult||1) * (p.physDmgMult||1));
+  const _range = 220, _range2 = _range*_range;
+  const _cd = 1.8 * (p.cdMult||1);
+
+  gs.healTurrets = gs.healTurrets.filter(t => {
+    // enemy hit cooldowns
+    for (const [e,cd] of t._hitCds) { if(cd-dt<=0) t._hitCds.delete(e); else t._hitCds.set(e,cd-dt); }
+    // enemy damages turret
+    for (const e of gs.enemies) {
+      if (e.dead) continue;
+      const ex=e.x-t.x, ey=e.y-t.y;
+      if (ex*ex+ey*ey < (e.radius+10)**2 && !t._hitCds.has(e)) {
+        t.hp -= e.dmg; t._hitCds.set(e, 0.8);
+        if (t.hp<=0) {
+          if (t.shield) { t.hp=1; t.shield=false; addFloatingText('🛡 免死!',t.x,t.y-20,'#4af',1.0); }
+          else { if(settings.particles) spawnParticles(t.x,t.y,['#4f8','#888'],5,80,0.4,3); return false; }
+        }
+      }
+    }
+    // aim + fire
     t.fireTimer -= dt;
-    // Find nearest enemy in range
+    let best=null, bestD=_range2;
+    for (const e of gs.enemies) { if(e.dead) continue; const dx=e.x-t.x,dy=e.y-t.y,d=dx*dx+dy*dy; if(d<bestD){bestD=d;best=e;} }
+    if (best) t.aimAngle = Math.atan2(best.y-t.y, best.x-t.x);
+    if (t.fireTimer<=0 && best) {
+      t.fireTimer = _cd;
+      const ang = t.aimAngle, spd=300;
+      const _hp = p.maxHp;
+      gs.projectiles.push({
+        x:t.x, y:t.y, vx:Math.cos(ang)*spd, vy:Math.sin(ang)*spd,
+        dmg:_dmg, radius:5, color:'#4f8',
+        life:_range/spd+0.1, type:'bullet', wepCat:'phys',
+        homing:true, maxSpd:320,
+        onHit:(pr)=>{ healPlayer(_hp*0.05); },
+      });
+      if(settings.particles) spawnParticles(t.x,t.y,['#4f8','#8fa'],2,70,0.15,2);
+    } else if (t.fireTimer<0) t.fireTimer=0;
+    return true;
+  });
+}
+
+// Kamikaze robots: chase nearest enemy, self-destruct on contact
+function updateKamikazeBots(dt) {
+  if (!gs.kamikazeBots?.length) return;
+  const p = gs.player;
+  const _tw = gs.weapons.find(w => w.id === 'turret');
+  const _dmg = Math.round(70 * (p.dmgMult||1) * (p.physDmgMult||1));
+
+  gs.kamikazeBots = gs.kamikazeBots.filter(b => {
+    // enemy hit cooldowns
+    for (const [e,cd] of b._hitCds) { if(cd-dt<=0) b._hitCds.delete(e); else b._hitCds.set(e,cd-dt); }
+    // enemy damages bot
+    for (const e of gs.enemies) {
+      if (e.dead) continue;
+      const ex=e.x-b.x, ey=e.y-b.y;
+      if (ex*ex+ey*ey < (e.radius+8)**2 && !b._hitCds.has(e)) {
+        b.hp -= e.dmg; b._hitCds.set(e, 0.8);
+        if (b.hp<=0) {
+          triggerExplosion(b.x, b.y, 80, _dmg);
+          if(settings.particles) spawnParticles(b.x,b.y,['#f44','#f84','#fff'],10,110,0.6,4);
+          addFloatingText('💥',b.x,b.y-16,'#f84',0.8);
+          return false;
+        }
+      }
+    }
+    // Move toward nearest enemy
+    let best=null, bestD=Infinity;
+    for (const e of gs.enemies) { if(e.dead) continue; const dx=e.x-b.x,dy=e.y-b.y,d=dx*dx+dy*dy; if(d<bestD){bestD=d;best=e;} }
+    if (best) {
+      const dx=best.x-b.x, dy=best.y-b.y, dist=Math.sqrt(dx*dx+dy*dy)||1;
+      // Self-destruct when close enough
+      if (dist < 22) {
+        triggerExplosion(b.x, b.y, 80, _dmg);
+        if(settings.particles) spawnParticles(b.x,b.y,['#f44','#f84','#fd4','#fff'],14,130,0.7,4);
+        addFloatingText('💥',b.x,b.y-16,'#f84',0.8);
+        SFX.play('wave');
+        return false; // bot consumed
+      }
+      b.x += (dx/dist)*62*dt;
+      b.y += (dy/dist)*62*dt;
+    }
+    return true;
+  });
+}
+
+// Minigun turret: very fast fire rate, low damage
+function updateMinigunTurrets(dt) {
+  if (!gs.minigunTurrets?.length) return;
+  const p = gs.player;
+  const _dmg = Math.round(9 * (p.dmgMult||1) * (p.physDmgMult||1));
+  const _range=180, _range2=_range*_range;
+  const _cd = 0.14 * (p.cdMult||1);
+
+  gs.minigunTurrets = gs.minigunTurrets.filter(t => {
+    for (const [e,cd] of t._hitCds) { if(cd-dt<=0) t._hitCds.delete(e); else t._hitCds.set(e,cd-dt); }
+    for (const e of gs.enemies) {
+      if (e.dead) continue;
+      const ex=e.x-t.x, ey=e.y-t.y;
+      if (ex*ex+ey*ey < (e.radius+10)**2 && !t._hitCds.has(e)) {
+        t.hp -= e.dmg; t._hitCds.set(e, 0.8);
+        if (t.hp<=0) {
+          if (t.shield) { t.hp=1; t.shield=false; addFloatingText('🛡 免死!',t.x,t.y-20,'#4af',1.0); }
+          else { if(settings.particles) spawnParticles(t.x,t.y,['#fd4','#888'],5,80,0.4,3); return false; }
+        }
+      }
+    }
+    t.fireTimer -= dt;
+    let best=null, bestD=_range2;
+    for (const e of gs.enemies) { if(e.dead) continue; const dx=e.x-t.x,dy=e.y-t.y,d=dx*dx+dy*dy; if(d<bestD){bestD=d;best=e;} }
+    if (best) t.aimAngle = Math.atan2(best.y-t.y, best.x-t.x);
+    if (t.fireTimer<=0 && best) {
+      t.fireTimer = _cd;
+      const ang=t.aimAngle, spd=420;
+      gs.projectiles.push({
+        x:t.x, y:t.y, vx:Math.cos(ang)*spd, vy:Math.sin(ang)*spd,
+        dmg:_dmg, radius:3, color:'#fd4',
+        life:_range/spd+0.05, type:'bullet', wepCat:'phys',
+      });
+    } else if (t.fireTimer<0) t.fireTimer=0;
+    return true;
+  });
+}
+
+// ── Turret HUD (top-right: ⚙ n/max) ──────────────────────
+function _ensureTurretHud() {
+  if (document.getElementById('hud-turret')) return;
+  const el = document.createElement('div');
+  el.id = 'hud-turret';
+  el.style.cssText = [
+    'position:fixed','top:36px','right:4px','z-index:12',
+    'background:rgba(0,0,0,.75)','border:1px solid #4af',
+    'border-radius:3px','padding:2px 8px',
+    "font-family:'Courier New',monospace",'font-size:10px',
+    'color:#4af','display:none','pointer-events:none',
+    'letter-spacing:0.5px',
+  ].join(';');
+  document.body.appendChild(el);
+}
+function _updateTurretHud() {
+  const el = document.getElementById('hud-turret');
+  if (!el) return;
+  const tw = gs?.weapons?.find(w => w.id === 'turret');
+  if (!tw || gs?.phase !== 'playing') { el.style.display = 'none'; return; }
+  const maxC = 1 + (tw.extraTurrets||0);
+  const alive = (gs.turrets||[]).length;
+  const _ammoTag = ['⬤','⚡','💣','🚀'][(tw.ammoLevel||0)];
+  let txt = `⚙ ${_ammoTag} ${alive}/${maxC}`;
+  // Special turret indicators
+  const _spCnt = tw.specialCount || 1;
+  if (tw.specialType === 'heal')     txt += ` 💚${(gs.healTurrets||[]).length}/${_spCnt}`;
+  if (tw.specialType === 'kamikaze') { const _kMax=3+(_spCnt-1)*3; txt += ` 🤖${(gs.kamikazeBots||[]).length}/${_kMax}`; }
+  if (tw.specialType === 'minigun')  txt += ` 🔫${(gs.minigunTurrets||[]).length}/${_spCnt}`;
+  // Mode flags
+  if (tw.defenceTurretMode) txt += ' 🛡';
+  if (tw.elementTurretMode) txt += ' ✨';
+  if (tw.mineTurretMode)    txt += ' 💣';
+  el.style.display = '';
+  el.textContent   = txt;
+}
+
+// Update turrets (fire, take damage, die)
+function updateTurrets(dt) {
+  const _tw = gs.weapons.find(w => w.id === 'turret');
+  if (!_tw) { if (gs.turrets?.length) gs.turrets = []; _updateTurretHud(); return; }
+
+  // Detect level-up that didn't go through startWave (mid-wave XP level-up)
+  if (_tw._lastLevel !== undefined && _tw.level !== _tw._lastLevel) {
+    const _wasMulti = _tw._nextUpgrade === 'multi_build';
+    _applyTurretLevelUp(_tw);
+    _tw._lastLevel = _tw.level;
+    if (_wasMulti) _addOneTurret(_tw, gs.player);
+  }
+  // Spawn special turrets immediately when picked mid-wave
+  if (_tw._specialNeedsSpawn && _tw.specialType) {
+    _tw._specialNeedsSpawn = false;
+    // Ensure regular turret count = 3
+    while (gs.turrets.length < 1+(_tw.extraTurrets||0)) _addOneTurret(_tw, gs.player);
+    _spawnSpecialTurrets(_tw, gs.player);
+  }
+
+  const p = gs.player;
+  const _base = WEAPON_DEFS.turret.levels[0];
+  const _maxCount = 1 + (_tw.extraTurrets||0);
+  // Enforce cap (remove oldest)
+  while (gs.turrets.length > _maxCount) gs.turrets.shift();
+
+  const _rapidMult = Math.pow(1.25, _tw.rapidFireCount||0);
+  const _cdBase    = (_base.cd / _rapidMult) * (p.cdMult||1);
+  const _dmg       = Math.round(_base.dmg * (p.dmgMult||1) * (p.physDmgMult||1));
+  const _range     = _base.range;
+  const _range2    = _range * _range;
+  const _ammoLv    = _tw.ammoLevel||0;
+  // Ammo properties per level
+  const _ammoColor = ['#fa8','#4ef','#f84','#f44'][_ammoLv];
+  const _ammoSpd   = _ammoLv === 3 ? 270 : 350;
+  const _ammoR     = _ammoLv === 3 ? 6 : 4;
+
+  gs.turrets = gs.turrets.filter(t => {
+    // ── Enemy hit cooldowns ──
+    for (const [e, cd] of t._hitCds) {
+      if (cd - dt <= 0) t._hitCds.delete(e);
+      else t._hitCds.set(e, cd - dt);
+    }
+    // ── Enemy damages turret ──
+    for (const e of gs.enemies) {
+      if (e.dead) continue;
+      const ex = e.x - t.x, ey = e.y - t.y;
+      if (ex*ex + ey*ey < (e.radius + 10)**2) {
+        if (!t._hitCds.has(e)) {
+          t.hp -= e.dmg;
+          t._hitCds.set(e, 0.8);
+          if (settings.particles) spawnParticles(t.x, t.y, ['#f44','#888'], 2, 50, 0.2, 2);
+          if (t.hp <= 0) {
+            if (_tw.defenceTurretMode && t.shield) {
+              // One-time death immunity
+              t.hp = 1; t.shield = false;
+              addFloatingText('🛡 免死!', t.x, t.y-22, '#4af', 1.1);
+              if (settings.particles) spawnParticles(t.x, t.y, ['#4af','#88f','#fff'], 5, 70, 0.35, 3);
+            } else {
+              addFloatingText('💥', t.x, t.y-18, '#f84', 0.7);
+              if (settings.particles) spawnParticles(t.x, t.y, ['#f44','#f84','#888'], 6, 90, 0.45, 3);
+              // Mine turret mode: leave a mine on death
+              if (_tw.mineTurretMode) {
+                gs.mines.push({ x: t.x, y: t.y });
+                addFloatingText('💣', t.x, t.y-10, '#fd4', 0.9);
+              }
+              return false; // remove turret
+            }
+          }
+        }
+      }
+    }
+    // ── Aim at nearest enemy in range ──
+    t.fireTimer -= dt;
     let best = null, bestDist = _range2;
     for (const e of gs.enemies) {
       if (e.dead) continue;
@@ -1612,33 +1973,37 @@ function updateTurrets(dt) {
       if (d < bestDist) { bestDist = d; best = e; }
     }
     if (best) t.aimAngle = Math.atan2(best.y - t.y, best.x - t.x);
+    // ── Fire ──
     if (t.fireTimer <= 0 && best) {
       t.fireTimer = _cdBase;
       const ang = t.aimAngle;
-      const spd = 350;
       const proj = {
         x: t.x, y: t.y,
-        vx: Math.cos(ang)*spd, vy: Math.sin(ang)*spd,
-        dmg: _dmg, radius: 4, color: '#fa8',
-        life: _range / spd + 0.15,
+        vx: Math.cos(ang)*_ammoSpd, vy: Math.sin(ang)*_ammoSpd,
+        dmg: _dmg, radius: _ammoR, color: _ammoColor,
+        life: _range / _ammoSpd + 0.15,
         type: 'bullet', wepCat: 'phys',
-        pierce: !!_pierce, maxPierce: _pierce ? 2 : undefined,
+        pierce: _ammoLv === 1, maxPierce: _ammoLv === 1 ? 9999 : undefined,
+        // Element turret mode: randomly assign flame/frost/poison
+        element: _tw.elementTurretMode ? (['flame','frost','poison'][Math.floor(Math.random()*3)]) : undefined,
       };
-      if (_explosive) {
-        const _exDmg = _dmg;
-        proj.onHit = (pr) => {
-          if (!pr._exploded) {
-            pr._exploded = true;
-            triggerExplosion(pr.x, pr.y, 60, Math.round(_exDmg * 0.6));
-          }
-        };
+      if (_ammoLv === 2) { // 炸弹: small AoE
+        const _d = _dmg;
+        proj.onHit = (pr) => { if (!pr._exploded) { pr._exploded = true; triggerExplosion(pr.x, pr.y, 62, Math.round(_d*0.7)); } };
+      } else if (_ammoLv === 3) { // 火箭: large AoE + explode on expire
+        const _d = _dmg;
+        proj.onHit = (pr) => { if (!pr._exploded) { pr._exploded = true; triggerExplosion(pr.x, pr.y, 100, Math.round(_d*0.8)); if(settings.particles) spawnParticles(pr.x,pr.y,['#f84','#fd4','#f44','#fff'],12,130,0.75,4); } };
+        proj.onExpire = (pr) => { if (!pr._exploded) { pr._exploded = true; triggerExplosion(pr.x, pr.y, 100, Math.round(_d*0.5)); } };
       }
       gs.projectiles.push(proj);
-      if (settings.particles) spawnParticles(t.x, t.y, ['#fa8','#fd4'], 2, 75, 0.18, 2);
+      if (settings.particles) spawnParticles(t.x, t.y, [_ammoColor, '#fff'], 2, 80, 0.15, 2);
     } else if (t.fireTimer < 0) {
       t.fireTimer = 0;
     }
-  }
+    return true;
+  });
+
+  _updateTurretHud();
 }
 
 // Update floating texts
@@ -2108,33 +2473,127 @@ function render() {
 
   // Turrets
   if (gs.turrets?.length) {
+    const _tAmmoLv = gs.weapons.find(w=>w.id==='turret')?.ammoLevel||0;
+    const _tBodyColors   = ['#1e2d3a','#0e1e2a','#2a1510','#200e0e'];
+    const _tBorderColors = ['#4af','#4ef','#f84','#f44'];
+    const _tBarrelColors = ['#66889a','#446688','#885533','#883333'];
+    const _tIcons        = ['⚙','⚡','💣','🚀'];
+    const _bodyC   = _tBodyColors[_tAmmoLv];
+    const _borderC = _tBorderColors[_tAmmoLv];
+    const _barrelC = _tBarrelColors[_tAmmoLv];
+    const _icon    = _tIcons[_tAmmoLv];
     gs.turrets.forEach(t => {
       const tx = Math.floor(t.x - cam.x), ty = Math.floor(t.y - cam.y);
       ctx.save();
       ctx.translate(tx, ty);
-      // Barrel (drawn first so base body overlaps inner part)
+      // Barrel
       ctx.save();
       ctx.rotate(t.aimAngle);
-      ctx.fillStyle = '#66889a';
+      ctx.fillStyle = _barrelC;
       ctx.fillRect(0, -2.5, 15, 5);
-      ctx.fillStyle = '#8aafc0';
-      ctx.fillRect(9, -3, 6, 6);
+      ctx.fillStyle = _borderC;
+      ctx.fillRect(10, -3, 5, 6);
       ctx.restore();
       // Base body
-      ctx.fillStyle = '#2a3a4a';
-      ctx.strokeStyle = '#4af';
+      ctx.fillStyle = _bodyC;
+      ctx.strokeStyle = _borderC;
       ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI*2); ctx.fill(); ctx.stroke();
       ctx.restore();
-      // Gear icon
+      // Icon label
       ctx.save();
       ctx.font = '9px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('⚙', tx, ty);
+      ctx.fillText(_icon, tx, ty);
       ctx.restore();
+      // Shield glow ring (defence turret mode)
+      if (t.shield) {
+        ctx.save();
+        ctx.globalAlpha = 0.55 + 0.25*Math.sin(performance.now()/320);
+        ctx.strokeStyle = '#4af'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(tx, ty, 11, 0, Math.PI*2); ctx.stroke();
+        ctx.globalAlpha = 1;
+        ctx.restore();
+      }
+      // HP bar (below turret)
+      if (t.hp !== undefined && t.maxHp > 0) {
+        const _pct = Math.max(0, t.hp / t.maxHp);
+        const _bw = 22, _bh = 3;
+        ctx.fillStyle = '#311';
+        ctx.fillRect(tx - _bw/2, ty + 11, _bw, _bh);
+        ctx.fillStyle = _pct > 0.5 ? '#4d4' : _pct > 0.25 ? '#fd4' : '#f44';
+        ctx.fillRect(tx - _bw/2, ty + 11, _bw * _pct, _bh);
+      }
     });
   }
+
+  // Heal turrets (green)
+  (gs.healTurrets||[]).forEach(t => {
+    const tx=Math.floor(t.x-cam.x), ty=Math.floor(t.y-cam.y);
+    ctx.save(); ctx.translate(tx,ty);
+    ctx.save(); ctx.rotate(t.aimAngle);
+    ctx.fillStyle='#2a5a3a'; ctx.fillRect(0,-2.5,14,5);
+    ctx.fillStyle='#4f8'; ctx.fillRect(9,-3,5,6);
+    ctx.restore();
+    ctx.fillStyle='#0e2a1e'; ctx.strokeStyle='#4f8'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.arc(0,0,9,0,Math.PI*2); ctx.fill(); ctx.stroke();
+    ctx.restore();
+    ctx.save(); ctx.font='10px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('💚',tx,ty); ctx.restore();
+    if (t.shield) {
+      ctx.save(); ctx.globalAlpha=0.55+0.25*Math.sin(performance.now()/320);
+      ctx.strokeStyle='#4af'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.arc(tx,ty,12,0,Math.PI*2); ctx.stroke();
+      ctx.globalAlpha=1; ctx.restore();
+    }
+    if (t.maxHp>0) {
+      const _p=Math.max(0,t.hp/t.maxHp), _bw=22;
+      ctx.fillStyle='#122'; ctx.fillRect(tx-11,ty+13,_bw,3);
+      ctx.fillStyle=_p>0.5?'#4f8':'#fd4'; ctx.fillRect(tx-11,ty+13,_bw*_p,3);
+    }
+  });
+
+  // Kamikaze bots (red, moving)
+  (gs.kamikazeBots||[]).forEach(b => {
+    const bx=Math.floor(b.x-cam.x), by=Math.floor(b.y-cam.y);
+    const _blink=Math.sin(performance.now()/180)>0;
+    ctx.fillStyle=_blink?'#f44':'#c22'; ctx.strokeStyle='#f84'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.arc(bx,by,7,0,Math.PI*2); ctx.fill(); ctx.stroke();
+    ctx.save(); ctx.font='8px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('🤖',bx,by); ctx.restore();
+    if (b.maxHp>0) {
+      const _p=Math.max(0,b.hp/b.maxHp), _bw=18;
+      ctx.fillStyle='#311'; ctx.fillRect(bx-9,by+10,_bw,3);
+      ctx.fillStyle=_p>0.5?'#f44':'#fd4'; ctx.fillRect(bx-9,by+10,_bw*_p,3);
+    }
+  });
+
+  // Minigun turrets (gold/orange)
+  (gs.minigunTurrets||[]).forEach(t => {
+    const tx=Math.floor(t.x-cam.x), ty=Math.floor(t.y-cam.y);
+    ctx.save(); ctx.translate(tx,ty);
+    ctx.save(); ctx.rotate(t.aimAngle);
+    ctx.fillStyle='#4a3a0a'; ctx.fillRect(0,-2,16,4);
+    ctx.fillStyle='#fd4'; ctx.fillRect(11,-2.5,5,5);
+    ctx.restore();
+    ctx.fillStyle='#2a1e08'; ctx.strokeStyle='#fd4'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.arc(0,0,9,0,Math.PI*2); ctx.fill(); ctx.stroke();
+    ctx.restore();
+    ctx.save(); ctx.font='9px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('🔫',tx,ty); ctx.restore();
+    if (t.shield) {
+      ctx.save(); ctx.globalAlpha=0.55+0.25*Math.sin(performance.now()/320);
+      ctx.strokeStyle='#4af'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.arc(tx,ty,12,0,Math.PI*2); ctx.stroke();
+      ctx.globalAlpha=1; ctx.restore();
+    }
+    if (t.maxHp>0) {
+      const _p=Math.max(0,t.hp/t.maxHp), _bw=22;
+      ctx.fillStyle='#211'; ctx.fillRect(tx-11,ty+13,_bw,3);
+      ctx.fillStyle=_p>0.5?'#fd4':'#f44'; ctx.fillRect(tx-11,ty+13,_bw*_p,3);
+    }
+  });
 
   // Smoke clouds
   (gs.smokeClouds||[]).forEach(sc => {
@@ -2766,6 +3225,9 @@ function gameLoop(ts) {
       updateGhosts(dt);
       updateMines(dt);
       updateTurrets(dt);
+      updateHealTurrets(dt);
+      updateKamikazeBots(dt);
+      updateMinigunTurrets(dt);
       updateProjectiles(dt);
       updateParticles(dt);
       gs.wave.timer += dt;

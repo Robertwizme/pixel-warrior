@@ -189,6 +189,35 @@ function getGatlingUpgradeCards(w) {
     weapId:'gatling', icon:chosen.icon, name:chosen.name, desc:chosen.desc }];
 }
 
+function getTurretLv4Cards(w) {
+  return [
+    { type:'turret_special', weapId:'turret', specialType:'heal',
+      icon:'💚', name:'治疗炮台',
+      desc:'召唤×3炮台+1治疗炮台 · 追踪子弹命中回复玩家5%HP' },
+    { type:'turret_special', weapId:'turret', specialType:'kamikaze',
+      icon:'🤖', name:'自爆炮台',
+      desc:'召唤×3炮台+3自爆机器人 · 靠近敌人自爆·范围大伤' },
+    { type:'turret_special', weapId:'turret', specialType:'minigun',
+      icon:'🔫', name:'机枪炮台',
+      desc:'召唤×3炮台+1机枪炮台 · 极快射速·9伤害/弹' },
+  ];
+}
+
+function getTurretLv7Cards(w) {
+  const _cnt = 1 + (w.extraTurrets||0);
+  return [
+    { type:'turret_lv7', weapId:'turret', lv7Op:'more',
+      icon:'⚙', name:'更多炮台',
+      desc:`再+3炮台·+3额外特殊炮台 · 总计×${_cnt+3}台` },
+    { type:'turret_lv7', weapId:'turret', lv7Op:'defence',
+      icon:'🛡', name:'防御炮台',
+      desc:'非Boss怪物优先攻击炮台 · 每台炮台获得一次免死护盾' },
+    { type:'turret_lv7', weapId:'turret', lv7Op:'element',
+      icon:'✨', name:'元素炮台',
+      desc:'炮台子弹随机施加火焰/冰霜/毒素·快速叠层强力debuff' },
+  ];
+}
+
 function getHealDroneUpgradeCards(w) {
   const next = w.level + 1;
   if (next === 4) {
@@ -633,6 +662,16 @@ function getUpgradeOptions() {
   if (btortW && [4,7,8].includes(btortW.level+1) && btortW.level < WEAPON_DEFS.black_tortoise.maxLv)
     return getBlackTortoiseUpgradeCards(btortW).slice(0, cardCount);
 
+  const turretW = getWeapon('turret');
+  if (turretW && turretW.level === 3 && turretW.level < WEAPON_DEFS.turret.maxLv)
+    return getTurretLv4Cards(turretW);
+  if (turretW && turretW.level === 6 && turretW.level < WEAPON_DEFS.turret.maxLv)
+    return getTurretLv7Cards(turretW);
+  if (turretW && turretW.level === 7 && turretW.level < WEAPON_DEFS.turret.maxLv)
+    return [{ type:'turret_lv8', weapId:'turret',
+      icon:'💣', name:'地雷炮台',
+      desc:'炮台死亡时原地埋下地雷·大范围爆炸 · 再+5炮台上限' }];
+
   // ── Build weapon pools (priority: owned upgrades → new weapons) ──
   const upgradePool = []; // upgrades for weapons player already owns
   const newWeapPool = []; // new weapons player doesn't have yet
@@ -933,6 +972,40 @@ function applyUpgradeEffect(opt) {
       if (opt.sniperOp === 'split')      { w.splitBullet = true; }
       if (opt.sniperOp === 'lvl8bounce') { w.lvl8Bounce = true; }
       if (opt.sniperOp === 'reaperKill') { w.reaperKill = true; }
+    } else if (opt.type === 'turret_special') {
+      const w = getWeapon('turret');
+      if (!w) return;
+      w.level = Math.min(WEAPON_DEFS.turret.maxLv, w.level + 1);
+      w._lastLevel = w.level;           // prevent double-processing in updateTurrets
+      w.specialType = opt.specialType;  // 'heal' | 'kamikaze' | 'minigun'
+      w.specialCount = 1;               // reset to base (Lv7 can raise it later)
+      w.extraTurrets = Math.max(w.extraTurrets||0, 2); // guarantee ×3 regular turrets
+      w._nextUpgrade = _rollTurretUpgrade(w); // pre-roll Lv5/Lv6 upgrade
+      w._specialNeedsSpawn = true; // game.js handles spawn on next tick or wave start
+    } else if (opt.type === 'turret_lv7') {
+      const w = getWeapon('turret');
+      if (!w) return;
+      w.level = Math.min(WEAPON_DEFS.turret.maxLv, w.level + 1);
+      w._lastLevel = w.level;
+      if (opt.lv7Op === 'more') {
+        w.extraTurrets  = (w.extraTurrets||0) + 3;   // +3 regular turrets
+        w.specialCount  = (w.specialCount||1) + 3;   // +3 special units
+      } else if (opt.lv7Op === 'defence') {
+        w.defenceTurretMode = true;
+      } else if (opt.lv7Op === 'element') {
+        w.elementTurretMode = true;
+      }
+      w._nextUpgrade = _rollTurretUpgrade(w);
+      w._specialNeedsSpawn = true;
+    } else if (opt.type === 'turret_lv8') {
+      const w = getWeapon('turret');
+      if (!w) return;
+      w.level = Math.min(WEAPON_DEFS.turret.maxLv, w.level + 1);
+      w._lastLevel = w.level;
+      w.mineTurretMode = true;
+      w.extraTurrets   = (w.extraTurrets||0) + 5;    // +5 regular turrets
+      w._nextUpgrade = _rollTurretUpgrade(w);
+      w._specialNeedsSpawn = true;
     }
 }
 

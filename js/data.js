@@ -591,20 +591,38 @@ const WEAPON_DEFS = {
     }
   },
   turret: {
-    name:'⚙ 炮台', icon:'⚙', maxLv:4, type:'turret', wepCat:'phys',
-    startDesc: '每波放置炮台·自动攻击附近敌人',
+    name:'⚙ 炮台', icon:'⚙', maxLv:8, type:'turret', wepCat:'phys',
+    startDesc: '放置炮台·自动攻击附近敌人·炮台有血量',
+    // All levels share the same base stats; actual power comes from
+    // accumulated upgrades stored on the weapon object (rapidFireCount /
+    // extraTurrets / ammoLevel).  weaponStats() still works normally.
     levels: [
-      { maxCount:1, dmg:35, cd:1.2,  range:180 },
-      { maxCount:2, dmg:35, cd:0.92, range:190 },
-      { maxCount:3, dmg:53, cd:0.92, range:200, pierce:true },
-      { maxCount:4, dmg:53, cd:0.92, range:210, explosive:true },
+      {dmg:35, cd:1.2, range:180},
+      {dmg:35, cd:1.2, range:180},
+      {dmg:35, cd:1.2, range:180},
+      {dmg:35, cd:1.2, range:180},
+      {dmg:35, cd:1.2, range:180},
+      {dmg:35, cd:1.2, range:180},
+      {dmg:35, cd:1.2, range:180},
+      {dmg:35, cd:1.2, range:180},
     ],
     describe: lv => {
-      const s = WEAPON_DEFS.turret.levels[lv-1];
-      const parts = [`×${s.maxCount}炮台 伤害${s.dmg} CD${s.cd}s 射程${s.range}`];
-      if (s.pierce) parts.push('穿透1');
-      if (s.explosive) parts.push('爆炸弹');
-      return parts.join(' · ');
+      const w = gs?.weapons?.find(x => x.id === 'turret');
+      if (!w) return `⚙ 炮台 Lv.${lv}`;
+      const _ammoNames = ['激光·穿透', '炸弹·近爆', '火箭·大爆'];
+      const _count = 1 + (w.extraTurrets||0);
+      const _ammoTag = ['⬤子弹','⚡激光','💣炸弹','🚀火箭'][(w.ammoLevel||0)];
+      // Lv7/8: fixed upgrade descriptions
+      if (w.level === 6) return `三选一：更多炮台 / 防御炮台 / 元素炮台 | ${_ammoTag} ×${_count}台`;
+      if (w.level === 7) return `💣 地雷炮台：+5炮台·炮台死亡时原地埋雷 | ${_ammoTag} ×${_count}台`;
+      // Lv1-6: show pre-rolled next upgrade
+      const _nxt = w._nextUpgrade;
+      const _upDesc = ({
+        rapid_fire:  '⏩ 速射 · 射速再+25%',
+        multi_build: `🔧 多重建造 · 上限+1 → ×${_count+1}台`,
+        ammo_up:     `🔄 弹药升级 → ${_ammoNames[(w.ammoLevel||0)]}`,
+      })[_nxt] || '⚙ 炮台升级';
+      return `${_upDesc} | ${_ammoTag} ×${_count}台`;
     }
   },
 };
