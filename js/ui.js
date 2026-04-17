@@ -1511,7 +1511,7 @@ updateMailBadge();
     { label:'西蒙·海耶', sprite:'player_reaper' },
     { label:'铁匠',     icon:'⚒' },
     { label:'博士',     icon:'🎓' },
-    { label:'圣诞老人', icon:'🎅' },
+    { label:'圣诞老人', sprite:'player_santa' },
     { label:'天选者',   icon:'⭐' },
   ];
   let ci = 0;
@@ -1522,7 +1522,7 @@ updateMailBadge();
     const c2 = cv.getContext('2d');
 
     // Use original PNG images for doctor / mage
-    const imgMap = { player_doctor: IMG_DOCTOR, player_mage: IMG_MAGE, player_reaper: IMG_REAPER, player_berserker: IMG_BERSERKER };
+    const imgMap = { player_doctor: IMG_DOCTOR, player_mage: IMG_MAGE, player_reaper: IMG_REAPER, player_berserker: IMG_BERSERKER, player_santa: IMG_SANTA };
     const imgSpr = imgMap[sprName];
     if (imgSpr && imgSpr.complete && imgSpr.naturalWidth) {
       const tgtH = 160;
@@ -1563,7 +1563,7 @@ updateMailBadge();
     if (cls.sprite) {
       if (iconEl)  iconEl.style.display  = 'none';
       if (canvEl)  canvEl.style.display  = 'block';
-      const imgMap2 = { player_doctor: IMG_DOCTOR, player_mage: IMG_MAGE, player_reaper: IMG_REAPER, player_berserker: IMG_BERSERKER };
+      const imgMap2 = { player_doctor: IMG_DOCTOR, player_mage: IMG_MAGE, player_reaper: IMG_REAPER, player_berserker: IMG_BERSERKER, player_santa: IMG_SANTA };
       const img2 = imgMap2[cls.sprite];
       if (img2 && img2.complete && img2.naturalWidth) {
         drawMenuSprite(cls.sprite);

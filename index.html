@@ -121,6 +121,27 @@
     <button class="btn icon-btn" id="btn-forge" style="border-color:#fd4;color:#fd4" title="武器强化">⚒</button>
   </div>
 
+  <!-- PWA hint: add to home screen (dismissed via localStorage) -->
+  <div id="pwa-hint" style="display:none;align-items:center;justify-content:center;gap:8px;
+    padding:6px 14px;background:rgba(74,140,255,0.12);border-bottom:1px solid #2a3a5a;
+    font-size:11px;color:#8af;cursor:pointer;user-select:none">
+    <span>📱 建議加入主畫面以全屏遊玩</span>
+    <span style="opacity:.4;font-size:14px;line-height:1">✕</span>
+  </div>
+  <script>
+  (function(){
+    var h = document.getElementById('pwa-hint');
+    if (!h) return;
+    if (!('ontouchstart' in window)) return; // desktop: never show
+    if (localStorage.getItem('pwa_hint_dismissed')) return;
+    h.style.display = 'flex';
+    h.addEventListener('click', function(){
+      h.style.display = 'none';
+      localStorage.setItem('pwa_hint_dismissed', '1');
+    });
+  })();
+  </script>
+
   <!-- Center: title + animated character -->
   <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px">
     <div class="game-title">像素勇士</div>
