@@ -21,7 +21,7 @@ if ('ontouchstart' in window) {
   }, {passive:false});
 }
 
-// ── 横屏全屏 ──
+// ── 横屏全屏（用户手势触发时尝试）──
 function _requestFullscreen() {
   const el = document.documentElement;
   const req = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
@@ -29,55 +29,8 @@ function _requestFullscreen() {
     req.call(el).catch(()=>{});
   }
 }
-function _checkLandscapeFullscreen() {
-  const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) || window.innerWidth <= 900;
-  const isLandscape = window.innerWidth > window.innerHeight;
-  if (isMobile && isLandscape) _requestFullscreen();
-}
-// 横屏时自动全屏；用户第一次触摸时也尝试（浏览器需要手势触发）
-if (screen.orientation) screen.orientation.addEventListener('change', _checkLandscapeFullscreen);
-window.addEventListener('orientationchange', _checkLandscapeFullscreen);
-window.addEventListener('resize', _checkLandscapeFullscreen);
-document.addEventListener('touchstart', _checkLandscapeFullscreen, {passive:true, once:false});
-
-// ── 旋转提示（手机直屏时显示）──
-// 只对触摸设备生效；同时兼容 iOS Safari（含旧版）和 Android Chrome
-const _rotateHint = document.getElementById('rotate-hint');
-function _updateRotateHint() {
-  if (!_rotateHint) return;
-  // 非触摸设备（桌面）直接隐藏，避免桌面竖窗误触发
-  if (!('ontouchstart' in window)) { _rotateHint.style.display = 'none'; return; }
-  // 多方法判断竖屏，按优先级：
-  // 1. screen.orientation.type（Chrome/Firefox/iOS 16.4+）
-  // 2. window.orientation（已废弃但 iOS 全版本可用：0/180=竖，±90=横）
-  // 3. matchMedia fallback（Safari 9+）
-  // 4. innerWidth/innerHeight 最终兜底
-  let _portrait;
-  try {
-    if (screen.orientation && screen.orientation.type) {
-      _portrait = screen.orientation.type.startsWith('portrait');
-    } else if (typeof window.orientation !== 'undefined') {
-      _portrait = (window.orientation === 0 || window.orientation === 180);
-    } else {
-      _portrait = window.matchMedia('(orientation:portrait)').matches;
-    }
-  } catch(_e) {
-    _portrait = window.innerHeight > window.innerWidth;
-  }
-  _rotateHint.style.display = _portrait ? 'flex' : 'none';
-}
-// 监听所有方向变化事件（三重保险，覆盖 iOS/Android 所有版本）
-if (screen.orientation) screen.orientation.addEventListener('change', _updateRotateHint);
-window.addEventListener('orientationchange', _updateRotateHint);
-// matchMedia change listener（iOS 13 以下无 screen.orientation，此路为主力）
-(function(){
-  const _mql = window.matchMedia('(orientation:portrait)');
-  const _fn = function(e){ if ('ontouchstart' in window) _updateRotateHint(); };
-  if (_mql.addEventListener) _mql.addEventListener('change', _fn);
-  else if (_mql.addListener) _mql.addListener(_fn); // iOS ≤ 12 compat
-})();
-// 页面加载完毕后执行初始检测
-_updateRotateHint();
+document.addEventListener('touchstart', _requestFullscreen, {passive:true, once:true});
+// 旋转提示由纯 CSS media query 控制，无需 JS 干预
 
 // ═══════════════════════════════════════════════════════
 // §1  Canvas + resize + input

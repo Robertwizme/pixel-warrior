@@ -180,6 +180,19 @@ function getWavePlan(n) {
 const GAME_VERSION = 'v0.7.9';
 document.getElementById('load-version').textContent = GAME_VERSION;
 const CHANGELOG = [
+  { version:'v0.8.4', date:'2026-04-17', items:[
+    '手机安全区域适配：viewport 加入 viewport-fit=cover 启用刘海屏/药丸屏全面屏支持',
+    '#menu-topbar 顶部/左右加入 max(xpx, env(safe-area-inset-*)) 防止被刘海/状态栏遮挡',
+    '#hud-bot 底部加入 env(safe-area-inset-bottom) 防止被 Home 条遮挡',
+    'body 加入 padding-top:env(safe-area-inset-top) 确保内容不被系统状态栏覆盖',
+  ]},
+  { version:'v0.8.3', date:'2026-04-17', items:[
+    '手机横屏修复重构：移除所有 JS 方向检测逻辑，改用纯 CSS media query 控制旋转提示',
+    'CSS 新增 landscape 强制隐藏 + portrait+max-width:900px 强制显示（!important 确保覆盖内联样式）',
+    '移除 screen-orientation meta 强制横屏声明，支持横竖屏均可正常缩放',
+    'html/body 补充 width/height:100% 确保全屏铺满',
+    '旋转提示文字更新为「🔄 請旋轉手機橫屏遊玩」',
+  ]},
   { version:'v0.8.2', date:'2026-04-16', items:[
     '图鉴·武器Tab 炮台词条更新：补充各等级效果说明/弱点提示/搭配建议',
   ]},

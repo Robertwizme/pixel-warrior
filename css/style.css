@@ -1,9 +1,20 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#0d0d1a;color:#eee;font-family:'Courier New',monospace;overflow:hidden;user-select:none}
+html,body{width:100%;height:100%}
+body{background:#0d0d1a;color:#eee;font-family:'Courier New',monospace;overflow:hidden;user-select:none;padding-top:env(safe-area-inset-top)}
 /* portrait mode: no longer blocked */
 #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;touch-action:none}
 #gc{image-rendering:pixelated;image-rendering:crisp-edges;display:block;pointer-events:none;touch-action:none}
+
+/* ── Safe-area insets (notch / home bar) ── */
+#menu-topbar{
+  padding-top:max(6px, env(safe-area-inset-top)) !important;
+  padding-left:max(10px, env(safe-area-inset-left)) !important;
+  padding-right:max(10px, env(safe-area-inset-right)) !important;
+}
+#hud-bot{
+  padding-bottom:max(3px, env(safe-area-inset-bottom));
+}
 
 /* ── HUD top ── */
 #hud{position:fixed;top:0;left:0;width:100%;pointer-events:none;display:none;z-index:10}
@@ -399,7 +410,10 @@ input[type=range]{width:120px;accent-color:#48f}
   55%,85%{transform:rotate(90deg);}
   100%{transform:rotate(0deg);}
 }
+@media (orientation:landscape){
+  #rotate-hint{display:none !important;}
+}
 @media (orientation:portrait) and (max-width:900px){
-  #rotate-hint{display:flex;}
+  #rotate-hint{display:flex !important;}
 }
 </style>
