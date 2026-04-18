@@ -33,6 +33,19 @@ const IMG_SRC_BLACK_TORTOISE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAq
 const IMG_BLACK_TORTOISE = new Image();
 IMG_BLACK_TORTOISE.src = IMG_SRC_BLACK_TORTOISE;
 
+// ── Gem Monster images ──
+const IMG_GEM_COMMON    = new Image(); IMG_GEM_COMMON.src    = 'photo/Gem Monster/Common Gem Monster.png';
+const IMG_GEM_RARE      = new Image(); IMG_GEM_RARE.src      = 'photo/Gem Monster/Rare Gem Monster.png';
+const IMG_GEM_UNCOMMON  = new Image(); IMG_GEM_UNCOMMON.src  = 'photo/Gem Monster/Uncommon Gem Monster.png';
+const IMG_GEM_EPIC      = new Image(); IMG_GEM_EPIC.src      = 'photo/Gem Monster/Epic Gem Monster.png';
+const IMG_GEM_LEGENDARY = new Image(); IMG_GEM_LEGENDARY.src = 'photo/Gem Monster/Legendary Gem Monster.png';
+const IMG_GEM_MYTHIC    = new Image(); IMG_GEM_MYTHIC.src    = 'photo/Gem Monster/Mythic Gem Monster.png';
+const IMG_GEM_PRISTINE  = new Image(); IMG_GEM_PRISTINE.src  = 'photo/Gem Monster/Pristine Gem Monster.png';
+const IMG_GEM_MONSTERS  = {
+  common: IMG_GEM_COMMON, rare: IMG_GEM_RARE, uncommon: IMG_GEM_UNCOMMON,
+  epic: IMG_GEM_EPIC, legendary: IMG_GEM_LEGENDARY, mythic: IMG_GEM_MYTHIC, pristine: IMG_GEM_PRISTINE,
+};
+
 
 const SPRITES = {
   player_warrior:[' yy ','yyyy',' nn ','nnnn','sRns','rrrr','Rkrr',' k k'],
@@ -132,6 +145,14 @@ const ENEMY_TYPES = {
   boss_10_dog: { hp:5800, spd:58, dmg:58, xp:320, radius:24, sprite:'dog_boss', color:'#8b5e3c', scale:4, isBoss:true, bossName:'狂野犬王', bossType:'dog' },
   boss_20:  { hp:14000, spd:44, dmg:75, xp:700,  radius:26, sprite:'orc',     color:'#f84', scale:5, isBoss:true, bossName:'熔岩霸主' },
   boss_30:  { hp:38000, spd:48, dmg:130,xp:1500, radius:30, sprite:'dragon',  color:'#a4f', scale:6, isBoss:true, bossName:'虚空领主' },
+  // ── Gem Monsters (7 qualities) ──────────────────────────────────────────
+  gem_common:    { hp:100,  spd:58, dmg:5,  xp:15,  radius:7,  sprite:'gem', color:'#ffffff', scale:2, isGemMonster:true, gemQuality:'common' },
+  gem_rare:      { hp:200,  spd:58, dmg:6,  xp:25,  radius:7,  sprite:'gem', color:'#55ff55', scale:2, isGemMonster:true, gemQuality:'rare' },
+  gem_uncommon:  { hp:400,  spd:58, dmg:7,  xp:40,  radius:8,  sprite:'gem', color:'#5599ff', scale:2, isGemMonster:true, gemQuality:'uncommon' },
+  gem_epic:      { hp:800,  spd:58, dmg:8,  xp:70,  radius:8,  sprite:'gem', color:'#aa55ff', scale:2, isGemMonster:true, gemQuality:'epic' },
+  gem_legendary: { hp:1500, spd:58, dmg:10, xp:120, radius:9,  sprite:'gem', color:'#ffff55', scale:2, isGemMonster:true, gemQuality:'legendary' },
+  gem_mythic:    { hp:3000, spd:58, dmg:12, xp:200, radius:9,  sprite:'gem', color:'#ff5555', scale:2, isGemMonster:true, gemQuality:'mythic' },
+  gem_pristine:  { hp:6000, spd:58, dmg:15, xp:400, radius:10, sprite:'gem', color:'#ff88ff', scale:2, isGemMonster:true, gemQuality:'pristine' },
 };
 
 // 30-wave plan. boss_10/20/30 ignore scale factor.
@@ -179,9 +200,23 @@ function getWavePlan(n) {
 // ═══════════════════════════════════════════════════════
 // §0  版本号 & 更新公告  ← 每次更新只需修改这里
 // ═══════════════════════════════════════════════════════
-const GAME_VERSION = 'v0.7.9';
+const GAME_VERSION = 'v0.8.8';
 document.getElementById('load-version').textContent = GAME_VERSION;
 const CHANGELOG = [
+  { version:'v0.8.8', date:'2026-04-18', items:[
+    '新增寶石品質定義（GEM_QUALITIES）：普通/稀有/較稀有/史詩/傳說/神話/至臻，加成10~85+50%',
+    '新增寶石種類定義（GEM_TYPES）：攻擊/生命/防禦/速度/冷卻/幸運/專屬',
+    '新增7種寶石怪（ENEMY_TYPES）：血量100→6000·移速58·攻擊低·isGemMonster=true',
+    '寶石怪圖片預載（IMG_GEM_MONSTERS）：photo/Gem Monster/*.png 共7張',
+    '寶石怪生成配置（GEM_SPAWN_CONFIG）：每波5%機率，品質隨波次遞增，死亡掉落1顆寶石',
+    '新增器靈定義（SPIRIT_DEFS）：11種武器各對應專屬器靈',
+    '器靈升星系統：1/2/4/8/16顆專屬寶石，每星+25%傷害/-5%冷卻',
+    '新增武器升級定義（WEAPON_ENHANCE）：+1%/級·上限100·每10級需突破·消耗粉塵',
+    '粉塵公式：遊戲結束按波次×5+擊殺×0.1獲得',
+  ]},
+  { version:'v0.8.7', date:'2026-04-17', items:[
+    '炮台武器 Lv1 攻速提高40%：cd 由 1.2 降低至 0.72',
+  ]},
   { version:'v0.8.6', date:'2026-04-17', items:[
     '主选单角色预览：圣诞老人改用 photo/Santa Claus.png 图片显示，与其他角色一致',
     '手机横屏黑边修复：html/body/wrap/#o-menu 加入 width:100vw + max-width:100vw + overflow-x:hidden 撑满全宽',
@@ -641,7 +676,7 @@ const WEAPON_DEFS = {
     // accumulated upgrades stored on the weapon object (rapidFireCount /
     // extraTurrets / ammoLevel).  weaponStats() still works normally.
     levels: [
-      {dmg:35, cd:1.2, range:180},
+      {dmg:35, cd:0.72, range:180},
       {dmg:35, cd:1.2, range:180},
       {dmg:35, cd:1.2, range:180},
       {dmg:35, cd:1.2, range:180},
@@ -726,4 +761,111 @@ const SUPPLY_TALENTS = [
   { id:'second_wind',   icon:'💨', name:'第二春',     desc:'恢复全部HP，速度+50',
     apply: p => { healPlayer(p.maxHp); p.spd+=50; } },
 ];
+
+// ═══════════════════════════════════════════════════════
+// §G1  GEM SYSTEM — Qualities & Types
+// ═══════════════════════════════════════════════════════
+
+// ── 品質定義 ─────────────────────────────────────────────
+const GEM_QUALITIES = {
+  common:    { name:'普通', color:'#ffffff', textColor:'#aaaaaa', bonus:10,  extraMult:1.0 },
+  rare:      { name:'稀有', color:'#55ff55', textColor:'#44ee44', bonus:15,  extraMult:1.0 },
+  uncommon:  { name:'較稀有',color:'#5599ff', textColor:'#5599ff', bonus:25,  extraMult:1.0 },
+  epic:      { name:'史詩', color:'#aa55ff', textColor:'#aa55ff', bonus:40,  extraMult:1.0 },
+  legendary: { name:'傳說', color:'#ffff55', textColor:'#ffee44', bonus:60,  extraMult:1.0 },
+  mythic:    { name:'神話', color:'#ff5555', textColor:'#ff4444', bonus:85,  extraMult:1.0 },
+  pristine:  { name:'至臻', color:'#ff88ff', textColor:'#ff88ff', bonus:85,  extraMult:1.5 },
+  // 至臻：基礎加成85，套用1.5×額外倍率 → 實際加成85×1.5=127.5（四捨五入128）
+};
+const GEM_QUALITY_ORDER = ['common','rare','uncommon','epic','legendary','mythic','pristine'];
+
+// ── 種類定義 ─────────────────────────────────────────────
+// stat: 對應 gs.player 的屬性名；exclusive 另行處理
+const GEM_TYPES = {
+  atk:       { name:'攻擊', icon:'⚔',  stat:'dmgMult' },
+  hp:        { name:'生命', icon:'❤',  stat:'maxHp' },
+  def:       { name:'防禦', icon:'🛡', stat:'baseDmgRed' },
+  spd:       { name:'速度', icon:'👟', stat:'spd' },
+  cd:        { name:'冷卻', icon:'⚡', stat:'cdMult' },
+  luck:      { name:'幸運', icon:'🍀', stat:'luck' },
+  exclusive: { name:'專屬', icon:'🔮', stat:null }, // 器靈升星材料
+};
+const GEM_TYPE_KEYS = ['atk','hp','def','spd','cd','luck','exclusive'];
+
+// ── 寶石怪生成配置 ──────────────────────────────────────
+// spawnChance: 每波有 5% 機率混入一隻寶石怪
+// qualityWeights: 各品質機率權重（依波次遞增高品質機率）
+const GEM_SPAWN_CONFIG = {
+  spawnChance: 0.05,
+  qualityWeights(waveNum) {
+    // 陣列對應 GEM_QUALITY_ORDER: common/rare/uncommon/epic/legendary/mythic/pristine
+    if (waveNum <=  5) return [60, 30, 10,  0,  0,  0,  0];
+    if (waveNum <= 10) return [35, 30, 20, 10,  5,  0,  0];
+    if (waveNum <= 15) return [20, 25, 25, 15, 10,  5,  0];
+    if (waveNum <= 20) return [10, 20, 25, 20, 15,  8,  2];
+    if (waveNum <= 25) return [ 5, 10, 20, 25, 20, 15,  5];
+    return                    [ 2,  5, 13, 20, 25, 25, 10];
+  },
+  // 掉落寶石品質：最高等於怪物品質，有機率降一階
+  rollDropQuality(monsterQuality) {
+    const idx = GEM_QUALITY_ORDER.indexOf(monsterQuality);
+    const drop = Math.random() < 0.4 ? Math.max(0, idx - 1) : idx;
+    return GEM_QUALITY_ORDER[drop];
+  },
+  // 隨機非專屬種類
+  rollDropType() {
+    const pool = GEM_TYPE_KEYS.filter(t => t !== 'exclusive');
+    return pool[Math.floor(Math.random() * pool.length)];
+  },
+};
+
+// ═══════════════════════════════════════════════════════
+// §G2  SPIRIT SYSTEM — 器靈定義
+// ═══════════════════════════════════════════════════════
+
+// 每種武器對應一個器靈；升星消耗「專屬」寶石
+const SPIRIT_DEFS = {
+  shotgun:        { name:'散弹精灵',    icon:'🔫', weapId:'shotgun' },
+  gatling:        { name:'加特林精灵',  icon:'🌀', weapId:'gatling' },
+  sword:          { name:'剑阵精灵',    icon:'⚔',  weapId:'sword' },
+  arrow_rain:     { name:'箭雨精灵',    icon:'🏹', weapId:'arrow_rain' },
+  heal_drone:     { name:'治疗机精灵',  icon:'💊', weapId:'heal_drone' },
+  missile_drone:  { name:'导弹精灵',    icon:'🚀', weapId:'missile_drone' },
+  sniper:         { name:'狙击精灵',    icon:'🎯', weapId:'sniper' },
+  flying_sword:   { name:'飞剑精灵',    icon:'🗡', weapId:'flying_sword' },
+  kirby_copy:     { name:'星之精灵',    icon:'⭐', weapId:'kirby_copy' },
+  black_tortoise: { name:'玄武精灵',    icon:'🐢', weapId:'black_tortoise' },
+  turret:         { name:'炮台精灵',    icon:'⚙',  weapId:'turret' },
+};
+// 升至第 N 星消耗的「專屬寶石」數量（index 0 = 升 1 星）
+const SPIRIT_STAR_COST = [1, 2, 4, 8, 16];
+// 每星效果：武器傷害 +25%，冷卻 -5%
+const SPIRIT_STAR_BONUS = { dmgPct: 0.25, cdReduce: 0.05 };
+
+// ═══════════════════════════════════════════════════════
+// §G3  WEAPON ENHANCE — 武器升級定義
+// ═══════════════════════════════════════════════════════
+
+const WEAPON_ENHANCE = {
+  maxLevel:        100,
+  breakpointEvery: 10,      // 每10級需先突破才能繼續
+  statPerLevel:    0.01,    // 每級 +1% 武器傷害/冷卻
+
+  // 正常升級粉塵消耗（依等級階段遞增）
+  dustCost(lv) {
+    // tier 0→9: 10粉塵, 10→19: 25, 20→29: 45, 30→39: 70 …
+    const tier = Math.floor(lv / 10);
+    return 10 + tier * 15 + tier * (tier - 1) * 2;
+  },
+
+  // 突破消耗粉塵（突破第 N 個節點，n = lv/10，從 1 起算）
+  breakthroughDust(lv) {
+    const tier = Math.floor(lv / 10); // 1/2/3…10
+    return tier * 50;
+  },
+
+  // 遊戲結束獲得粉塵公式
+  dustRewardPerWave: 5,
+  dustRewardPerKill: 0.1,
+};
 

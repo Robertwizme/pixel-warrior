@@ -248,6 +248,150 @@ function saveBest() {
 function loadBest() {
   try { return JSON.parse(localStorage.getItem(BEST_KEY)); } catch { return null; }
 }
+
+// ═══════════════════════════════════════════════════════
+// §G1  Gem Inventory (寶石背包)
+// ═══════════════════════════════════════════════════════
+const GEM_INV_KEY = 'pw_gems_v1';
+
+function loadGemInventory() {
+  try { return JSON.parse(localStorage.getItem(GEM_INV_KEY) || '[]'); } catch { return []; }
+}
+function saveGemInventory(arr) {
+  try { localStorage.setItem(GEM_INV_KEY, JSON.stringify(arr)); } catch {}
+}
+// 添加一顆寶石
+function addGem(type, quality) {
+  const inv = loadGemInventory();
+  inv.push({ type, quality, id: Date.now() + '_' + Math.random().toString(36).slice(2,8) });
+  saveGemInventory(inv);
+}
+// 移除指定 id 的寶石（升星消耗用）
+function removeGem(gemId) {
+  saveGemInventory(loadGemInventory().filter(g => g.id !== gemId));
+}
+// 移除多顆（陣列 id）
+function removeGems(ids) {
+  const set = new Set(ids);
+  saveGemInventory(loadGemInventory().filter(g => !set.has(g.id)));
+}
+function getGemsByType(type) {
+  return loadGemInventory().filter(g => g.type === type);
+}
+function countGems(type, quality) {
+  return loadGemInventory().filter(g => (!type || g.type === type) && (!quality || g.quality === quality)).length;
+}
+
+// ═══════════════════════════════════════════════════════
+// §G2  Spirit System (器靈)
+// ═══════════════════════════════════════════════════════
+const SPIRIT_KEY = 'pw_spirits_v1';
+
+function loadSpiritData() {
+  try { return JSON.parse(localStorage.getItem(SPIRIT_KEY) || '{}'); } catch { return {}; }
+}
+function saveSpiritData(data) {
+  try { localStorage.setItem(SPIRIT_KEY, JSON.stringify(data)); } catch {}
+}
+function getSpiritStars(weapId) {
+  return loadSpiritData()[weapId] || 0;
+}
+// 嘗試升星，消耗背包中的「exclusive」寶石
+// 返回 true 成功，false 寶石不足或已滿星
+function upgradeSpiritStar(weapId) {
+  const stars = getSpiritStars(weapId);
+  if (stars >= SPIRIT_STAR_COST.length) return false;         // 已5星
+  const need = SPIRIT_STAR_COST[stars];
+  const pool = loadGemInventory().filter(g => g.type === 'exclusive');
+  if (pool.length < need) return false;
+  removeGems(pool.slice(0, need).map(g => g.id));
+  const data = loadSpiritData();
+  data[weapId] = stars + 1;
+  saveSpiritData(data);
+  return true;
+}
+// 計算器靈加成倍率（供 game.js / ui.js 讀取）
+function getSpiritBonuses(weapId) {
+  const stars = getSpiritStars(weapId);
+  return {
+    dmgMult: 1 + stars * SPIRIT_STAR_BONUS.dmgPct,    // 每星 +25%
+    cdMult:  1 - stars * SPIRIT_STAR_BONUS.cdReduce,   // 每星 -5%
+  };
+}
+
+// ═══════════════════════════════════════════════════════
+// §G3  Weapon Enhancement (武器升級) + Dust (粉塵)
+// ═══════════════════════════════════════════════════════
+const ENHANCE_KEY = 'pw_enhance_v1';
+const DUST_KEY    = 'pw_dust_v1';
+
+// ── 粉塵 ──
+function getDust() {
+  try { return parseInt(localStorage.getItem(DUST_KEY) || '0', 10) || 0; } catch { return 0; }
+}
+function saveDust(n) {
+  try { localStorage.setItem(DUST_KEY, String(Math.max(0, Math.floor(n)))); } catch {}
+}
+function addDust(n) { saveDust(getDust() + n); }
+function spendDust(n) {
+  const d = getDust();
+  if (d < n) return false;
+  saveDust(d - n);
+  return true;
+}
+// 遊戲結束時獲得粉塵
+function calcDustEarned(waveNum, kills) {
+  return Math.floor(
+    WEAPON_ENHANCE.dustRewardPerWave * waveNum +
+    WEAPON_ENHANCE.dustRewardPerKill * (kills || 0)
+  );
+}
+
+// ── 武器強化等級 ──
+function loadEnhanceData() {
+  try { return JSON.parse(localStorage.getItem(ENHANCE_KEY) || '{}'); } catch { return {}; }
+}
+function saveEnhanceData(data) {
+  try { localStorage.setItem(ENHANCE_KEY, JSON.stringify(data)); } catch {}
+}
+function getEnhanceLevel(weapId) {
+  return loadEnhanceData()[weapId + '_lv'] || 0;
+}
+// 檢查當前等級是否停在突破點（未突破則無法繼續升級）
+function isAtBreakpoint(weapId) {
+  const lv = getEnhanceLevel(weapId);
+  if (lv === 0 || lv % WEAPON_ENHANCE.breakpointEvery !== 0) return false;
+  const tier = Math.floor(lv / WEAPON_ENHANCE.breakpointEvery);
+  const data = loadEnhanceData();
+  return (data[weapId + '_bt'] || 0) < tier; // 突破次數不足
+}
+// 突破：消耗粉塵，解鎖下一段升級
+function breakthroughWeapon(weapId) {
+  const lv = getEnhanceLevel(weapId);
+  if (!isAtBreakpoint(weapId)) return false;
+  const cost = WEAPON_ENHANCE.breakthroughDust(lv);
+  if (!spendDust(cost)) return false;
+  const data = loadEnhanceData();
+  data[weapId + '_bt'] = (data[weapId + '_bt'] || 0) + 1;
+  saveEnhanceData(data);
+  return true;
+}
+// 升級：消耗粉塵，+1 等
+function enhanceWeapon(weapId) {
+  const lv = getEnhanceLevel(weapId);
+  if (lv >= WEAPON_ENHANCE.maxLevel) return false;
+  if (isAtBreakpoint(weapId)) return false;             // 需先突破
+  const cost = WEAPON_ENHANCE.dustCost(lv);
+  if (!spendDust(cost)) return false;
+  const data = loadEnhanceData();
+  data[weapId + '_lv'] = lv + 1;
+  saveEnhanceData(data);
+  return true;
+}
+// 取得強化加成倍率（供 game.js / ui.js 讀取）
+function getEnhanceMult(weapId) {
+  return 1 + getEnhanceLevel(weapId) * WEAPON_ENHANCE.statPerLevel;
+}
 function renderBestRun() {
   const best=loadBest();
   const el=document.getElementById('best-run');

@@ -355,6 +355,60 @@ document.getElementById('btn-profile-back').addEventListener('click',()=>{
 // Init
 updateMenuAvatar();
 
+// §ActivityPage - 宝石怪首次出没活动
+const _GEM_ACT=[
+  {icon:'❤', name:'生命宝石怪', wave:'第8波起',  drop:'生命宝石', dropDesc:'镶嵌后 +30 最大HP',    wk:'高DPS持续输出', wkTip:'血量极高，推荐飞剑/加特林高频输出'},
+  {icon:'🟢', name:'幸运宝石怪', wave:'第10波起', drop:'幸运宝石', dropDesc:'镶嵌后 +20 幸运值',   wk:'任意武器均有效', wkTip:'无特殊行为，属性中等，击败还可能额外掉金币'},
+  {icon:'🟡', name:'迅雷宝石怪', wave:'第12波起', drop:'速度宝石', dropDesc:'镶嵌后 +15 移动速度', wk:'追踪类 · 范围类', wkTip:'移速极快，推荐导弹无人机锁定或飞剑全屏覆盖'},
+  {icon:'🔴', name:'火焰宝石怪', wave:'第15波起', drop:'攻击宝石', dropDesc:'镶嵌后 +10% 武器伤害', wk:'穿透类武器',    wkTip:'血量较高，穿透弹可高效连贯伤害；推荐狙击枪'},
+  {icon:'🔵', name:'冰霜宝石怪', wave:'第18波起', drop:'防御宝石', dropDesc:'镶嵌后 -8% 受到伤害',  wk:'远程 · 火焰系', wkTip:'移速极慢但受击会减速，保持距离远程输出为佳'},
+  {icon:'🟣', name:'秘法宝石怪', wave:'第20波起', drop:'急速宝石', dropDesc:'镶嵌后 -8% 冷却时间', wk:'远程武器',      wkTip:'靠近有减速气场，推荐狙击枪保持距离点射'},
+  {icon:'⭐', name:'暴击宝石怪', wave:'第25波起', drop:'暴击宝石', dropDesc:'镶嵌后 +8% 暴击率',   wk:'穿透类武器',   wkTip:'出现波次极高且自身暴击高，优先快速消灭'},
+];
+let _actSel=0;
+function renderActivityPage(){
+  const panel=document.querySelector('#o-activity .panel');
+  if(!panel)return;
+  panel.style.cssText='background:#0d0d1a;border:2px solid #48f;border-radius:0;padding:14px 16px;width:100vw;height:100vh;max-width:100vw;max-height:100vh;display:flex;flex-direction:column;overflow:hidden;text-align:left;box-shadow:none';
+  function _buildAct(){
+    const ev=_GEM_ACT[_actSel];
+    panel.innerHTML=
+      '<div style="font-size:16px;color:#4fd;font-weight:700;text-align:center;letter-spacing:1px;margin-bottom:10px;flex-shrink:0">🎪 限时活动</div>'+
+      '<div style="display:flex;gap:8px;flex:1;overflow:hidden;min-height:0">'+
+        '<div style="width:90px;flex-shrink:0;border-right:1px solid #1a1a2e;overflow-y:auto;padding-right:6px">'+
+          '<div style="font-size:9px;color:#4fd;font-weight:700;margin-bottom:6px;text-align:center">💎 宝石怪出没</div>'+
+          _GEM_ACT.map((e,i)=>'<div class="ac-i" data-i="'+i+'" style="padding:7px 4px;border-radius:4px;cursor:pointer;background:'+(i===_actSel?'#0a1a12':'transparent')+';border-left:2px solid '+(i===_actSel?'#4fd':'transparent')+';text-align:center;margin-bottom:2px">'+
+            '<div style="font-size:16px">'+e.icon+'</div>'+
+            '<div style="font-size:8px;color:'+(i===_actSel?'#4fd':'#666')+';margin-top:2px;line-height:1.2">'+e.name+'</div>'+
+          '</div>').join('')+
+        '</div>'+
+        '<div style="flex:1;overflow-y:auto;padding-left:4px">'+
+          '<div style="font-size:24px;margin-bottom:4px">'+ev.icon+'</div>'+
+          '<div style="font-size:13px;color:#eee;font-weight:700;margin-bottom:2px">'+ev.name+'</div>'+
+          '<div style="font-size:9px;color:#666;margin-bottom:10px">📍 首次出没：'+ev.wave+'</div>'+
+          '<div style="background:#0d0d1a;border:1px solid #1a2a1a;border-radius:6px;padding:9px 10px;margin-bottom:8px">'+
+            '<div style="font-size:10px;color:#4fd;font-weight:700;margin-bottom:4px">💎 掉落奖励</div>'+
+            '<div style="font-size:11px;color:#eee">'+ev.drop+'</div>'+
+            '<div style="font-size:9px;color:#888;margin-top:3px">'+ev.dropDesc+'</div>'+
+          '</div>'+
+          '<div style="background:#0d0d1a;border:1px solid #2a1a1a;border-radius:6px;padding:9px 10px">'+
+            '<div style="font-size:10px;color:#f84;font-weight:700;margin-bottom:4px">⚠ 弱点与攻略</div>'+
+            '<div style="font-size:10px;color:#ccc">推荐：'+ev.wk+'</div>'+
+            '<div style="font-size:9px;color:#666;margin-top:3px">'+ev.wkTip+'</div>'+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+      '<div style="text-align:center;margin-top:10px;flex-shrink:0">'+
+        '<button class="btn" id="act-back-dyn">← 返回</button>'+
+      '</div>';
+    document.getElementById('act-back-dyn').onclick=()=>showOverlay('o-menu');
+    panel.querySelectorAll('.ac-i').forEach(it=>{
+      it.onclick=()=>{_actSel=parseInt(it.dataset.i);_buildAct();SFX.play('click');};
+    });
+  }
+  _buildAct();
+}
+
 // Wrap showOverlay to track chat open state
 (function(){
   const orig=window.showOverlay;
@@ -373,6 +427,7 @@ updateMenuAvatar();
       publishProfile();
     }
     if(id==='o-friends'){renderFriendsList();checkFriendBadge();}
+    if(id==='o-activity'){renderActivityPage();}
     orig(id);
   };
 })();
@@ -705,6 +760,42 @@ const _CODEX_ENEMY_META = {
     weakness:{tags:['全輸出'], tip:'HP 14000需要满级武器全力输出；推荐：全套武器升满+多重天赋叠加，狂战士/狙神职业效果佳'} },
   boss_30:    { icon:'🌌', name:'虚空领主',  waveFirst:30, waveDesc:'第30波最终Boss',                    special:'HP 38000、伤害130，击败后通关游戏，推荐飞剑+天才搭配',          desc:'最终Boss，最强大的存在，击败它意味着征服全部30波',
     weakness:{tags:['全輸出'], tip:'HP 38000终局Boss；推荐：飞剑+天才职业搭配，开局备好主动技能，全力爆发'} },
+  // ── 宝石怪 (Gem Monsters) ──
+  gem_life:   {icon:'❤', name:'生命宝石怪', waveFirst:8,  waveDesc:'第8波起偶尔出现（普通怪组内随机混入）',
+    special:'血量极高，击败后有概率掉落生命宝石，可在强化工坊镶嵌使用',
+    desc:'充满生命力的红色宝石形态怪物，血量远高于同波普通怪，是最早出现的宝石怪',
+    weakness:{tags:['持續','高DPS'],tip:'血量极高，需持续高输出；推荐：飞剑+加特林，或满级狙击枪单点'},
+    _stats:{hp:600,spd:50,dmg:10,xp:25}},
+  gem_luck:   {icon:'🟢', name:'幸运宝石怪', waveFirst:10, waveDesc:'第10波起偶尔出现',
+    special:'击败时有50%概率额外掉落金币，且必定掉落幸运宝石碎片',
+    desc:'闪烁着绿色幸运光芒的宝石怪，属性中等，是最容易击败的宝石怪',
+    weakness:{tags:['任意'],tip:'无特殊行为，均衡属性，任何满足DPS要求的武器均有效'},
+    _stats:{hp:400,spd:55,dmg:8,xp:20}},
+  gem_thunder:{icon:'🟡', name:'迅雷宝石怪', waveFirst:12, waveDesc:'第12波起偶尔出现',
+    special:'移动速度是同波最快的怪物，难以用直线武器命中',
+    desc:'充满雷电能量的黄色宝石怪，极速移动，击败后掉落速度宝石',
+    weakness:{tags:['追蹤','範圍'],tip:'移速极快，推荐导弹无人机追踪锁定，或飞剑全屏自动覆盖'},
+    _stats:{hp:350,spd:120,dmg:9,xp:22}},
+  gem_fire:   {icon:'🔴', name:'火焰宝石怪', waveFirst:15, waveDesc:'第15波起偶尔出现',
+    special:'受击时散射短距离火焰微粒，对近距离玩家造成额外伤害',
+    desc:'燃烧着火焰的红色宝石怪，血量较高，击败后掉落攻击宝石',
+    weakness:{tags:['穿透','高DPS'],tip:'血量较高，穿透弹可一次连贯伤害；推荐：狙击枪穿透弹头或飞剑'},
+    _stats:{hp:700,spd:60,dmg:15,xp:30}},
+  gem_frost:  {icon:'🔵', name:'冰霜宝石怪', waveFirst:18, waveDesc:'第18波起偶尔出现',
+    special:'移速极慢，但受击时对周围玩家附加冰霜减速效果（0.5秒）',
+    desc:'凝结冰霜的蓝色宝石怪，行动迟缓，但靠近击杀有减速风险',
+    weakness:{tags:['遠程','火焰'],tip:'移速极慢，保持距离用远程武器；火焰系武器有额外克制效果'},
+    _stats:{hp:650,spd:30,dmg:18,xp:28}},
+  gem_arcane: {icon:'🟣', name:'秘法宝石怪', waveFirst:20, waveDesc:'第20波起偶尔出现',
+    special:'在玩家80px范围内持续释放减速气场，使玩家移动速度降低25%',
+    desc:'散发紫色魔力的宝石怪，靠近会有减速惩罚，击败后掉落急速宝石',
+    weakness:{tags:['遠程'],tip:'靠近有减速陷阱，强烈推荐保持距离；狙击枪远程点射最佳'},
+    _stats:{hp:550,spd:45,dmg:20,xp:32}},
+  gem_crit:   {icon:'⭐', name:'暴击宝石怪', waveFirst:25, waveDesc:'第25波起偶尔出现（后期精英）',
+    special:'攻击玩家时有25%概率暴击，造成2倍伤害，是伤害最高的宝石怪',
+    desc:'闪耀金色光芒的宝石怪，出现波次极高，击败后掉落暴击宝石',
+    weakness:{tags:['穿透','高DPS'],tip:'高伤且稀少，优先击杀，推荐狙击枪或满级飞剑快速解决'},
+    _stats:{hp:800,spd:65,dmg:28,xp:40}},
 };
 
 const _CODEX_CLASS_META = {
@@ -768,9 +859,9 @@ const _CODEX_WEAPON_META = {
   black_tortoise:{ baseDmg:'18 → 80（水球）', baseCD:'水球3s / 护盾60s', range:'自主移动',
     desc:'召唤玄武自主战斗，每3s射3颗水球，每60s为玩家提供护盾，8级含多条升级路线。',
     recommend:'强化体魄 · 硬化皮肤（减伤）· 混沌之力 · 扩展攻击' },
-  turret:       { baseDmg:'依等级（35基础·子弹/激光/炸弹/火箭）', baseCD:'依射速（基础1.2s·可速射提升）', range:'与玩家相同（固定位置 180px）',
-    desc:'在地图固定位置召唤炮台，自动攻击范围内最近的怪物，每波刷新位置。炮台有独立血量（玩家50%HP），死亡后5秒自动在玩家附近重新补充。\n\n【等级效果】\nLv1 召唤1座炮台\nLv2-3/5-6 随机获得速射+25% / 多重建造+1座上限 / 弹药升级（子弹→激光→炸弹→火箭）\nLv4 三选一：治疗炮台（追踪弹命中回复5%HP）/ 自爆机器人（靠近自爆·大范围伤害）/ 机枪炮台（超快射速·高频低伤）\nLv7 三选一：更多炮台（+3台+3特殊）/ 防御炮台（敌人优先攻击炮台·每台免死一次）/ 元素炮台（随机施加火焰/冰霜/毒素）\nLv8 地雷炮台（+5台上限·炮台死亡时原地留雷·大范围爆炸）\n\n⚠ 注意：炮台有血量，注意保护避免被怪物集中攻击',
-    recommend:'搭配范围补给（炸弹/火箭爆炸范围更大）· 强化体魄（炮台HP=玩家50%·越高越耐打）· 急速出手（射速提升）· 物理强化' },
+  turret:       { baseDmg:'35基础（子弹/激光/炸弹/火箭）', baseCD:'1.2s（可速射强化）', range:'固定位置 · 180px范围',
+    desc:'在地图固定位置召唤炮台自动攻击敌人，每波刷新位置。炮台有独立血量（玩家50%HP），死亡后5秒自动在玩家附近重新补充。\n\n【等级效果】\nLv1 召唤1座炮台\nLv2 +1座 · 射速+30%\nLv3 +1座 · 子弹穿透\nLv4 三选一特殊炮台：治疗炮台（命中回血5%HP）/ 自爆机器人（靠近自爆·大范围）/ 机枪炮台（极快射速）\nLv5-6 随机强化：速射提升 / 多重建造+1座 / 弹药升级（子弹→激光→炸弹→火箭）\nLv7 三选一：更多炮台（+3台+3特殊）/ 防御炮台（敌人优先打炮台·免死护盾）/ 元素炮台（随机火焰/冰霜/毒素）\nLv8 地雷炮台（炮台死亡原地埋雷 · 大范围爆炸 · 再+5座上限）',
+    recommend:'范围补给（炸弹/火箭爆炸范围更大）· 穿透天赋 · 急速出手（射速提升）· 强化体魄（炮台HP=玩家50%·越高越耐打）' },
 };
 
 const _CODEX_SUPPLY_META = {
@@ -847,18 +938,23 @@ function _cdxWeakness(w){
 
 function _codexMonsterDetail(k){
   const e=ENEMY_TYPES[k]; const m=_CODEX_ENEMY_META[k];
-  if(!e||!m) return _cdxDetail('<div style="color:#555;padding:40px 0;text-align:center">暂无数据</div>');
-  const nameColor=e.isBoss?'#f84':'#eee';
-  const waveTag=e.isBoss?'<span style="font-size:9px;color:#f44;font-weight:400;margin-left:6px">BOSS</span>':'';
+  if(!m) return _cdxDetail('<div style="color:#555;padding:40px 0;text-align:center">暂无数据</div>');
+  // Gem monsters use _stats fallback when not in ENEMY_TYPES
+  const s=e||(m._stats||null);
+  if(!s) return _cdxDetail('<div style="color:#555;padding:40px 0;text-align:center">暂无数据</div>');
+  const isGem=!e&&!!m._stats;
+  const nameColor=isGem?'#fe8':(e&&e.isBoss?'#f84':'#eee');
+  const waveTag=(e&&e.isBoss)?'<span style="font-size:9px;color:#f44;font-weight:400;margin-left:6px">BOSS</span>'
+    :(isGem?'<span style="font-size:9px;color:#fe8;font-weight:400;margin-left:6px">💎 宝石怪</span>':'');
   const _bigIcon=m.img?'<div class="cdx-big-icon"><img src="'+m.img+'" class="cdx-enemy-img-lg"></div>':'<div class="cdx-big-icon">'+m.icon+'</div>';
   return _cdxDetail(
     _bigIcon+
     '<div class="cdx-item-name" style="color:'+nameColor+'">'+m.name+waveTag+'</div>'+
     '<div class="cdx-item-sub">'+m.waveDesc+'</div>'+
-    _cdxStat('❤ HP', e.hp)+
-    _cdxStat('⚡ 速度', e.spd)+
-    _cdxStat('⚔ 攻击', e.dmg)+
-    _cdxStat('✨ 经验', e.xp+' xp')+
+    _cdxStat('❤ HP', s.hp)+
+    _cdxStat('⚡ 速度', s.spd)+
+    _cdxStat('⚔ 攻击', s.dmg)+
+    _cdxStat('✨ 经验', s.xp+' xp')+
     _cdxSection('描述')+_cdxDesc(m.desc)+
     _cdxSection('特殊行为')+_cdxDesc(m.special)+
     (m.weakness?_cdxSection('⚠ 弱点')+_cdxWeakness(m.weakness):'')
@@ -893,6 +989,7 @@ function _codexWeaponDetail(k){
   if(k==='kirby_copy')   badge='<span class="cdx-badge cdx-badge-purple">模仿者专属</span>';
   else if(k==='flying_sword')   badge='<span class="cdx-badge cdx-badge-gold">抽奖限定</span>';
   else if(k==='black_tortoise') badge='<span class="cdx-badge cdx-badge-blue">召唤奖池</span>';
+  else if(k==='turret')         badge='<span class="cdx-badge" style="background:#001f0a;border:1px solid #4fd;color:#4fd">物理</span>';
   return _cdxDetail(
     '<div class="cdx-big-icon">'+w.icon+'</div>'+
     '<div class="cdx-item-name" style="color:#4ef">'+w.name+'</div>'+
@@ -945,7 +1042,8 @@ function renderCodexContent(){
     }
     const keys=_codexSubtab==='boss'
       ?['boss_10','boss_10_cat','boss_10_dog','boss_20','boss_30']
-      :['slime','goblin','skeleton','bat','orc','wolf','troll','demon','archer'];
+      :['slime','goblin','skeleton','bat','orc','wolf','troll','demon','archer',
+        'gem_life','gem_luck','gem_thunder','gem_fire','gem_frost','gem_arcane','gem_crit'];
     items=keys.map(k=>({k}));
     iconFn=it=>{ const m=_CODEX_ENEMY_META[it.k]||{icon:'?'}; return m.img?'<img src="'+m.img+'" class="cdx-enemy-img-sm">':m.icon; };
     nameFn=it=>(_CODEX_ENEMY_META[it.k]||{name:'?'}).name;
@@ -956,7 +1054,7 @@ function renderCodexContent(){
     nameFn=c=>c.name;
     detailFn=c=>_codexClassDetail(c);
   } else if(_codexTab==='weapon'){
-    const keys=['shotgun','gatling','sword','arrow_rain','heal_drone','missile_drone','sniper','kirby_copy','flying_sword','black_tortoise'];
+    const keys=['shotgun','gatling','sword','arrow_rain','heal_drone','missile_drone','sniper','kirby_copy','flying_sword','black_tortoise','turret'];
     items=keys.map(k=>({k}));
     iconFn=it=>(WEAPON_DEFS[it.k]||{icon:'?'}).icon;
     nameFn=it=>(WEAPON_DEFS[it.k]||{name:'?'}).name;
@@ -1028,49 +1126,194 @@ function setWeaponEnhLevel(id,lv){ try{ localStorage.setItem('pw_wenh_'+id,Strin
 function getTotalWeaponEnhBonus(){ return _WENH_IDS.reduce((s,id)=>s+getWeaponEnhLevel(id),0)*0.08; }
 function renderForgeFragCount(){ const el=document.getElementById('forge-frags'); if(el) el.textContent=getWeaponFrags(); }
 
-function renderForge(){
-  renderForgeFragCount();
-  const frags=getWeaponFrags();
-  const WLIST=[
-    {id:'shotgun',    icon:'🔫',name:'散弹枪'},
-    {id:'gatling',    icon:'⚡',name:'加特林'},
-    {id:'sword',      icon:'⚔', name:'剑阵'},
-    {id:'arrow_rain', icon:'🏹',name:'箭雨'},
-    {id:'heal_drone', icon:'💊',name:'治疗无人机'},
-    {id:'missile_drone',icon:'🚀',name:'导弹无人机'},
-    {id:'sniper',     icon:'🔭',name:'狙击枪'},
-    {id:'flying_sword',icon:'🗡',name:'飞剑'},
-  ];
-  const list=document.getElementById('forge-weapon-list');
-  if(!list) return;
-  list.innerHTML=WLIST.map(w=>{
-    const lv=getWeaponEnhLevel(w.id);
-    const stars='★'.repeat(lv)+'<span style="color:#333">'+'★'.repeat(_WENH_MAX-lv)+'</span>';
-    const bonus=Math.round(lv*8)+'%';
-    const canUp=lv<_WENH_MAX;
-    const cost=canUp?_WENH_COSTS[lv]:0;
-    const ok2=frags>=cost;
-    return '<div style="display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid #1e2030">'+
-      '<span style="font-size:20px">'+w.icon+'</span>'+
-      '<div style="flex:1;text-align:left">'+
-        '<div style="font-size:11px;color:#eee">'+w.name+' <span style="color:#fd4;font-size:13px">'+stars+'</span></div>'+
-        '<div style="font-size:9px;color:#4f8">伤害 +'+bonus+'</div>'+
-      '</div>'+
-      (canUp
-        ?'<button onclick="forgeUpgrade(\''+w.id+'\')" style="padding:5px 10px;font-size:10px;background:#1a1a2e;border:1.5px solid '+(ok2?'#fd4':'#333')+';border-radius:4px;color:'+(ok2?'#fd4':'#555')+';cursor:'+(ok2?'pointer':'default')+';font-family:monospace">🔩'+cost+'</button>'
-        :'<span style="font-size:10px;color:#4f8;padding:5px 8px;border:1px solid #4f8;border-radius:4px">MAX</span>'
-      )+'</div>';
-  }).join('');
-}
+// ── §Gem system ──
+const _GEM_TYPES={
+  atk: {icon:'🔴',name:'攻击宝石',desc:'武器伤害 +10%', color:'#f66'},
+  def: {icon:'🔵',name:'防御宝石',desc:'受到伤害 -8%',  color:'#4af'},
+  spd: {icon:'🟡',name:'速度宝石',desc:'移动速度 +15',  color:'#fd4'},
+  luck:{icon:'🟢',name:'幸运宝石',desc:'幸运值 +20',    color:'#4fd'},
+  cd:  {icon:'🟣',name:'急速宝石',desc:'冷却时间 -8%',  color:'#a4f'},
+  hp:  {icon:'❤', name:'生命宝石',desc:'最大HP +30',    color:'#f84'},
+  crit:{icon:'⭐',name:'暴击宝石',desc:'暴击率 +8%',    color:'#fe8'},
+};
+function getDust(){try{return Math.max(0,parseInt(localStorage.getItem('pw_dust')||'0',10));}catch{return 0;}}
+function addDust(n){try{localStorage.setItem('pw_dust',String(getDust()+n));}catch{}}
+function spendDust(n){try{const c=getDust();if(c<n)return false;localStorage.setItem('pw_dust',String(c-n));return true;}catch{return false;}}
+function getWepSpirit(id){try{return Math.max(0,parseInt(localStorage.getItem('pw_spirit_'+id)||'0',10));}catch{return 0;}}
+function addWepSpirit(id,n){try{localStorage.setItem('pw_spirit_'+id,String(getWepSpirit(id)+n));}catch{}}
+function spendWepSpirit(id,n){try{const c=getWepSpirit(id);if(c<n)return false;localStorage.setItem('pw_spirit_'+id,String(c-n));return true;}catch{return false;}}
+function getWepGem(id){try{return localStorage.getItem('pw_wgem_'+id)||'';}catch{return '';}}
+function setWepGem(id,gem){try{localStorage.setItem('pw_wgem_'+id,gem);}catch{}}
+function getCharGem(cid,slot){try{return localStorage.getItem('pw_cgem_'+cid+'_'+slot)||'';}catch{return '';}}
+function setCharGem(cid,slot,gem){try{localStorage.setItem('pw_cgem_'+cid+'_'+slot,gem);}catch{}}
+function getWepUpgLv(id){try{return Math.max(0,parseInt(localStorage.getItem('pw_wup_'+id)||'0',10));}catch{return 0;}}
+function setWepUpgLv(id,lv){try{localStorage.setItem('pw_wup_'+id,String(lv));}catch{}}
 
-function forgeUpgrade(weapId){
-  const lv=getWeaponEnhLevel(weapId);
-  if(lv>=_WENH_MAX) return;
-  const cost=_WENH_COSTS[lv];
-  if(!spendWeaponFrags(cost)){ return; }
-  setWeaponEnhLevel(weapId,lv+1);
-  renderForge();
+// ── §Forge redesign (3 tabs) ──
+const _FORGE_WLIST=[
+  {id:'shotgun',       icon:'🔫',name:'散弹枪'},
+  {id:'gatling',       icon:'⚡', name:'加特林'},
+  {id:'sword',         icon:'⚔', name:'剑阵'},
+  {id:'arrow_rain',    icon:'🏹',name:'箭雨'},
+  {id:'heal_drone',    icon:'💊',name:'治疗无人机'},
+  {id:'missile_drone', icon:'🚀',name:'导弹无人机'},
+  {id:'sniper',        icon:'🔭',name:'狙击枪'},
+  {id:'flying_sword',  icon:'🗡',name:'飞剑'},
+];
+let _forgeTab='weapon', _forgeSel=0;
+
+function renderForge(){
+  const panel=document.querySelector('#o-forge .panel');
+  if(!panel)return;
+  panel.style.cssText='background:#0d0d1a;border:2px solid #48f;border-radius:0;padding:14px 16px;width:100vw;height:100vh;max-width:100vw;max-height:100vh;display:flex;flex-direction:column;overflow:hidden;text-align:left;box-shadow:none';
+  panel.innerHTML=
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-shrink:0">'+
+      '<div style="font-size:15px;color:#fd4;font-weight:700;letter-spacing:1px">⚒ 强化工坊</div>'+
+      '<button class="btn" id="btn-forge-back-r" style="padding:4px 10px;font-size:11px">← 返回</button>'+
+    '</div>'+
+    '<div style="display:flex;gap:14px;font-size:10px;margin-bottom:10px;flex-shrink:0">'+
+      '<span style="color:#888">🔩 碎片 <b id="forge-frags" style="color:#aaa">'+getWeaponFrags()+'</b></span>'+
+      '<span style="color:#888">🌫 粉尘 <b id="forge-dust-v" style="color:#ccc">'+getDust()+'</b></span>'+
+    '</div>'+
+    '<div style="display:flex;gap:4px;margin-bottom:10px;flex-shrink:0">'+
+      _fTabBtn('weapon','⚔ 武器')+_fTabBtn('char','🧙 角色')+_fTabBtn('skin','👗 皮肤')+
+    '</div>'+
+    '<div id="forge-body" style="flex:1;display:flex;gap:8px;overflow:hidden;min-height:0"></div>';
+  document.getElementById('btn-forge-back-r').onclick=()=>showOverlay('o-menu');
+  panel.querySelectorAll('.ftab').forEach(b=>b.addEventListener('click',()=>{
+    _forgeTab=b.dataset.t; _forgeSel=0;
+    panel.querySelectorAll('.ftab').forEach(x=>{const on=x.dataset.t===_forgeTab;x.style.background=on?'#1a1a2e':'transparent';x.style.borderColor=on?'#fd4':'#333';x.style.color=on?'#fd4':'#666';});
+    _renderForgeBody();
+  }));
+  _renderForgeBody();
 }
+function _fTabBtn(t,label){
+  const on=t===_forgeTab;
+  return '<button class="ftab btn" data-t="'+t+'" style="flex:1;padding:6px 2px;font-size:10px;background:'+(on?'#1a1a2e':'transparent')+';border-color:'+(on?'#fd4':'#333')+';color:'+(on?'#fd4':'#666')+'">'+label+'</button>';
+}
+function _renderForgeBody(){
+  const body=document.getElementById('forge-body');if(!body)return;
+  if(_forgeTab==='weapon')_fWeaponTab(body);
+  else if(_forgeTab==='char')_fCharTab(body);
+  else body.innerHTML='<div style="flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;color:#444"><div style="font-size:40px">👗</div><div style="font-size:12px;margin-top:10px">皮肤系统</div><div style="font-size:10px;color:#333;margin-top:4px">✨ 敬请期待</div></div>';
+}
+function _fWeaponTab(body){
+  body.innerHTML=
+    '<div id="fw-list" style="width:70px;flex-shrink:0;border-right:1px solid #1a1a2e;overflow-y:auto;display:flex;flex-direction:column;gap:2px;padding-right:4px">'+
+    _FORGE_WLIST.map((w,i)=>'<div class="fwi" data-i="'+i+'" style="padding:7px 3px;cursor:pointer;border-radius:4px;text-align:center;background:'+(i===_forgeSel?'#1a1a2e':'transparent')+';border-left:2px solid '+(i===_forgeSel?'#fd4':'transparent')+'"><div style="font-size:18px">'+w.icon+'</div><div style="font-size:8px;color:'+(i===_forgeSel?'#fd4':'#666')+';margin-top:2px;line-height:1.2">'+w.name+'</div></div>').join('')+
+    '</div>'+
+    '<div id="fw-detail" style="flex:1;overflow-y:auto;padding-left:8px;padding-right:4px"></div>';
+  body.querySelectorAll('.fwi').forEach(el=>el.addEventListener('click',()=>{_forgeSel=parseInt(el.dataset.i);_fWeaponTab(body);}));
+  _fWepDetail(document.getElementById('fw-detail'),_FORGE_WLIST[_forgeSel]);
+}
+function _fWepDetail(el,wep){
+  if(!el||!wep)return;
+  const id=wep.id;
+  const stars=getWeaponEnhLevel(id),upgLv=getWepUpgLv(id),spirit=getWepSpirit(id),dust=getDust(),gem=getWepGem(id);
+  const g=_GEM_TYPES[gem]||null;
+  const _SC=[10,25,50,80,120],_UMax=10;
+  const sCost=stars<5?_SC[stars]:0,uCost=upgLv<_UMax?(upgLv+1)*5:0;
+  const okS=stars<5&&spirit>=sCost,okU=upgLv<_UMax&&dust>=uCost;
+  const starStr='<span style="color:#fd4">'+'★'.repeat(stars)+'</span><span style="color:#333">'+'★'.repeat(5-stars)+'</span>';
+  el.innerHTML=
+    '<div style="text-align:center;margin-bottom:10px">'+
+      '<div style="font-size:28px">'+wep.icon+'</div>'+
+      '<div style="font-size:13px;color:#eee;font-weight:700;margin-top:2px">'+wep.name+'</div>'+
+      '<div style="font-size:14px;margin-top:2px">'+starStr+'</div>'+
+      '<div style="font-size:9px;color:#666;margin-top:2px">总加成 <b style="color:#4fd">+'+(stars*8+upgLv*3)+'%</b> 武器伤害</div>'+
+    '</div>'+
+    '<div style="background:#0d0d1a;border:1px solid #1e2030;border-radius:6px;padding:8px 10px;margin-bottom:7px">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center">'+
+        '<div><div style="font-size:10px;color:#ccc;font-weight:700">⬆ 武器升级 Lv.'+upgLv+'/'+_UMax+'</div>'+
+        '<div style="font-size:9px;color:#666;margin-top:1px">每级 +3% · 消耗🌫粉尘</div></div>'+
+        (upgLv<_UMax
+          ?'<div style="text-align:right"><div style="font-size:9px;color:#888;margin-bottom:3px">🌫'+uCost+' (拥有'+dust+')</div>'+
+            '<button id="f-upg-btn" style="padding:4px 10px;font-size:10px;font-family:monospace;background:#1a1400;border:1.5px solid '+(okU?'#fd4':'#333')+';border-radius:4px;color:'+(okU?'#fd4':'#555')+';cursor:'+(okU?'pointer':'default')+'">升级</button></div>'
+          :'<span style="font-size:10px;color:#4fd">✓ 满级</span>')+
+      '</div></div>'+
+    '<div style="background:#0d0d1a;border:1px solid #1e2030;border-radius:6px;padding:8px 10px;margin-bottom:7px">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center">'+
+        '<div><div style="font-size:10px;color:#f8a;font-weight:700">✨ 升星 '+starStr+'</div>'+
+        '<div style="font-size:9px;color:#666;margin-top:1px">每星 +8% · 消耗器灵</div></div>'+
+        (stars<5
+          ?'<div style="text-align:right"><div style="font-size:9px;color:#888;margin-bottom:3px">✨'+sCost+' (拥有'+spirit+')</div>'+
+            '<button id="f-star-btn" style="padding:4px 10px;font-size:10px;font-family:monospace;background:#1a0a00;border:1.5px solid '+(okS?'#f8a':'#333')+';border-radius:4px;color:'+(okS?'#f8a':'#555')+';cursor:'+(okS?'pointer':'default')+'">升星</button></div>'
+          :'<span style="font-size:10px;color:#4fd">✓ 五星</span>')+
+      '</div></div>'+
+    '<div style="background:#0d0d1a;border:1px solid #1e2030;border-radius:6px;padding:8px 10px">'+
+      '<div style="font-size:10px;color:#aaa;margin-bottom:6px">💎 专属宝石槽</div>'+
+      '<div style="display:flex;align-items:center;gap:8px">'+
+        '<div id="f-gem-slot" style="width:36px;height:36px;border-radius:6px;border:2px dashed '+(g?g.color:'#333')+';background:'+(g?g.color+'18':'#111')+';display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:20px;flex-shrink:0">'+(g?g.icon:'➕')+'</div>'+
+        '<div style="font-size:9px;color:#777">'+(g?'<b style="color:'+g.color+'">'+g.name+'</b><br>'+g.desc:'空槽 · 点击选择宝石')+'</div>'+
+      '</div>'+
+    '</div>';
+  const upgBtn=el.querySelector('#f-upg-btn');
+  if(upgBtn&&okU)upgBtn.onclick=()=>{if(spendDust(uCost)){setWepUpgLv(id,upgLv+1);const dv=document.getElementById('forge-dust-v');if(dv)dv.textContent=getDust();_fWepDetail(el,wep);SFX.play('levelup');}};
+  const starBtn=el.querySelector('#f-star-btn');
+  if(starBtn&&okS)starBtn.onclick=()=>{if(spendWepSpirit(id,sCost)){setWeaponEnhLevel(id,stars+1);_fWepDetail(el,wep);SFX.play('levelup');}};
+  const gemSlot=el.querySelector('#f-gem-slot');
+  if(gemSlot)gemSlot.onclick=()=>_openGemPicker(gk=>{setWepGem(id,gk);_fWepDetail(el,wep);});
+}
+function _fCharTab(body){
+  const classes=typeof CLASSES!=='undefined'?CLASSES:[];
+  body.innerHTML=
+    '<div style="width:70px;flex-shrink:0;border-right:1px solid #1a1a2e;overflow-y:auto;display:flex;flex-direction:column;gap:2px;padding-right:4px">'+
+    classes.map((c,i)=>{const m=_CODEX_CLASS_META[c.id]||{icon:'⚔'};return'<div class="fci" data-i="'+i+'" style="padding:7px 3px;cursor:pointer;border-radius:4px;text-align:center;background:'+(i===_forgeSel?'#1a1a2e':'transparent')+';border-left:2px solid '+(i===_forgeSel?'#4fd':'transparent')+'"><div style="font-size:18px">'+(m.img?'<img src="'+m.img+'" style="width:22px;height:22px;object-fit:cover;border-radius:3px">':m.icon)+'</div><div style="font-size:8px;color:'+(i===_forgeSel?'#4fd':'#666')+';margin-top:2px;line-height:1.2">'+c.name+'</div></div>';}).join('')+
+    '</div>'+
+    '<div id="fc-detail" style="flex:1;overflow-y:auto;padding-left:8px;padding-right:4px"></div>';
+  body.querySelectorAll('.fci').forEach(el=>el.addEventListener('click',()=>{_forgeSel=parseInt(el.dataset.i);_fCharTab(body);}));
+  _fCharDetail(document.getElementById('fc-detail'),classes[_forgeSel]);
+}
+function _fCharDetail(el,cls){
+  if(!el||!cls)return;
+  const m=_CODEX_CLASS_META[cls.id]||{icon:'⚔'};
+  el.innerHTML=
+    '<div style="text-align:center;margin-bottom:10px">'+
+      (m.img?'<img src="'+m.img+'" style="width:44px;height:44px;object-fit:cover;border-radius:6px;border:2px solid #334">':'<div style="font-size:36px">'+m.icon+'</div>')+
+      '<div style="font-size:13px;color:#fd4;font-weight:700;margin-top:4px">'+cls.name+'</div>'+
+      '<div style="font-size:9px;color:#555;margin-top:2px">HP '+cls.hp+' · 速度 '+cls.spd+'</div>'+
+    '</div>'+
+    '<div style="font-size:10px;color:#4fd;font-weight:700;margin-bottom:8px">💎 宝石镶嵌 <span style="color:#444;font-weight:400">（6槽）</span></div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:10px">'+
+    [0,1,2,3,4,5].map(slot=>{
+      const gk=getCharGem(cls.id,slot);const g=_GEM_TYPES[gk]||null;
+      return '<div class="fcg-slot" data-slot="'+slot+'" style="border-radius:6px;border:2px dashed '+(g?g.color:'#333')+';background:'+(g?g.color+'18':'#111')+';padding:10px 4px;cursor:pointer;text-align:center">'+
+        '<div style="font-size:22px">'+(g?g.icon:'➕')+'</div>'+
+        '<div style="font-size:8px;color:'+(g?g.color:'#444')+';margin-top:3px;line-height:1.1">'+(g?g.name:'空槽')+'</div>'+
+      '</div>';
+    }).join('')+
+    '</div>'+
+    '<div style="font-size:9px;color:#444">宝石效果将在下次对局开始时生效</div>';
+  el.querySelectorAll('.fcg-slot').forEach(s=>{
+    s.addEventListener('click',()=>{const sl=parseInt(s.dataset.slot);_openGemPicker(gk=>{setCharGem(cls.id,sl,gk);_fCharDetail(el,cls);});});
+  });
+}
+function _openGemPicker(callback){
+  const old=document.getElementById('gem-picker-modal');if(old)old.remove();
+  const ov=document.createElement('div');
+  ov.id='gem-picker-modal';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center';
+  const box=document.createElement('div');
+  box.style.cssText='background:#0d0d1a;border:2px solid #334;border-radius:12px;padding:18px 16px;max-width:320px;width:90%;text-align:center';
+  box.innerHTML='<div style="font-size:13px;color:#eee;font-weight:700;margin-bottom:12px">💎 选择宝石</div>'+
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">'+
+    Object.entries(_GEM_TYPES).map(([k,g])=>
+      '<div class="gp-opt" data-k="'+k+'" style="padding:10px 4px;border-radius:8px;border:2px solid '+g.color+'44;background:'+g.color+'12;cursor:pointer">'+
+      '<div style="font-size:22px">'+g.icon+'</div>'+
+      '<div style="font-size:8px;color:'+g.color+';margin-top:3px">'+g.name+'</div>'+
+      '</div>'
+    ).join('')+
+    '</div>'+
+    '<button id="gp-cancel-btn" class="btn" style="width:100%;padding:7px;font-size:11px">取消</button>';
+  ov.appendChild(box);
+  box.querySelectorAll('.gp-opt').forEach(opt=>{
+    opt.addEventListener('click',()=>{callback(opt.dataset.k);ov.remove();SFX.play('click');});
+  });
+  document.getElementById('gp-cancel-btn').addEventListener('click',()=>ov.remove());
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
+  document.body.appendChild(ov);
+}
+function forgeUpgrade(weapId){ /* legacy stub – handled by new forge UI */ }
 
 function getGachaPity(){ try{ return Math.max(0,parseInt(localStorage.getItem('pw_gacha_pity')||'0',10)); }catch{ return 0; } }
 function setGachaPity(n){ try{ localStorage.setItem('pw_gacha_pity',String(n)); }catch{} }
@@ -1270,10 +1513,75 @@ function doTortoiseGacha(times, useTickets){
 
 // ── Gacha two-column pool system ──
 const _GACHA_POOLS = [
-  { id:'sword',     icon:'🗡', name:'飞剑池',   unlocked:()=>true },
-  { id:'tortoise',  icon:'🐢', name:'玄武池',   unlocked:()=>isTortoisePoolUnlocked() },
-  { id:'odds',      icon:'📊', name:'概率',     unlocked:()=>true },
+  { id:'sword',    icon:'🗡', name:'飞剑池',  unlocked:()=>true },
+  { id:'tortoise', icon:'🐢', name:'玄武池',  unlocked:()=>isTortoisePoolUnlocked() },
+  { id:'spirit',   icon:'✨', name:'器灵池',  unlocked:()=>true },
+  { id:'odds',     icon:'📊', name:'概率',    unlocked:()=>true },
 ];
+
+// ── Spirit (器灵) gacha pool ──
+const _SPIRIT_POOL=[
+  {id:'shotgun',      icon:'🔫',name:'散弹枪器灵'},
+  {id:'gatling',      icon:'⚡', name:'加特林器灵'},
+  {id:'sword',        icon:'⚔', name:'剑阵器灵'},
+  {id:'arrow_rain',   icon:'🏹',name:'箭雨器灵'},
+  {id:'heal_drone',   icon:'💊',name:'治疗无人机器灵'},
+  {id:'missile_drone',icon:'🚀',name:'导弹无人机器灵'},
+  {id:'sniper',       icon:'🔭',name:'狙击枪器灵'},
+  {id:'flying_sword', icon:'🗡',name:'飞剑器灵'},
+];
+function spiritDraw(){
+  const w=_SPIRIT_POOL[Math.floor(Math.random()*_SPIRIT_POOL.length)];
+  const amt=1+Math.floor(Math.random()*3); // 1–3
+  addWepSpirit(w.id,amt);
+  return {icon:w.icon,name:w.name+' ×'+amt,rarity:amt>=3?'epic':amt>=2?'rare':'normal'};
+}
+function doSpiritGacha(times,useTickets){
+  if(useTickets){
+    const tix=getGachaTickets();
+    if(tix<times){showGachaModal([{icon:'❌',name:'抽奖券不足！需要'+times+'张，当前'+tix+'张',rarity:'normal'}]);return;}
+    for(let i=0;i<times;i++)spendGachaTicket();
+  } else {
+    if(!spendCoins(times*150)){showGachaModal([{icon:'❌',name:'金币不足！需要'+(times*150)+' 金币',rarity:'normal'}]);return;}
+  }
+  const results=[];
+  for(let i=0;i<times;i++)results.push(spiritDraw());
+  updateGachaPityUI();
+  showGachaModal(results);
+}
+function _ensureSpiritPanel(){
+  if(document.getElementById('gacha-panel-spirit'))return;
+  const detail=document.querySelector('.gacha-detail');
+  if(!detail)return;
+  const p=document.createElement('div');
+  p.id='gacha-panel-spirit';
+  p.className='gacha-pool-panel';
+  p.style.display='none';
+  p.innerHTML=
+    '<div style="font-size:28px;margin-bottom:5px">✨</div>'+
+    '<div style="font-size:13px;color:#f8a;margin-bottom:4px;font-weight:bold">器灵奖池</div>'+
+    '<div style="font-size:9px;color:#888;margin-bottom:12px">单抽必出武器专属器灵 · 用于强化工坊升星</div>'+
+    '<div class="spirit-list" style="background:#1a0a1e;border:1px solid #3a1a3e;border-radius:6px;padding:8px 10px;margin-bottom:12px;text-align:left;font-size:9px;color:#888">'+
+    _SPIRIT_POOL.map(w=>'<div style="padding:2px 0">'+w.icon+' '+w.name+' · 当前 <b style="color:#f8a" id="spirit-cnt-'+w.id+'">'+getWepSpirit(w.id)+'</b></div>').join('')+
+    '</div>'+
+    '<div class="gacha-draw-row">'+
+    '<button class="btn" id="btn-spirit-x1" style="flex:1;min-width:72px;padding:7px 4px;font-size:10px;border-color:#f8a;color:#f8a">金币×1<br><span style="font-size:8px;color:#888">150金币</span></button>'+
+    '<button class="btn" id="btn-spirit-x10" style="flex:1;min-width:72px;padding:7px 4px;font-size:10px;border-color:#fd4;color:#fd4">金币×10<br><span style="font-size:8px;color:#888">1500金币</span></button>'+
+    '<button class="btn" id="btn-spirit-t1" style="flex:1;min-width:72px;padding:7px 4px;font-size:10px;border-color:#4ef;color:#4ef">券×1<br><span style="font-size:8px;color:#888">1张券</span></button>'+
+    '<button class="btn" id="btn-spirit-t10" style="flex:1;min-width:72px;padding:7px 4px;font-size:10px;border-color:#4fd;color:#4fd">券×10<br><span style="font-size:8px;color:#888">10张券</span></button>'+
+    '</div>';
+  detail.appendChild(p);
+  document.getElementById('btn-spirit-x1').onclick=()=>doSpiritGacha(1);
+  document.getElementById('btn-spirit-x10').onclick=()=>doSpiritGacha(10);
+  document.getElementById('btn-spirit-t1').onclick=()=>doSpiritGacha(1,true);
+  document.getElementById('btn-spirit-t10').onclick=()=>doSpiritGacha(10,true);
+}
+function updateSpiritPanel(){
+  _SPIRIT_POOL.forEach(w=>{
+    const el=document.getElementById('spirit-cnt-'+w.id);
+    if(el)el.textContent=getWepSpirit(w.id);
+  });
+}
 
 function renderGachaPoolList(){
   const list = document.getElementById('gacha-pool-list');
@@ -1296,11 +1604,11 @@ function renderGachaPoolList(){
 }
 
 function switchGachaTab(tab){
-  ['sword','tortoise','odds'].forEach(id => {
+  _ensureSpiritPanel();
+  ['sword','tortoise','spirit','odds'].forEach(id => {
     const el = document.getElementById('gacha-panel-'+id);
     if (el) el.style.display = id === tab ? '' : 'none';
   });
-  // Update active state in sidebar
   const list = document.getElementById('gacha-pool-list');
   if (list) {
     list.dataset.active = tab;
@@ -1309,6 +1617,7 @@ function switchGachaTab(tab){
     });
   }
   if (tab === 'tortoise') updateGachaTortoisePanel();
+  if (tab === 'spirit') updateSpiritPanel();
 }
 
 
