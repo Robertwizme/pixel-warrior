@@ -13,25 +13,46 @@ let tutorialTimer = 5.0;
 // ── Enemy sprite image overrides (preloaded) ──
 const ENEMY_IMG_MAP = (function(){
   const _src = { slime:'photo/Slime.png', goblin:'photo/goblin.png', skeleton:'photo/Skeleton.png', bat:'photo/bat.png', orc:'photo/orc.png' };
-  // 寶石怪圖片
-  ['white','blue','purple','rainbow'].forEach(q => { _src['gem_'+q] = `photo/Gem Monster/${q}.png`; });
+  // 寶石怪圖片（7 品質）— 路徑含空格需 encode
+  const _gemFiles = {
+    common:          'Common Gem Monster.png',
+    rare:            'Rare Gem Monster.png',
+    relatively_rare: 'Relatively Rare Gem Monster.png',
+    epic:            'Epic Gem Monster.png',
+    legendary:       'Legendary Gem Monster.png',
+    mythical:        'Mythical Gem Monster.png',
+    ultimate:        'The Ultimate Gem Monster.png',
+  };
+  for (const q in _gemFiles) {
+    _src['gem_'+q] = 'photo/Gem%20Monster/' + _gemFiles[q].replace(/ /g, '%20');
+  }
   const _map = {};
-  for (const k in _src) { const i=new Image(); i.src=_src[k]; _map[k]=i; }
+  for (const k in _src) {
+    const i = new Image();
+    i.src = _src[k];
+    i.onerror = () => console.warn(`[GemMonster] 圖片載入失敗: ${_src[k]}`);
+    _map[k] = i;
+  }
   return _map;
 })();
 
-// ── 寶石怪品質權重 ──
-const GEM_MONSTER_QUALITY_WEIGHTS = [
-  { quality:'white',   w:55 },
-  { quality:'blue',    w:30 },
-  { quality:'purple',  w:12 },
-  { quality:'rainbow', w:3  },
-];
+// ── 寶石怪品質定義（7 階）──
+const GEM_QUALITY_DEFS = {
+  common:          { w:50,   label:'普通', color:'#ccc', border:'#aaa', size:10, hpBase:60,   spd:70, xp:12,  radius:11, scale:1.0, name:'普通晶怪' },
+  rare:            { w:25,   label:'稀有', color:'#4f8', border:'#8fb', size:11, hpBase:130,  spd:65, xp:24,  radius:12, scale:1.1, name:'稀有晶怪' },
+  relatively_rare: { w:12,   label:'較稀有', color:'#4af', border:'#8df', size:12, hpBase:270,  spd:60, xp:44,  radius:14, scale:1.2, name:'精良晶怪' },
+  epic:            { w:7,    label:'史詩', color:'#b3f', border:'#d9f', size:14, hpBase:500,  spd:55, xp:80,  radius:16, scale:1.3, name:'史詩晶怪' },
+  legendary:       { w:4,    label:'傳說', color:'#fd4', border:'#ff8', size:16, hpBase:900,  spd:52, xp:140, radius:18, scale:1.4, name:'傳說晶怪' },
+  mythical:        { w:1.5,  label:'神話', color:'#f44', border:'#f88', size:18, hpBase:1600, spd:48, xp:240, radius:20, scale:1.5, name:'神話晶怪' },
+  ultimate:        { w:0.5,  label:'至臻', color:'#f8f', border:'#fff', size:20, hpBase:2800, spd:45, xp:400, radius:23, scale:1.7, name:'至臻晶怪' },
+};
+const GEM_KIND_POOL = ['攻擊','生命','防禦','速度','冷卻','幸運'];
+
 function pickGemMonsterQuality() {
-  const total = GEM_MONSTER_QUALITY_WEIGHTS.reduce((s,e)=>s+e.w, 0);
+  const total = Object.values(GEM_QUALITY_DEFS).reduce((s,d)=>s+d.w, 0);
   let r = Math.random() * total;
-  for (const e of GEM_MONSTER_QUALITY_WEIGHTS) { r -= e.w; if (r <= 0) return e.quality; }
-  return 'white';
+  for (const [q, d] of Object.entries(GEM_QUALITY_DEFS)) { r -= d.w; if (r <= 0) return q; }
+  return 'common';
 }
 
 function initGame(classIdx) {
@@ -152,7 +173,7 @@ function initGame(classIdx) {
     stage: 1,
     _damageTaken: 0,
     _rainbowChests: 0,
-    gemInventory: { white:0, blue:0, purple:0, rainbow:0 },
+    gemInventory: { common:0, rare:0, relatively_rare:0, epic:0, legendary:0, mythical:0, ultimate:0 },
     _dustAwarded: false,
   };
 
@@ -621,25 +642,21 @@ function calcSpawnPos() {
 }
 
 function spawnGemMonster(entry, ex, ey) {
-  const q   = entry.gemQuality;
-  const sf  = entry.scale;
-  const _hpBase  = { white:80,  blue:200, purple:450, rainbow:900  }[q] ?? 80;
-  const _spdBase = { white:70,  blue:60,  purple:55,  rainbow:50   }[q] ?? 70;
-  const _xpBase  = { white:18,  blue:32,  purple:65,  rainbow:130  }[q] ?? 18;
-  const _rad     = { white:12,  blue:14,  purple:17,  rainbow:21   }[q] ?? 12;
-  const _name    = { white:'白晶怪', blue:'藍晶怪', purple:'紫晶怪', rainbow:'彩晶怪' }[q] ?? '晶怪';
-  const _col     = { white:'#dde', blue:'#4af', purple:'#c4f', rainbow:'#fd4' }[q] ?? '#eef';
+  const q  = entry.gemQuality;
+  const sf = entry.scale;
+  const d  = GEM_QUALITY_DEFS[q] ?? GEM_QUALITY_DEFS.common;
   gs.enemies.push({
-    type:'__gem__', name:_name,
+    type:'__gem__', name: d.name,
     x:ex, y:ey,
-    hp: Math.round(_hpBase*sf), maxHp: Math.round(_hpBase*sf),
-    spd: _spdBase,
-    dmg: Math.round(6 * sf),
-    xp:  Math.round(_xpBase * Math.sqrt(sf)),
-    radius: _rad,
-    sprite: 'gem_'+q,
-    color: _col,
-    scale: 1 + ((['white','blue','purple','rainbow'].indexOf(q))*0.1),
+    hp:    Math.round(d.hpBase * sf),
+    maxHp: Math.round(d.hpBase * sf),
+    spd:   d.spd,
+    dmg:   Math.round(6 * sf),
+    xp:    Math.round(d.xp * Math.sqrt(sf)),
+    radius: d.radius,
+    sprite: 'gem_' + q,
+    color:  d.color,
+    scale:  d.scale,
     gemQuality: q,
     isGemMonster: true,
     isBoss: false, bossType: null, dead: false,
@@ -827,11 +844,14 @@ const DROP_DEFS = {
   supply_blue:    { label:'蓝宝箱', color:'#148', border:'#48f', size:16, rarity:'blue',    cards:2, shape:'chest' },
   supply_purple:  { label:'紫宝箱', color:'#52a', border:'#c4f', size:18, rarity:'purple',  cards:3, shape:'chest' },
   supply_rainbow:   { label:'彩虹宝箱', color:'#a81', border:'#fd4', size:20, rarity:'rainbow', cards:3, shape:'chest' },
-  // 寶石怪掉落物
-  gem_item_white:   { label:'白晶石',   color:'#cce', border:'#99c', size:11, shape:'gem', gemQuality:'white'   },
-  gem_item_blue:    { label:'藍晶石',   color:'#1af', border:'#8df', size:13, shape:'gem', gemQuality:'blue'    },
-  gem_item_purple:  { label:'紫晶石',   color:'#b3f', border:'#e8f', size:15, shape:'gem', gemQuality:'purple'  },
-  gem_item_rainbow: { label:'彩晶石',   color:'#fd4', border:'#fff', size:17, shape:'gem', gemQuality:'rainbow' },
+  // 寶石怪掉落物（7 品質）
+  gem_item_common:         { label:'普通寶石',   color:'#ccc', border:'#aaa', size:10, shape:'gem', gemQuality:'common'         },
+  gem_item_rare:           { label:'稀有寶石',   color:'#4f8', border:'#8fb', size:11, shape:'gem', gemQuality:'rare'           },
+  gem_item_relatively_rare:{ label:'較稀有寶石', color:'#4af', border:'#8df', size:12, shape:'gem', gemQuality:'relatively_rare' },
+  gem_item_epic:           { label:'史詩寶石',   color:'#b3f', border:'#d9f', size:14, shape:'gem', gemQuality:'epic'           },
+  gem_item_legendary:      { label:'傳說寶石',   color:'#fd4', border:'#ff8', size:16, shape:'gem', gemQuality:'legendary'      },
+  gem_item_mythical:       { label:'神話寶石',   color:'#f44', border:'#f88', size:18, shape:'gem', gemQuality:'mythical'       },
+  gem_item_ultimate:       { label:'至臻寶石',   color:'#f8f', border:'#fff', size:20, shape:'gem', gemQuality:'ultimate'       },
 };
 
 // 掉落类型权重（与稀有度无关）
@@ -867,8 +887,10 @@ function spawnDrop(x, y, type) {
 
 // 寶石物品生成（寶石怪死亡掉落）
 function spawnGemItem(x, y, quality) {
+  const _kind = GEM_KIND_POOL[Math.floor(Math.random() * GEM_KIND_POOL.length)];
   gs.drops.push({
     type: 'gem_item_' + quality,
+    gemKind: _kind,
     x: x + (Math.random()-.5)*24,
     y: y + (Math.random()-.5)*24,
     bobTimer: Math.random()*Math.PI*2,
@@ -1143,12 +1165,12 @@ function updatePlayer(dt) {
       autoApplyChest(drop.type);
     } else if (def.gemQuality) {
       // 寶石物品：加入背包
-      const q = def.gemQuality;
-      if (!gs.gemInventory) gs.gemInventory = { white:0, blue:0, purple:0, rainbow:0 };
+      const q    = def.gemQuality;
+      const kind = drop.gemKind || GEM_KIND_POOL[Math.floor(Math.random()*GEM_KIND_POOL.length)];
+      if (!gs.gemInventory) gs.gemInventory = {};
       gs.gemInventory[q] = (gs.gemInventory[q]||0) + 1;
-      const _gLabel = { white:'白晶石', blue:'藍晶石', purple:'紫晶石', rainbow:'彩晶石' }[q];
-      const _gColor = { white:'#cce',  blue:'#4af',   purple:'#c4f',   rainbow:'#fd4'   }[q];
-      addFloatingText(`💎 ${_gLabel}×1`, p.x, p.y-24, _gColor, 1.6);
+      const _qd  = GEM_QUALITY_DEFS[q] ?? GEM_QUALITY_DEFS.common;
+      addFloatingText(`💎 獲得 ${_qd.label}${kind} 寶石`, p.x, p.y-26, _qd.color, 2.0);
       SFX.play('click');
     }
     return false;
@@ -2840,11 +2862,18 @@ function render() {
       ctx.lineTo(-s*0.22, -s*0.05);
       ctx.closePath(); ctx.fill();
       ctx.globalAlpha = 1;
-      // rainbow 彩虹邊框動態
-      if (drop.type === 'gem_item_rainbow') {
-        ctx.strokeStyle = `hsl(${(now * 180) % 360},100%,75%)`;
+      // 至臻：彩虹動態邊框
+      if (drop.type === 'gem_item_ultimate') {
+        ctx.strokeStyle = `hsl(${(now * 200) % 360},100%,78%)`;
         ctx.lineWidth = 2.5;
         ctx.stroke();
+      }
+      // 神話：脈衝光暈
+      if (drop.type === 'gem_item_mythical') {
+        ctx.globalAlpha = 0.35 + 0.25*Math.sin(now*5);
+        ctx.strokeStyle = '#f88'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(0, 0, s*0.72, 0, Math.PI*2); ctx.stroke();
+        ctx.globalAlpha = 1;
       }
     }
 
@@ -2954,32 +2983,24 @@ function render() {
     if (_useImg) {
       ctx.drawImage(_eImg, sx, sy, sw, sh);
     } else if (e.isGemMonster) {
-      // 寶石怪圖片未載入時的 fallback：彩色多邊形
-      const _gr = e.radius;
-      const _gcx = Math.floor(e.x-cam.x), _gcy = Math.floor(e.y-cam.y);
+      // 寶石怪圖片未載入時 fallback：💎 emoji + 品質色底圈
+      const _gr  = e.radius;
+      const _gcx = Math.floor(e.x - cam.x);
+      const _gcy = Math.floor(e.y - cam.y);
       ctx.save();
-      ctx.translate(_gcx, _gcy);
-      // 外圈光暈
-      const _pulse = 0.55 + 0.45*Math.sin(performance.now()/400 + e.x);
-      ctx.globalAlpha = _pulse * 0.4;
+      // 品質色光暈底圈
+      const _pulse = 0.45 + 0.35 * Math.sin(performance.now() / 380 + e.x);
+      ctx.globalAlpha = _pulse;
       ctx.fillStyle = e.color;
-      ctx.beginPath(); ctx.arc(0, 0, _gr+4, 0, Math.PI*2); ctx.fill();
-      ctx.globalAlpha = e.slowTimer>0 ? 0.7 : 1;
-      // 六角形怪體
-      ctx.fillStyle = e.color;
-      ctx.strokeStyle = '#fff';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      for (let _vi=0; _vi<6; _vi++) {
-        const _va = (_vi/6)*Math.PI*2 - Math.PI/2;
-        _vi===0 ? ctx.moveTo(Math.cos(_va)*_gr, Math.sin(_va)*_gr)
-                : ctx.lineTo(Math.cos(_va)*_gr, Math.sin(_va)*_gr);
-      }
-      ctx.closePath(); ctx.fill(); ctx.stroke();
-      // 中心晶石
-      ctx.fillStyle = '#fff';
-      ctx.globalAlpha = 0.6;
-      ctx.beginPath(); ctx.arc(0, 0, _gr*0.35, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(_gcx, _gcy, _gr + 3, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = e.slowTimer > 0 ? 0.7 : 1;
+      // 💎 emoji 居中
+      ctx.font = `${Math.round(_gr * 1.5)}px serif`;
+      ctx.textAlign    = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('💎', _gcx, _gcy);
+      ctx.textAlign    = 'left';
+      ctx.textBaseline = 'alphabetic';
       ctx.restore();
       ctx.globalAlpha = 1;
     } else {
@@ -3014,11 +3035,11 @@ function render() {
     }
     // 寶石怪品質標籤
     if (e.isGemMonster) {
-      const _gCol = { white:'#cce', blue:'#4af', purple:'#c4f', rainbow:'#fd4' }[e.gemQuality] || '#fff';
-      ctx.fillStyle = _gCol;
+      const _gd  = GEM_QUALITY_DEFS[e.gemQuality] ?? GEM_QUALITY_DEFS.common;
+      ctx.fillStyle = _gd.color;
       ctx.font = 'bold 7px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText('💎' + e.name, Math.floor(e.x-cam.x), by - 2);
+      ctx.fillText('💎' + _gd.label, Math.floor(e.x-cam.x), by - 2);
       ctx.textAlign = 'left';
     }
   });

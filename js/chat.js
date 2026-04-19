@@ -897,7 +897,7 @@ const _CODEX_SUPPLY_META = {
 let _codexTab='monster', _codexSubtab='normal', _codexSel=0;
 
 function openCodex(){
-  _codexTab='monster'; _codexSubtab='normal'; _codexSel=0;
+  _codexTab='monster'; _codexSubtab='normal'; _codexSel=0; _gemGroupIdx=0;
   _renderCodexTabs(); renderCodexContent(); showOverlay('o-codex');
 }
 
@@ -938,45 +938,73 @@ function _cdxWeakness(w){
   return '<div class="cdx-wtags">'+tags+'</div>'+_cdxDesc(w.tip);
 }
 
+// ── 宝石怪品质轮播状态 ──
+let _gemGroupIdx = 0;
+function _gemGroupNav(dir){
+  _gemGroupIdx = (_gemGroupIdx + dir + 7) % 7;
+  const dp = document.getElementById('cdx-detail');
+  if(dp) dp.innerHTML = _renderGemGroupDetail();
+}
+
 function _renderGemGroupDetail(){
-  const _GM=[
-    {k:'gem_life',    img:'photo/Gem Monster/life.png',    rarity:'普通', rc:'#aaa',
-     drop:{icon:'❤',  name:'生命宝石', effect:'最大HP +30'}},
-    {k:'gem_luck',    img:'photo/Gem Monster/luck.png',    rarity:'普通', rc:'#aaa',
-     drop:{icon:'🟢', name:'幸运宝石', effect:'幸运值 +20'}},
-    {k:'gem_thunder', img:'photo/Gem Monster/thunder.png', rarity:'稀有', rc:'#4ef',
-     drop:{icon:'🟡', name:'速度宝石', effect:'移动速度 +15'}},
-    {k:'gem_fire',    img:'photo/Gem Monster/fire.png',    rarity:'稀有', rc:'#4ef',
-     drop:{icon:'🔴', name:'攻击宝石', effect:'武器伤害 +10%'}},
-    {k:'gem_frost',   img:'photo/Gem Monster/frost.png',   rarity:'精英', rc:'#f84',
-     drop:{icon:'🔵', name:'防御宝石', effect:'受到伤害 -8%'}},
-    {k:'gem_arcane',  img:'photo/Gem Monster/arcane.png',  rarity:'精英', rc:'#f84',
-     drop:{icon:'🟣', name:'急速宝石', effect:'冷却时间 -8%'}},
-    {k:'gem_crit',    img:'photo/Gem Monster/crit.png',    rarity:'传说', rc:'#fd4',
-     drop:{icon:'⭐', name:'暴击宝石', effect:'暴击率 +8%'}},
+  const _GQ=[
+    { name:'普通寶石怪',  img:'photo/Gem Monster/Common Gem Monster.png',
+      color:'#ccc', hp:100,  spd:60, dmg:5,  wave:'第8波起偶爾出現',
+      drop:'普通品質寶石（鑲嵌加成 +10%）' },
+    { name:'稀有寶石怪',  img:'photo/Gem Monster/Rare Gem Monster.png',
+      color:'#4f8', hp:200,  spd:58, dmg:8,  wave:'第10波起偶爾出現',
+      drop:'稀有品質寶石（鑲嵌加成 +20%）' },
+    { name:'較稀有寶石怪',img:'photo/Gem Monster/Uncommon Gem Monster.png',
+      color:'#4af', hp:400,  spd:55, dmg:12, wave:'第12波起偶爾出現',
+      drop:'較稀有品質寶石（鑲嵌加成 +35%）' },
+    { name:'史詩寶石怪',  img:'photo/Gem Monster/Epic Gem Monster.png',
+      color:'#a4f', hp:800,  spd:50, dmg:18, wave:'第15波起偶爾出現',
+      drop:'史詩品質寶石（鑲嵌加成 +55%）' },
+    { name:'傳說寶石怪',  img:'photo/Gem Monster/Legendary Gem Monster.png',
+      color:'#fd4', hp:1500, spd:48, dmg:25, wave:'第18波起稀少出現',
+      drop:'傳說品質寶石（鑲嵌加成 +70%）' },
+    { name:'神話寶石怪',  img:'photo/Gem Monster/Mythic Gem Monster.png',
+      color:'#f84', hp:3000, spd:45, dmg:35, wave:'第22波起稀少出現',
+      drop:'神話品質寶石（鑲嵌加成 +85%）' },
+    { name:'至臻寶石怪',  img:'photo/Gem Monster/Ultimate Gem Monster.png',
+      color:'#f4f', hp:6000, spd:42, dmg:50, wave:'第26波起極少出現',
+      drop:'至臻品質寶石（鑲嵌加成 +85% · 額外解鎖50%特效）', rainbow:true },
   ];
-  const rows=_GM.map(g=>{
-    const m=_CODEX_ENEMY_META[g.k]; if(!m||!m._stats) return '';
-    return '<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #1a1a2e">'+
-      '<img src="'+g.img+'" style="width:36px;height:36px;image-rendering:pixelated;object-fit:contain;flex-shrink:0" onerror="this.style.display=\'none\'">'+
-      '<div style="flex:1;min-width:0">'+
-        '<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">'+
-          '<span style="font-size:11px;color:#eee;font-weight:700">'+m.name+'</span>'+
-          '<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:'+g.rc+'22;border:1px solid '+g.rc+'55;color:'+g.rc+'">'+g.rarity+'</span>'+
-        '</div>'+
-        '<div style="font-size:9px;color:#777;margin-top:2px">'+m.waveDesc+'　❤ HP <b style="color:#ccc">'+m._stats.hp+'</b>　⚡ 速度 <b style="color:#ccc">'+m._stats.spd+'</b></div>'+
-        '<div style="font-size:9px;color:#fe8;margin-top:2px">'+g.drop.icon+' 掉落 <b>'+g.drop.name+'</b> — 镶嵌后 '+g.drop.effect+'</div>'+
-      '</div>'+
-    '</div>';
-  }).join('');
+  const g=_GQ[_gemGroupIdx];
+  const btnS='font-size:18px;background:none;border:none;color:#555;cursor:pointer;padding:2px 10px;font-family:monospace;line-height:1';
+  const nameHtml=g.rainbow
+    ?'<span style="background:linear-gradient(90deg,#f44,#f84,#fd4,#4f8,#4af,#a4f,#f4f);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-weight:700">'+g.name+'</span>'
+    :'<span style="color:'+g.color+';font-weight:700">'+g.name+'</span>';
+  const dots=_GQ.map((q,i)=>
+    '<div style="width:7px;height:7px;border-radius:50%;background:'+(i===_gemGroupIdx?q.color:'#1e1e2e')+
+    ';border:1px solid '+(i===_gemGroupIdx?q.color:'#333')+'"></div>'
+  ).join('');
   return _cdxDetail(
-    '<div class="cdx-big-icon">💎</div>'+
-    '<div class="cdx-item-name" style="color:#fe8">宝石怪 <span style="font-size:12px;color:#888;font-weight:400">×7 种</span></div>'+
-    '<div class="cdx-item-sub">第8波起随机混入普通怪组 · 击败必定掉落对应宝石</div>'+
-    _cdxSection('宝石怪图鉴')+
-    '<div style="margin-top:2px">'+rows+'</div>'+
-    _cdxSection('镶嵌说明')+
-    _cdxDesc('每种武器可镶嵌1颗宝石，提供对应属性加成，可在强化工坊的武器详情页更换。宝石怪比同波普通怪血量更高，但击败后必定掉落对应宝石。')
+    // ── 頂部導航列 ──
+    '<div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid #1a1a2e;margin-bottom:8px">'+
+      '<button style="'+btnS+'" onclick="_gemGroupNav(-1)">◀</button>'+
+      '<div style="text-align:center;font-size:12px">'+nameHtml+'</div>'+
+      '<button style="'+btnS+'" onclick="_gemGroupNav(1)">▶</button>'+
+    '</div>'+
+    // ── 圖片 ──
+    '<div class="cdx-big-icon" style="margin:4px 0 6px">'+
+      '<img src="'+g.img+'" style="width:72px;height:72px;image-rendering:pixelated;object-fit:contain" onerror="this.style.display=\'none\'">'+
+    '</div>'+
+    // ── 名稱 & 波次 ──
+    '<div class="cdx-item-name" style="'+(g.rainbow?'background:linear-gradient(90deg,#f44,#f84,#fd4,#4f8,#4af,#a4f,#f4f);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text':'color:'+g.color)+'">'+g.name+'</div>'+
+    '<div class="cdx-item-sub">'+g.wave+'</div>'+
+    // ── 屬性 ──
+    _cdxStat('❤ 血量', g.hp)+
+    _cdxStat('⚡ 速度', g.spd)+
+    _cdxStat('⚔ 攻擊', g.dmg)+
+    // ── 掉落 ──
+    _cdxSection('掉落寶石')+
+    _cdxDesc('💎 必定掉落 '+g.drop)+
+    // ── 弱點 ──
+    _cdxSection('⚠ 弱點')+
+    _cdxWeakness({tags:['任意'], tip:'任意武器均可擊殺，血量較低易速決。優先擊殺可獲得對應品質寶石，可在強化工坊鑲嵌武器。品質越高血量越高，出現越罕見。'})+
+    // ── 品質進度點 ──
+    '<div style="display:flex;justify-content:center;align-items:center;gap:5px;margin-top:12px">'+dots+'</div>'
   );
 }
 
