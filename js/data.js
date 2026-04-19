@@ -200,9 +200,16 @@ function getWavePlan(n) {
 // ═══════════════════════════════════════════════════════
 // §0  版本号 & 更新公告  ← 每次更新只需修改这里
 // ═══════════════════════════════════════════════════════
-const GAME_VERSION = 'v0.8.8';
+const GAME_VERSION = 'v0.8.9';
 document.getElementById('load-version').textContent = GAME_VERSION;
 const CHANGELOG = [
+  { version:'v0.8.9', date:'2026-04-19', items:[
+    '強化工坊武器列表改為從 WEAPON_DEFS 動態讀取（_getForgeWeapList），新增武器後自動出現',
+    '圖鑑普通怪 7 個寶石怪合併為單一「寶石怪 ×7」條目（_isGemGroup），節省格位',
+    '新增 _renderGemGroupDetail()：右欄顯示全部7種寶石怪圖片/稀有度/HP/掉落說明',
+    '圖片路徑：photo/Gem Monster/[quality].png，onerror 自動隱藏避免破圖',
+    '稀有度分級：普通(wave8-10) · 稀有(wave12-15) · 精英(wave18-20) · 傳說(wave25)',
+  ]},
   { version:'v0.8.8', date:'2026-04-18', items:[
     '新增寶石品質定義（GEM_QUALITIES）：普通/稀有/較稀有/史詩/傳說/神話/至臻，加成10~85+50%',
     '新增寶石種類定義（GEM_TYPES）：攻擊/生命/防禦/速度/冷卻/幸運/專屬',

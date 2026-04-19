@@ -796,6 +796,8 @@ const _CODEX_ENEMY_META = {
     desc:'闪耀金色光芒的宝石怪，出现波次极高，击败后掉落暴击宝石',
     weakness:{tags:['穿透','高DPS'],tip:'高伤且稀少，优先击杀，推荐狙击枪或满级飞剑快速解决'},
     _stats:{hp:800,spd:65,dmg:28,xp:40}},
+  // ── 宝石怪图鉴组 (虚拟条目，代表全部7种) ──
+  gem_monsters: { icon:'💎', name:'宝石怪 ×7', waveFirst:8, waveDesc:'第8波起随机混入普通怪组', _isGemGroup:true },
 };
 
 const _CODEX_CLASS_META = {
@@ -936,9 +938,52 @@ function _cdxWeakness(w){
   return '<div class="cdx-wtags">'+tags+'</div>'+_cdxDesc(w.tip);
 }
 
+function _renderGemGroupDetail(){
+  const _GM=[
+    {k:'gem_life',    img:'photo/Gem Monster/life.png',    rarity:'普通', rc:'#aaa',
+     drop:{icon:'❤',  name:'生命宝石', effect:'最大HP +30'}},
+    {k:'gem_luck',    img:'photo/Gem Monster/luck.png',    rarity:'普通', rc:'#aaa',
+     drop:{icon:'🟢', name:'幸运宝石', effect:'幸运值 +20'}},
+    {k:'gem_thunder', img:'photo/Gem Monster/thunder.png', rarity:'稀有', rc:'#4ef',
+     drop:{icon:'🟡', name:'速度宝石', effect:'移动速度 +15'}},
+    {k:'gem_fire',    img:'photo/Gem Monster/fire.png',    rarity:'稀有', rc:'#4ef',
+     drop:{icon:'🔴', name:'攻击宝石', effect:'武器伤害 +10%'}},
+    {k:'gem_frost',   img:'photo/Gem Monster/frost.png',   rarity:'精英', rc:'#f84',
+     drop:{icon:'🔵', name:'防御宝石', effect:'受到伤害 -8%'}},
+    {k:'gem_arcane',  img:'photo/Gem Monster/arcane.png',  rarity:'精英', rc:'#f84',
+     drop:{icon:'🟣', name:'急速宝石', effect:'冷却时间 -8%'}},
+    {k:'gem_crit',    img:'photo/Gem Monster/crit.png',    rarity:'传说', rc:'#fd4',
+     drop:{icon:'⭐', name:'暴击宝石', effect:'暴击率 +8%'}},
+  ];
+  const rows=_GM.map(g=>{
+    const m=_CODEX_ENEMY_META[g.k]; if(!m||!m._stats) return '';
+    return '<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #1a1a2e">'+
+      '<img src="'+g.img+'" style="width:36px;height:36px;image-rendering:pixelated;object-fit:contain;flex-shrink:0" onerror="this.style.display=\'none\'">'+
+      '<div style="flex:1;min-width:0">'+
+        '<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">'+
+          '<span style="font-size:11px;color:#eee;font-weight:700">'+m.name+'</span>'+
+          '<span style="font-size:8px;padding:1px 5px;border-radius:3px;background:'+g.rc+'22;border:1px solid '+g.rc+'55;color:'+g.rc+'">'+g.rarity+'</span>'+
+        '</div>'+
+        '<div style="font-size:9px;color:#777;margin-top:2px">'+m.waveDesc+'　❤ HP <b style="color:#ccc">'+m._stats.hp+'</b>　⚡ 速度 <b style="color:#ccc">'+m._stats.spd+'</b></div>'+
+        '<div style="font-size:9px;color:#fe8;margin-top:2px">'+g.drop.icon+' 掉落 <b>'+g.drop.name+'</b> — 镶嵌后 '+g.drop.effect+'</div>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+  return _cdxDetail(
+    '<div class="cdx-big-icon">💎</div>'+
+    '<div class="cdx-item-name" style="color:#fe8">宝石怪 <span style="font-size:12px;color:#888;font-weight:400">×7 种</span></div>'+
+    '<div class="cdx-item-sub">第8波起随机混入普通怪组 · 击败必定掉落对应宝石</div>'+
+    _cdxSection('宝石怪图鉴')+
+    '<div style="margin-top:2px">'+rows+'</div>'+
+    _cdxSection('镶嵌说明')+
+    _cdxDesc('每种武器可镶嵌1颗宝石，提供对应属性加成，可在强化工坊的武器详情页更换。宝石怪比同波普通怪血量更高，但击败后必定掉落对应宝石。')
+  );
+}
+
 function _codexMonsterDetail(k){
   const e=ENEMY_TYPES[k]; const m=_CODEX_ENEMY_META[k];
   if(!m) return _cdxDetail('<div style="color:#555;padding:40px 0;text-align:center">暂无数据</div>');
+  if(m._isGemGroup) return _renderGemGroupDetail();
   // Gem monsters use _stats fallback when not in ENEMY_TYPES
   const s=e||(m._stats||null);
   if(!s) return _cdxDetail('<div style="color:#555;padding:40px 0;text-align:center">暂无数据</div>');
@@ -1042,8 +1087,7 @@ function renderCodexContent(){
     }
     const keys=_codexSubtab==='boss'
       ?['boss_10','boss_10_cat','boss_10_dog','boss_20','boss_30']
-      :['slime','goblin','skeleton','bat','orc','wolf','troll','demon','archer',
-        'gem_life','gem_luck','gem_thunder','gem_fire','gem_frost','gem_arcane','gem_crit'];
+      :['slime','goblin','skeleton','bat','orc','wolf','troll','demon','archer','gem_monsters'];
     items=keys.map(k=>({k}));
     iconFn=it=>{ const m=_CODEX_ENEMY_META[it.k]||{icon:'?'}; return m.img?'<img src="'+m.img+'" class="cdx-enemy-img-sm">':m.icon; };
     nameFn=it=>(_CODEX_ENEMY_META[it.k]||{name:'?'}).name;
@@ -1150,16 +1194,13 @@ function getWepUpgLv(id){try{return Math.max(0,parseInt(localStorage.getItem('pw
 function setWepUpgLv(id,lv){try{localStorage.setItem('pw_wup_'+id,String(lv));}catch{}}
 
 // ── §Forge redesign (3 tabs) ──
-const _FORGE_WLIST=[
-  {id:'shotgun',       icon:'🔫',name:'散弹枪'},
-  {id:'gatling',       icon:'⚡', name:'加特林'},
-  {id:'sword',         icon:'⚔', name:'剑阵'},
-  {id:'arrow_rain',    icon:'🏹',name:'箭雨'},
-  {id:'heal_drone',    icon:'💊',name:'治疗无人机'},
-  {id:'missile_drone', icon:'🚀',name:'导弹无人机'},
-  {id:'sniper',        icon:'🔭',name:'狙击枪'},
-  {id:'flying_sword',  icon:'🗡',name:'飞剑'},
-];
+// 武器列表从 WEAPON_DEFS 动态读取，新增武器后自动出现在强化工坊
+function _getForgeWeapList(){
+  if(typeof WEAPON_DEFS==='undefined') return [];
+  return Object.keys(WEAPON_DEFS)
+    .filter(id => id !== 'kirby_copy') // 职业专属武器不进强化
+    .map(id => ({id, icon:WEAPON_DEFS[id].icon, name:WEAPON_DEFS[id].name}));
+}
 let _forgeTab='weapon', _forgeSel=0;
 
 function renderForge(){
@@ -1200,11 +1241,11 @@ function _renderForgeBody(){
 function _fWeaponTab(body){
   body.innerHTML=
     '<div id="fw-list" style="width:70px;flex-shrink:0;border-right:1px solid #1a1a2e;overflow-y:auto;display:flex;flex-direction:column;gap:2px;padding-right:4px">'+
-    _FORGE_WLIST.map((w,i)=>'<div class="fwi" data-i="'+i+'" style="padding:7px 3px;cursor:pointer;border-radius:4px;text-align:center;background:'+(i===_forgeSel?'#1a1a2e':'transparent')+';border-left:2px solid '+(i===_forgeSel?'#fd4':'transparent')+'"><div style="font-size:18px">'+w.icon+'</div><div style="font-size:8px;color:'+(i===_forgeSel?'#fd4':'#666')+';margin-top:2px;line-height:1.2">'+w.name+'</div></div>').join('')+
+    _getForgeWeapList().map((w,i)=>'<div class="fwi" data-i="'+i+'" style="padding:7px 3px;cursor:pointer;border-radius:4px;text-align:center;background:'+(i===_forgeSel?'#1a1a2e':'transparent')+';border-left:2px solid '+(i===_forgeSel?'#fd4':'transparent')+'"><div style="font-size:18px">'+w.icon+'</div><div style="font-size:8px;color:'+(i===_forgeSel?'#fd4':'#666')+';margin-top:2px;line-height:1.2">'+w.name+'</div></div>').join('')+
     '</div>'+
     '<div id="fw-detail" style="flex:1;overflow-y:auto;padding-left:8px;padding-right:4px"></div>';
   body.querySelectorAll('.fwi').forEach(el=>el.addEventListener('click',()=>{_forgeSel=parseInt(el.dataset.i);_fWeaponTab(body);}));
-  _fWepDetail(document.getElementById('fw-detail'),_FORGE_WLIST[_forgeSel]);
+  _fWepDetail(document.getElementById('fw-detail'),_getForgeWeapList()[_forgeSel]);
 }
 function _fWepDetail(el,wep){
   if(!el||!wep)return;
