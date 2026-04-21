@@ -357,6 +357,8 @@ updateMenuAvatar();
 
 // §ActivityPage - 宝石怪首次出没活动
 // ── 共用：7品质等级资料（图鉴 + 活动页共用）──
+// _GEM_Q_KEYS 顺序必须与 _GEM_QUALITY_TIERS 索引一一对应
+const _GEM_Q_KEYS=['common','rare','uncommon','epic','legendary','mythic','ultimate'];
 const _GEM_QUALITY_TIERS=[
   { name:'普通宝石怪',  img:'photo/Gem Monster/Common Gem Monster.png',
     color:'#ccc', hp:100,  spd:60, dmg:5,  wave:'第8波起偶尔出现',
@@ -1043,14 +1045,38 @@ function _gemGroupNav(dir){
 
 function _renderGemGroupDetail(){
   const g=_GEM_QUALITY_TIERS[_gemGroupIdx];
+  const unlocked=isEnemyEncountered('gem_q_'+_GEM_Q_KEYS[_gemGroupIdx]);
   const btnS='font-size:18px;background:none;border:none;color:#555;cursor:pointer;padding:2px 10px;font-family:monospace;line-height:1';
-  const nameHtml=g.rainbow
-    ?'<span style="background:linear-gradient(90deg,#f44,#f84,#fd4,#4f8,#4af,#a4f,#f4f);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-weight:700">'+g.name+'</span>'
-    :'<span style="color:'+g.color+';font-weight:700">'+g.name+'</span>';
-  const dots=_GEM_QUALITY_TIERS.map((q,i)=>
-    '<div style="width:7px;height:7px;border-radius:50%;background:'+(i===_gemGroupIdx?q.color:'#1e1e2e')+
-    ';border:1px solid '+(i===_gemGroupIdx?q.color:'#333')+'"></div>'
-  ).join('');
+  const nameHtml=unlocked
+    ?(g.rainbow
+      ?'<span style="background:linear-gradient(90deg,#f44,#f84,#fd4,#4f8,#4af,#a4f,#f4f);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-weight:700">'+g.name+'</span>'
+      :'<span style="color:'+g.color+';font-weight:700">'+g.name+'</span>')
+    :'<span style="color:#555;font-weight:700">???</span>';
+  const dots=_GEM_QUALITY_TIERS.map((q,i)=>{
+    const isCur=i===_gemGroupIdx;
+    const dotUnlocked=isEnemyEncountered('gem_q_'+_GEM_Q_KEYS[i]);
+    const bg=dotUnlocked?q.color:'#1e1e2e';
+    const border=isCur?(dotUnlocked?q.color:'#666'):'#333';
+    return '<div style="width:7px;height:7px;border-radius:50%;background:'+bg+';border:1px solid '+border+(isCur?';box-shadow:0 0 3px '+bg:'')+'" ></div>';
+  }).join('');
+  // ── 锁定状态 ──
+  if(!unlocked){
+    return _cdxDetail(
+      '<div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid #1a1a2e;margin-bottom:8px">'+
+        '<button style="'+btnS+'" onclick="_gemGroupNav(-1)">◀</button>'+
+        '<div style="text-align:center;font-size:12px">'+nameHtml+'</div>'+
+        '<button style="'+btnS+'" onclick="_gemGroupNav(1)">▶</button>'+
+      '</div>'+
+      '<div class="cdx-big-icon" style="margin:4px 0 6px">'+
+        '<div style="width:72px;height:72px;display:flex;align-items:center;justify-content:center;font-size:36px;background:#0d0d1a;border-radius:8px;border:1px solid #1e1e2e">🔒</div>'+
+      '</div>'+
+      '<div class="cdx-item-name" style="color:#555">???</div>'+
+      '<div style="color:#444;font-size:11px;text-align:center;padding:12px 0 4px">尚未遇到此品质的宝石怪</div>'+
+      '<div style="color:#333;font-size:10px;text-align:center;padding-bottom:8px">在游戏中遭遇后自动解锁</div>'+
+      '<div style="display:flex;justify-content:center;align-items:center;gap:5px;margin-top:12px">'+dots+'</div>'
+    );
+  }
+  // ── 已解锁状态 ──
   return _cdxDetail(
     // ── 顶部导航列 ──
     '<div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid #1a1a2e;margin-bottom:8px">'+
@@ -1189,9 +1215,34 @@ function renderCodexContent(){
       ?['boss_10','boss_10_cat','boss_10_dog','boss_20','boss_30']
       :['slime','goblin','skeleton','bat','orc','wolf','troll','demon','archer','gem_monsters'];
     items=keys.map(k=>({k}));
-    iconFn=it=>{ const m=_CODEX_ENEMY_META[it.k]||{icon:'?'}; return m.img?'<img src="'+m.img+'" class="cdx-enemy-img-sm">':m.icon; };
-    nameFn=it=>(_CODEX_ENEMY_META[it.k]||{name:'?'}).name;
-    detailFn=it=>_codexMonsterDetail(it.k);
+    iconFn=it=>{
+      // 宝石怪组：任意品质遭遇过即显示图标
+      if(it.k==='gem_monsters'){
+        const any=_GEM_Q_KEYS.some(q=>isEnemyEncountered('gem_q_'+q));
+        if(!any) return '❓';
+        return '💎';
+      }
+      if(!isEnemyEncountered(it.k)) return '❓';
+      const m=_CODEX_ENEMY_META[it.k]||{icon:'?'};
+      return m.img?'<img src="'+m.img+'" class="cdx-enemy-img-sm">':m.icon;
+    };
+    nameFn=it=>{
+      if(it.k==='gem_monsters'){
+        const any=_GEM_Q_KEYS.some(q=>isEnemyEncountered('gem_q_'+q));
+        return any?(_CODEX_ENEMY_META[it.k]||{name:'?'}).name:'???';
+      }
+      if(!isEnemyEncountered(it.k)) return '???';
+      return (_CODEX_ENEMY_META[it.k]||{name:'?'}).name;
+    };
+    detailFn=it=>{
+      if(it.k==='gem_monsters'){
+        const any=_GEM_Q_KEYS.some(q=>isEnemyEncountered('gem_q_'+q));
+        if(!any) return _cdxDetail('<div style="color:#555;padding:40px 0;text-align:center;font-size:14px">❓<br><br>尚未遇到宝石怪<br><span style="font-size:10px;color:#444;margin-top:6px;display:block">击败宝石怪后此处自动解锁</span></div>');
+        return _codexMonsterDetail(it.k);
+      }
+      if(!isEnemyEncountered(it.k)) return _cdxDetail('<div style="color:#555;padding:40px 0;text-align:center;font-size:14px">❓<br><br>尚未遇到此怪物<br><span style="font-size:10px;color:#444;margin-top:6px;display:block">遭遇后此处自动解锁</span></div>');
+      return _codexMonsterDetail(it.k);
+    };
   } else if(_codexTab==='char'){
     items=CLASSES;
     iconFn=c=>{ const m=_CODEX_CLASS_META[c.id]||{icon:'⚔'}; return m.img?'<img src="'+m.img+'" class="cdx-enemy-img-sm">':m.icon; };

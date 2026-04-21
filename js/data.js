@@ -200,9 +200,17 @@ function getWavePlan(n) {
 // ═══════════════════════════════════════════════════════
 // §0  版本号 & 更新公告  ← 每次更新只需修改这里
 // ═══════════════════════════════════════════════════════
-const GAME_VERSION = 'v0.9.3';
+const GAME_VERSION = 'v0.9.4';
 document.getElementById('load-version').textContent = GAME_VERSION;
 const CHANGELOG = [
+  { version:'v0.9.4', date:'2026-04-21', items:[
+    '图鉴怪物Tab新增"遇到后解锁"机制，未遭遇怪物显示❓/???，详情显示"尚未遇到此怪物"',
+    'save.js 新增 recordEncounteredEnemy / isEnemyEncountered / getEncounteredEnemies（localStorage: pw_encountered_enemies）',
+    'game.js 在 spawnEnemyAt 与 spawnGemMonster 生成时自动记录遭遇ID',
+    '宝石怪7种品质独立遭遇记录（gem_q_common ～ gem_q_ultimate），滑块每格单独锁定/解锁',
+    '已解锁品质显示图片+属性+掉落+弱点；锁定品质显示🔒占位图+"尚未遇到此品质的宝石怪"',
+    '品质进度点：已解锁显示品质色，锁定显示灰暗色，当前选中格带发光边框',
+  ]},
   { version:'v0.9.3', date:'2026-04-21', items:[
     '图鉴武器Tab全武器补充完整详细资料，对标炮台条目精细度',
     '每种武器新增：类型标注、精确伤害/CD数值、逐级效果说明（【等级效果】Lv1→Lv8）',

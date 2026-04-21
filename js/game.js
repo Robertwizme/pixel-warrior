@@ -667,6 +667,7 @@ function spawnGemMonster(entry, ex, ey) {
     poisonStacks: 0, poisonTick: 0,
     paralysisStacks: 0, paralysisTimer: 3,
   });
+  recordEncounteredEnemy('gem_q_' + q);
 }
 
 function spawnEnemyAt(entry, ex, ey) {
@@ -698,6 +699,7 @@ function spawnEnemyAt(entry, ex, ey) {
     poisonStacks: 0, poisonTick: 0,
     paralysisStacks: 0, paralysisTimer: 3,
   });
+  recordEncounteredEnemy(entry.type);
 }
 
 function spawnNextEnemy() {

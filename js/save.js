@@ -402,3 +402,18 @@ function renderBestRun() {
   }
 }
 
+// ── 已遭遇怪物记录 ──
+const _ENCOUNTERED_KEY = 'pw_encountered_enemies';
+function getEncounteredEnemies(){
+  try{ const r=localStorage.getItem(_ENCOUNTERED_KEY); return r?new Set(JSON.parse(r)):new Set(); }
+  catch{ return new Set(); }
+}
+function recordEncounteredEnemy(id){
+  if(!id) return;
+  const s=getEncounteredEnemies();
+  if(!s.has(id)){ s.add(id); localStorage.setItem(_ENCOUNTERED_KEY,JSON.stringify([...s])); }
+}
+function isEnemyEncountered(id){
+  return getEncounteredEnemies().has(id);
+}
+
