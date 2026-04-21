@@ -121,27 +121,6 @@
     <button class="btn icon-btn" id="btn-forge" style="border-color:#fd4;color:#fd4" title="武器强化">⚒</button>
   </div>
 
-  <!-- PWA hint: add to home screen (dismissed via localStorage) -->
-  <div id="pwa-hint" style="display:none;align-items:center;justify-content:center;gap:8px;
-    padding:6px 14px;background:rgba(74,140,255,0.12);border-bottom:1px solid #2a3a5a;
-    font-size:11px;color:#8af;cursor:pointer;user-select:none">
-    <span>📱 建議加入主畫面以全屏遊玩</span>
-    <span style="opacity:.4;font-size:14px;line-height:1">✕</span>
-  </div>
-  <script>
-  (function(){
-    var h = document.getElementById('pwa-hint');
-    if (!h) return;
-    if (!('ontouchstart' in window)) return; // desktop: never show
-    if (localStorage.getItem('pwa_hint_dismissed')) return;
-    h.style.display = 'flex';
-    h.addEventListener('click', function(){
-      h.style.display = 'none';
-      localStorage.setItem('pwa_hint_dismissed', '1');
-    });
-  })();
-  </script>
-
   <!-- Center: title + animated character -->
   <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px">
     <div class="game-title">像素勇士</div>
@@ -159,6 +138,29 @@
     <span id="menu-chat-latest" style="font-size:10px;color:#666;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">加载聊天中...</span>
     <span style="color:#555;font-size:9px">进入聊天室 ▶</span>
   </div>
+
+  <!-- PWA hint: add to home screen (shown up to 3 times) -->
+  <div id="pwa-hint" style="display:none;align-items:center;justify-content:center;gap:8px;
+    padding:6px 14px;background:rgba(74,140,255,0.10);border-top:1px solid #2a3a5a;
+    font-size:11px;color:#8af;cursor:pointer;user-select:none">
+    <span>📱 添加到主屏幕可全屏游玩</span>
+    <span style="opacity:.4;font-size:14px;line-height:1">✕</span>
+  </div>
+  <script>
+  (function(){
+    var h = document.getElementById('pwa-hint');
+    if (!h) return;
+    if (!('ontouchstart' in window)) return; // desktop: never show
+    var count = parseInt(localStorage.getItem('pwa_hint_count') || '0', 10);
+    if (count >= 3) return;
+    h.style.display = 'flex';
+    localStorage.setItem('pwa_hint_count', String(count + 1));
+    h.addEventListener('click', function(){
+      h.style.display = 'none';
+      localStorage.setItem('pwa_hint_count', '3'); // dismiss permanently
+    });
+  })();
+  </script>
 
   <!-- Bottom bar: version left, start button right -->
   <div style="display:flex;justify-content:flex-end;align-items:flex-end;padding:16px 24px;background:rgba(0,0,0,0.4);border-top:1px solid #1e2030">

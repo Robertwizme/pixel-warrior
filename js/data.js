@@ -200,28 +200,50 @@ function getWavePlan(n) {
 // ═══════════════════════════════════════════════════════
 // §0  版本号 & 更新公告  ← 每次更新只需修改这里
 // ═══════════════════════════════════════════════════════
-const GAME_VERSION = 'v0.9.0';
+const GAME_VERSION = 'v0.9.3';
 document.getElementById('load-version').textContent = GAME_VERSION;
 const CHANGELOG = [
+  { version:'v0.9.3', date:'2026-04-21', items:[
+    '图鉴武器Tab全武器补充完整详细资料，对标炮台条目精细度',
+    '每种武器新增：类型标注、精确伤害/CD数值、逐级效果说明（【等级效果】Lv1→Lv8）',
+    '散弹枪/加特林：补充每级弹数/单发伤害/CD精确值，Lv8双枪说明',
+    '剑阵/箭雨：补充每级剑数/轨道半径/箭数/落点半径完整数值',
+    '治疗无人机：补充每级回血速率/光圈CD/半径，三次扩圈节点说明',
+    '导弹无人机：补充三选一弹头（震荡/燃烧/双发）与三选一模式（原地/开路/狂轰）',
+    '狙击枪：补充三条核心路线（连射/重型/成长型）及Lv7终极弹说明',
+    '飞剑：补充三选一元素、Lv7收割选项、Lv8万剑归宗完整效果',
+    '模仿·玄武·炮台：完善类型标注与描述，炮台推荐补充穿透天赋说明',
+  ]},
+  { version:'v0.9.2', date:'2026-04-21', items:[
+    '统一将 chat.js 与 ui.js 中所有繁体中文文本转换为简体中文',
+    '不修改任何程序逻辑、变量名或 CSS 类名，仅转换字符串/注释/HTML模板内容',
+    '涉及字段：宝石怪名称、图鉴描述、弱点标签、强化工坊、活动页、掉落说明等',
+    '_cdxWeakness 颜色映射的 key 同步转为简体，与 enemy meta 弱点标签保持一致',
+  ]},
+  { version:'v0.9.1', date:'2026-04-21', items:[
+    '活动页「宝石怪首次出没」右栏加入品质图片轮播（◀▶ 切换7品质）',
+    '活动页图片 56px pixelated，破图自动隐藏，品质名称套用对应颜色',
+    '活动页轮播与活动列表选项完全独立，互不干扰',
+    '抽取 _GEM_QUALITY_TIERS 共用常量，图鉴与活动页共用同一份数据，消除重复',
+    '图片路徑统一：photo/Gem Monster/[English Quality] Gem Monster.png',
+  ]},
   { version:'v0.9.0', date:'2026-04-19', items:[
-    '強化工坊武器列表改為從 WEAPON_DEFS 動態讀取（_getForgeWeapList），新增武器後自動出現',
-    '圖鑑寶石怪改為7品質等級輪播設計（◀ 品質名 ▶），左右箭頭切換',
-    '7品質：普通/稀有/較稀有/史詩/傳說/神話/至臻，血量100→6000，出現波次8→26',
-    '每個品質顯示：品質色名稱、圖片（72px）、血量/速度/攻擊、掉落加成說明',
-    '至臻品質使用彩虹漸變文字特效，底部7點進度指示器顯示當前位置',
-    '圖片路徑：photo/Gem Monster/[En Quality] Gem Monster.png',
-    'v0.8.9 已包含：_getForgeWeapList 動態列表、_isGemGroup 合併條目',
+    '强化工坊武器列表改为從 WEAPON_DEFS 动态读取（_getForgeWeapList），新增武器後自动出現',
+    '图鉴宝石怪改为7品质等级轮播设计（◀ 品质名 ▶），左右箭头切换',
+    '7品质：普通/稀有/较稀有/史詩/传说/神话/至臻，血量100→6000，出現波次8→26',
+    '每个品质显示：品质色名稱、图片（72px）、血量/速度/攻击、掉落加成说明',
+    '至臻品质使用彩虹漸變文字特效，底部7點進度指示器显示當前位置',
   ]},
   { version:'v0.8.8', date:'2026-04-18', items:[
-    '新增寶石品質定義（GEM_QUALITIES）：普通/稀有/較稀有/史詩/傳說/神話/至臻，加成10~85+50%',
-    '新增寶石種類定義（GEM_TYPES）：攻擊/生命/防禦/速度/冷卻/幸運/專屬',
-    '新增7種寶石怪（ENEMY_TYPES）：血量100→6000·移速58·攻擊低·isGemMonster=true',
-    '寶石怪圖片預載（IMG_GEM_MONSTERS）：photo/Gem Monster/*.png 共7張',
-    '寶石怪生成配置（GEM_SPAWN_CONFIG）：每波5%機率，品質隨波次遞增，死亡掉落1顆寶石',
-    '新增器靈定義（SPIRIT_DEFS）：11種武器各對應專屬器靈',
-    '器靈升星系統：1/2/4/8/16顆專屬寶石，每星+25%傷害/-5%冷卻',
-    '新增武器升級定義（WEAPON_ENHANCE）：+1%/級·上限100·每10級需突破·消耗粉塵',
-    '粉塵公式：遊戲結束按波次×5+擊殺×0.1獲得',
+    '新增宝石品质定义（GEM_QUALITIES）：普通/稀有/较稀有/史詩/传说/神话/至臻，加成10~85+50%',
+    '新增宝石种类定义（GEM_TYPES）：攻击/生命/防御/速度/冷却/幸运/专属',
+    '新增7種宝石怪（ENEMY_TYPES）：血量100→6000·移速58·攻击低·isGemMonster=true',
+    '宝石怪图片预载（IMG_GEM_MONSTERS）：photo/Gem Monster/*.png 共7張',
+    '宝石怪生成配置（GEM_SPAWN_CONFIG）：每波5%概率，品质随波次递增，死亡掉落1颗宝石',
+    '新增器灵定义（SPIRIT_DEFS）：11种武器各对应专属器灵',
+    '器灵升星系统：1/2/4/8/16颗专属宝石，每星+25%伤害/-5%冷却',
+    '新增武器升级定义（WEAPON_ENHANCE）：+1%/級·上限100·每10級需突破·消耗粉尘',
+    '粉尘公式：游戏结束按波次×5+击杀×0.1获得',
   ]},
   { version:'v0.8.7', date:'2026-04-17', items:[
     '炮台武器 Lv1 攻速提高40%：cd 由 1.2 降低至 0.72',
@@ -246,7 +268,7 @@ const CHANGELOG = [
     'CSS 新增 landscape 强制隐藏 + portrait+max-width:900px 强制显示（!important 确保覆盖内联样式）',
     '移除 screen-orientation meta 强制横屏声明，支持横竖屏均可正常缩放',
     'html/body 补充 width/height:100% 确保全屏铺满',
-    '旋转提示文字更新为「🔄 請旋轉手機橫屏遊玩」',
+    '旋转提示文字更新为「🔄 請旋转手机橫屏遊玩」',
   ]},
   { version:'v0.8.2', date:'2026-04-16', items:[
     '图鉴·武器Tab 炮台词条更新：补充各等级效果说明/弱点提示/搭配建议',
@@ -269,20 +291,20 @@ const CHANGELOG = [
     '全屏面板：设定/成就/商店等10个面板改为100vw×100vh显示',
   ]},
   { version:'v0.7.9', date:'2026-04-11', items:[
-    '修復致命bug：波次公告（waveAnnounce）timer遞減誤放在render()內，導致ReferenceError炸掉遊戲迴圈，玩家無法移動且怪物不生成',
-    'timer遞減移至gameLoop update區塊（有dt的地方），render()僅負責讀值繪製',
-    '順帶修正GAME_VERSION版本號與CHANGELOG同步',
+    '修复致命bug：波次公告（waveAnnounce）timer遞減誤放在render()內，导致ReferenceError炸掉游戏循环，玩家无法移动且怪物不生成',
+    'timer遞減移至gameLoop update區塊（有dt的地方），render()僅负责读值绘制',
+    '顺带修正GAME_VERSION版本号与CHANGELOG同步',
   ]},
   { version:'v0.7.8', date:'2026-04-11', items:[
-    '怪物實體圖片：史萊姆/哥布林/骷髏兵改用真實圖片顯示（canvas與圖鑑同步）',
-    '圖鑑雙欄佈局：左欄縮圖網格4列，右欄詳細資訊撐滿剩餘空間',
-    '全屏面板：設定/成就/商店/公告/信箱/活動/鑄造/好友/抽獎/圖鑑共10個面板改為100vw×100vh',
-    '抽獎面板改版：左側縱向獎池選單（未解鎖置底灰顯），右側顯示所選獎池內容與抽取按鈕',
-    '玄武獎池常駐顯示：第8波通關前灰色鎖定並顯示解鎖條件，通關後自動啟用',
+    '怪物实体图片：史莱姆/哥布林/骷髅兵改用真實图片显示（canvas与图鉴同步）',
+    '图鉴双栏布局：左欄缩图网格4列，右欄详细资讯撑满剩余空間',
+    '全屏面板：设定/成就/商店/公告/信箱/活动/铸造/好友/抽奖/图鉴共10個面板改为100vw×100vh',
+    '抽奖面板改版：左側纵向奖池选单（未解锁置底灰显），右側显示所选奖池内容与抽取按钮',
+    '玄武奖池常驻显示：第8波通关前灰色锁定並显示解锁條件，通关後自动启用',
     '每波怪物數量提升：初期≥10、中期≥20、後期≥30，Boss波附帶4~8護衛',
-    '傷害分類強化：物理/法術/槍械各自獨立加成卡牌（+30%，上限2×），同卡不重複出現',
-    '出生預警系統：怪物生成前0.8秒顯示紅色✕警示，玩家過近時自動換位重試',
-    '波次公告動畫：每波開始時全屏顯示「敵人來襲！」/「⚠ 一大波」/「☠ BOSS來了！」',
+    '伤害分类强化：物理/法術/槍械各自獨立加成卡牌（+30%，上限2×），同卡不重複出現',
+    '出生預警系统：怪物生成前0.8秒显示紅色✕警示，玩家過近時自动換位重試',
+    '波次公告动画：每波開始時全屏显示「敵人來襲！」/「⚠ 一大波」/「☠ BOSS來了！」',
   ]},
   { version:'v0.7.7', date:'2026-04-06', items:[
     '伤害数字：每次击中显示浮动伤害数字（300+红/100+黄/普通白）',
@@ -775,39 +797,39 @@ const SUPPLY_TALENTS = [
 // §G1  GEM SYSTEM — Qualities & Types
 // ═══════════════════════════════════════════════════════
 
-// ── 品質定義 ─────────────────────────────────────────────
+// ── 品质定义 ─────────────────────────────────────────────
 const GEM_QUALITIES = {
   common:    { name:'普通', color:'#ffffff', textColor:'#aaaaaa', bonus:10,  extraMult:1.0 },
   rare:      { name:'稀有', color:'#55ff55', textColor:'#44ee44', bonus:15,  extraMult:1.0 },
-  uncommon:  { name:'較稀有',color:'#5599ff', textColor:'#5599ff', bonus:25,  extraMult:1.0 },
+  uncommon:  { name:'较稀有',color:'#5599ff', textColor:'#5599ff', bonus:25,  extraMult:1.0 },
   epic:      { name:'史詩', color:'#aa55ff', textColor:'#aa55ff', bonus:40,  extraMult:1.0 },
-  legendary: { name:'傳說', color:'#ffff55', textColor:'#ffee44', bonus:60,  extraMult:1.0 },
-  mythic:    { name:'神話', color:'#ff5555', textColor:'#ff4444', bonus:85,  extraMult:1.0 },
+  legendary: { name:'传说', color:'#ffff55', textColor:'#ffee44', bonus:60,  extraMult:1.0 },
+  mythic:    { name:'神话', color:'#ff5555', textColor:'#ff4444', bonus:85,  extraMult:1.0 },
   pristine:  { name:'至臻', color:'#ff88ff', textColor:'#ff88ff', bonus:85,  extraMult:1.5 },
   // 至臻：基礎加成85，套用1.5×額外倍率 → 實際加成85×1.5=127.5（四捨五入128）
 };
 const GEM_QUALITY_ORDER = ['common','rare','uncommon','epic','legendary','mythic','pristine'];
 
-// ── 種類定義 ─────────────────────────────────────────────
-// stat: 對應 gs.player 的屬性名；exclusive 另行處理
+// ── 种类定义 ─────────────────────────────────────────────
+// stat: 对应 gs.player 的屬性名；exclusive 另行處理
 const GEM_TYPES = {
-  atk:       { name:'攻擊', icon:'⚔',  stat:'dmgMult' },
+  atk:       { name:'攻击', icon:'⚔',  stat:'dmgMult' },
   hp:        { name:'生命', icon:'❤',  stat:'maxHp' },
-  def:       { name:'防禦', icon:'🛡', stat:'baseDmgRed' },
+  def:       { name:'防御', icon:'🛡', stat:'baseDmgRed' },
   spd:       { name:'速度', icon:'👟', stat:'spd' },
-  cd:        { name:'冷卻', icon:'⚡', stat:'cdMult' },
-  luck:      { name:'幸運', icon:'🍀', stat:'luck' },
-  exclusive: { name:'專屬', icon:'🔮', stat:null }, // 器靈升星材料
+  cd:        { name:'冷却', icon:'⚡', stat:'cdMult' },
+  luck:      { name:'幸运', icon:'🍀', stat:'luck' },
+  exclusive: { name:'专属', icon:'🔮', stat:null }, // 器灵升星材料
 };
 const GEM_TYPE_KEYS = ['atk','hp','def','spd','cd','luck','exclusive'];
 
-// ── 寶石怪生成配置 ──────────────────────────────────────
-// spawnChance: 每波有 5% 機率混入一隻寶石怪
-// qualityWeights: 各品質機率權重（依波次遞增高品質機率）
+// ── 宝石怪生成配置 ──────────────────────────────────────
+// spawnChance: 每波有 5% 概率混入一隻宝石怪
+// qualityWeights: 各品质概率權重（依波次递增高品质概率）
 const GEM_SPAWN_CONFIG = {
   spawnChance: 0.05,
   qualityWeights(waveNum) {
-    // 陣列對應 GEM_QUALITY_ORDER: common/rare/uncommon/epic/legendary/mythic/pristine
+    // 数组对应 GEM_QUALITY_ORDER: common/rare/uncommon/epic/legendary/mythic/pristine
     if (waveNum <=  5) return [60, 30, 10,  0,  0,  0,  0];
     if (waveNum <= 10) return [35, 30, 20, 10,  5,  0,  0];
     if (waveNum <= 15) return [20, 25, 25, 15, 10,  5,  0];
@@ -815,13 +837,13 @@ const GEM_SPAWN_CONFIG = {
     if (waveNum <= 25) return [ 5, 10, 20, 25, 20, 15,  5];
     return                    [ 2,  5, 13, 20, 25, 25, 10];
   },
-  // 掉落寶石品質：最高等於怪物品質，有機率降一階
+  // 掉落宝石品质：最高等於怪物品质，有概率降一階
   rollDropQuality(monsterQuality) {
     const idx = GEM_QUALITY_ORDER.indexOf(monsterQuality);
     const drop = Math.random() < 0.4 ? Math.max(0, idx - 1) : idx;
     return GEM_QUALITY_ORDER[drop];
   },
-  // 隨機非專屬種類
+  // 随机非专属种类
   rollDropType() {
     const pool = GEM_TYPE_KEYS.filter(t => t !== 'exclusive');
     return pool[Math.floor(Math.random() * pool.length)];
@@ -829,10 +851,10 @@ const GEM_SPAWN_CONFIG = {
 };
 
 // ═══════════════════════════════════════════════════════
-// §G2  SPIRIT SYSTEM — 器靈定義
+// §G2  SPIRIT SYSTEM — 器灵定义
 // ═══════════════════════════════════════════════════════
 
-// 每種武器對應一個器靈；升星消耗「專屬」寶石
+// 每种武器对应一個器灵；升星消耗「专属」宝石
 const SPIRIT_DEFS = {
   shotgun:        { name:'散弹精灵',    icon:'🔫', weapId:'shotgun' },
   gatling:        { name:'加特林精灵',  icon:'🌀', weapId:'gatling' },
@@ -846,34 +868,34 @@ const SPIRIT_DEFS = {
   black_tortoise: { name:'玄武精灵',    icon:'🐢', weapId:'black_tortoise' },
   turret:         { name:'炮台精灵',    icon:'⚙',  weapId:'turret' },
 };
-// 升至第 N 星消耗的「專屬寶石」數量（index 0 = 升 1 星）
+// 升至第 N 星消耗的「专属宝石」數量（index 0 = 升 1 星）
 const SPIRIT_STAR_COST = [1, 2, 4, 8, 16];
-// 每星效果：武器傷害 +25%，冷卻 -5%
+// 每星效果：武器伤害 +25%，冷却 -5%
 const SPIRIT_STAR_BONUS = { dmgPct: 0.25, cdReduce: 0.05 };
 
 // ═══════════════════════════════════════════════════════
-// §G3  WEAPON ENHANCE — 武器升級定義
+// §G3  WEAPON ENHANCE — 武器升级定义
 // ═══════════════════════════════════════════════════════
 
 const WEAPON_ENHANCE = {
   maxLevel:        100,
   breakpointEvery: 10,      // 每10級需先突破才能繼續
-  statPerLevel:    0.01,    // 每級 +1% 武器傷害/冷卻
+  statPerLevel:    0.01,    // 每级 +1% 武器伤害/冷却
 
-  // 正常升級粉塵消耗（依等級階段遞增）
+  // 正常升级粉尘消耗（依等级階段递增）
   dustCost(lv) {
-    // tier 0→9: 10粉塵, 10→19: 25, 20→29: 45, 30→39: 70 …
+    // tier 0→9: 10粉尘, 10→19: 25, 20→29: 45, 30→39: 70 …
     const tier = Math.floor(lv / 10);
     return 10 + tier * 15 + tier * (tier - 1) * 2;
   },
 
-  // 突破消耗粉塵（突破第 N 個節點，n = lv/10，從 1 起算）
+  // 突破消耗粉尘（突破第 N 個节点，n = lv/10，從 1 起算）
   breakthroughDust(lv) {
     const tier = Math.floor(lv / 10); // 1/2/3…10
     return tier * 50;
   },
 
-  // 遊戲結束獲得粉塵公式
+  // 游戏结束获得粉尘公式
   dustRewardPerWave: 5,
   dustRewardPerKill: 0.1,
 };

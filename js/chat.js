@@ -356,6 +356,33 @@ document.getElementById('btn-profile-back').addEventListener('click',()=>{
 updateMenuAvatar();
 
 // §ActivityPage - 宝石怪首次出没活动
+// ── 共用：7品质等级资料（图鉴 + 活动页共用）──
+const _GEM_QUALITY_TIERS=[
+  { name:'普通宝石怪',  img:'photo/Gem Monster/Common Gem Monster.png',
+    color:'#ccc', hp:100,  spd:60, dmg:5,  wave:'第8波起偶尔出现',
+    drop:'普通品质宝石（镶嵌加成 +10%）' },
+  { name:'稀有宝石怪',  img:'photo/Gem Monster/Rare Gem Monster.png',
+    color:'#4f8', hp:200,  spd:58, dmg:8,  wave:'第10波起偶尔出现',
+    drop:'稀有品质宝石（镶嵌加成 +20%）' },
+  { name:'较稀有宝石怪',img:'photo/Gem Monster/Uncommon Gem Monster.png',
+    color:'#4af', hp:400,  spd:55, dmg:12, wave:'第12波起偶尔出现',
+    drop:'较稀有品质宝石（镶嵌加成 +35%）' },
+  { name:'史诗宝石怪',  img:'photo/Gem Monster/Epic Gem Monster.png',
+    color:'#a4f', hp:800,  spd:50, dmg:18, wave:'第15波起偶尔出现',
+    drop:'史诗品质宝石（镶嵌加成 +55%）' },
+  { name:'传说宝石怪',  img:'photo/Gem Monster/Legendary Gem Monster.png',
+    color:'#fd4', hp:1500, spd:48, dmg:25, wave:'第18波起稀少出现',
+    drop:'传说品质宝石（镶嵌加成 +70%）' },
+  { name:'神话宝石怪',  img:'photo/Gem Monster/Mythic Gem Monster.png',
+    color:'#f84', hp:3000, spd:45, dmg:35, wave:'第22波起稀少出现',
+    drop:'神话品质宝石（镶嵌加成 +85%）' },
+  { name:'至臻宝石怪',  img:'photo/Gem Monster/Ultimate Gem Monster.png',
+    color:'#f4f', hp:6000, spd:42, dmg:50, wave:'第26波起极少出现',
+    drop:'至臻品质宝石（镶嵌加成 +85% · 额外解锁50%特效）', rainbow:true },
+];
+let _actGemQIdx=0;
+function _actGemQNav(dir){ _actGemQIdx=(_actGemQIdx+dir+7)%7; renderActivityPage(); }
+
 const _GEM_ACT=[
   {icon:'❤', name:'生命宝石怪', wave:'第8波起',  drop:'生命宝石', dropDesc:'镶嵌后 +30 最大HP',    wk:'高DPS持续输出', wkTip:'血量极高，推荐飞剑/加特林高频输出'},
   {icon:'🟢', name:'幸运宝石怪', wave:'第10波起', drop:'幸运宝石', dropDesc:'镶嵌后 +20 幸运值',   wk:'任意武器均有效', wkTip:'无特殊行为，属性中等，击败还可能额外掉金币'},
@@ -383,18 +410,42 @@ function renderActivityPage(){
           '</div>').join('')+
         '</div>'+
         '<div style="flex:1;overflow-y:auto;padding-left:4px">'+
-          '<div style="font-size:24px;margin-bottom:4px">'+ev.icon+'</div>'+
-          '<div style="font-size:13px;color:#eee;font-weight:700;margin-bottom:2px">'+ev.name+'</div>'+
-          '<div style="font-size:9px;color:#666;margin-bottom:10px">📍 首次出没：'+ev.wave+'</div>'+
-          '<div style="background:#0d0d1a;border:1px solid #1a2a1a;border-radius:6px;padding:9px 10px;margin-bottom:8px">'+
-            '<div style="font-size:10px;color:#4fd;font-weight:700;margin-bottom:4px">💎 掉落奖励</div>'+
+          // ── 品质图片轮播 ──
+          (function(){
+            const gq=_GEM_QUALITY_TIERS[_actGemQIdx];
+            const btnS='font-size:16px;background:none;border:none;color:#555;cursor:pointer;padding:1px 8px;font-family:monospace;line-height:1';
+            const nameStyle=gq.rainbow
+              ?'background:linear-gradient(90deg,#f44,#f84,#fd4,#4f8,#4af,#a4f,#f4f);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-weight:700'
+              :'color:'+gq.color+';font-weight:700';
+            const dots=_GEM_QUALITY_TIERS.map((q,i)=>
+              '<div style="width:6px;height:6px;border-radius:50%;background:'+(i===_actGemQIdx?q.color:'#1e1e2e')+';border:1px solid '+(i===_actGemQIdx?q.color:'#333')+'"></div>'
+            ).join('');
+            return (
+              '<div style="background:#080814;border:1px solid #1a1a2e;border-radius:6px;padding:7px 6px 6px;margin-bottom:8px">'+
+                '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">'+
+                  '<button style="'+btnS+'" onclick="_actGemQNav(-1)">◀</button>'+
+                  '<span style="font-size:11px;'+nameStyle+'">'+gq.name+'</span>'+
+                  '<button style="'+btnS+'" onclick="_actGemQNav(1)">▶</button>'+
+                '</div>'+
+                '<div style="text-align:center;margin:4px 0">'+
+                  '<img src="'+gq.img+'" style="width:56px;height:56px;image-rendering:pixelated;object-fit:contain" onerror="this.style.display=\'none\'">'+
+                '</div>'+
+                '<div style="display:flex;justify-content:center;gap:4px;margin-top:4px">'+dots+'</div>'+
+              '</div>'
+            );
+          })() +
+          // ── 选中活动事件资讯 ──
+          '<div style="font-size:12px;color:#eee;font-weight:700;margin-bottom:2px">'+ev.name+'</div>'+
+          '<div style="font-size:9px;color:#666;margin-bottom:8px">📍 首次出没: '+ev.wave+'</div>'+
+          '<div style="background:#0d0d1a;border:1px solid #1a2a1a;border-radius:6px;padding:8px 10px;margin-bottom:7px">'+
+            '<div style="font-size:10px;color:#4fd;font-weight:700;margin-bottom:3px">💎 掉落奖励</div>'+
             '<div style="font-size:11px;color:#eee">'+ev.drop+'</div>'+
-            '<div style="font-size:9px;color:#888;margin-top:3px">'+ev.dropDesc+'</div>'+
+            '<div style="font-size:9px;color:#888;margin-top:2px">'+ev.dropDesc+'</div>'+
           '</div>'+
-          '<div style="background:#0d0d1a;border:1px solid #2a1a1a;border-radius:6px;padding:9px 10px">'+
-            '<div style="font-size:10px;color:#f84;font-weight:700;margin-bottom:4px">⚠ 弱点与攻略</div>'+
+          '<div style="background:#0d0d1a;border:1px solid #2a1a1a;border-radius:6px;padding:8px 10px">'+
+            '<div style="font-size:10px;color:#f84;font-weight:700;margin-bottom:3px">⚠ 弱点与攻略</div>'+
             '<div style="font-size:10px;color:#ccc">推荐：'+ev.wk+'</div>'+
-            '<div style="font-size:9px;color:#666;margin-top:3px">'+ev.wkTip+'</div>'+
+            '<div style="font-size:9px;color:#666;margin-top:2px">'+ev.wkTip+'</div>'+
           '</div>'+
         '</div>'+
       '</div>'+
@@ -735,36 +786,36 @@ const _CODEX_ENEMY_META = {
   slime:      { icon:'🟢', img:'photo/Slime.png',    name:'史莱姆',    waveFirst:1,  waveDesc:'第1波起出现，全程都有',             special:'无特殊行为，直线冲向玩家，数量最多',                        desc:'成群结队的绿色软体怪，血薄速慢，适合练手阶段',
     weakness:{tags:['穿透','散射'], tip:'成群聚集，穿透类武器可一次贯穿多只；推荐：散弹枪（多发散射）、狙击枪（开启穿透后）'} },
   goblin:     { icon:'👺', img:'photo/goblin.png',   name:'哥布林',    waveFirst:2,  waveDesc:'第2波起出现',                       special:'移速较快，常与史莱姆混编出现',                               desc:'狡猾的小妖精，速度较快，常与史莱姆混编出现',
-    weakness:{tags:['範圍'], tip:'移速快但分布密集，大范围AoE武器覆盖效果佳；推荐：箭雨、剑阵、飞剑'} },
+    weakness:{tags:['范围'], tip:'移速快但分布密集，大范围AoE武器覆盖效果佳；推荐：箭雨、剑阵、飞剑'} },
   skeleton:   { icon:'💀', img:'photo/Skeleton.png', name:'骷髅兵',    waveFirst:4,  waveDesc:'第4波起出现',                       special:'无特殊行为，均衡型普通怪',                                    desc:'不死亡灵，血量中等，攻击力适中，是中期的标准威胁',
-    weakness:{tags:['法術'], tip:'无特殊抗性，法术系武器效率最高；推荐：箭雨、模仿者（闪电/火球形态）'} },
+    weakness:{tags:['法术'], tip:'无特殊抗性，法术系武器效率最高；推荐：箭雨、模仿者（闪电/火球形态）'} },
   bat:        { icon:'🦇', img:'photo/bat.png', name:'吸血蝙蝠',  waveFirst:5,  waveDesc:'第5波起出现',                       special:'移动速度极高，难以用慢速武器击中，成群时威胁极大',              desc:'移速极快，难以追踪，成群来袭时威胁极大',
-    weakness:{tags:['追蹤'], tip:'移速极快难以用直线武器命中，追踪类武器可精准锁定；推荐：导弹无人机'} },
+    weakness:{tags:['追踪'], tip:'移速极快难以用直线武器命中，追踪类武器可精准锁定；推荐：导弹无人机'} },
   orc:        { icon:'👹', img:'photo/orc.png', name:'兽人勇士',  waveFirst:6,  waveDesc:'第6波起出现',                       special:'高HP高伤害，需优先消灭，避免贴身',                              desc:'强壮的战士，高血量高伤害，但行动迟缓',
-    weakness:{tags:['持續','穿透'], tip:'血量高需要持续输出，移速慢易被狙击单点；推荐：狙击枪、加特林持续压制'} },
+    weakness:{tags:['持续','穿透'], tip:'血量高需要持续输出，移速慢易被狙击单点；推荐：狙击枪、加特林持续压制'} },
   wolf:       { icon:'🐺', name:'野狼',      waveFirst:8,  waveDesc:'第8波起出现，中后期大量出现',       special:'极速冲锋，成群围攻，大范围AoE武器克制效果好',                  desc:'速度极快的猛兽，以群体围攻方式猎杀目标',
-    weakness:{tags:['範圍','爆炸'], tip:'群体冲锋覆盖范围大，爆炸/AoE武器可一次清群；推荐：导弹无人机、箭雨、飞剑'} },
+    weakness:{tags:['范围','爆炸'], tip:'群体冲锋覆盖范围大，爆炸/AoE武器可一次清群；推荐：导弹无人机、箭雨、飞剑'} },
   troll:      { icon:'🗿', name:'石魔',      waveFirst:12, waveDesc:'第12波起出现',                      special:'血量极高但移速最慢，适合用射程武器持续消耗',                    desc:'岩石巨型生物，血量庞大但移动极为迟缓',
     weakness:{tags:['任意'], tip:'移速极慢，任何武器都有充足时间持续输出；保持距离慢慢磨，推荐：狙击枪远程点射'} },
   demon:      { icon:'😈', name:'恶魔',      waveFirst:13, waveDesc:'第13波起出现，后期成为主力',        special:'均衡属性，后期数量极多，需要强力AoE才能有效应对',               desc:'来自地狱的存在，各属性均衡，综合威胁极高',
-    weakness:{tags:['範圍'], tip:'后期数量极多，需要强力AoE才能有效清场；推荐：飞剑、剑阵、箭雨大范围覆盖'} },
+    weakness:{tags:['范围'], tip:'后期数量极多，需要强力AoE才能有效清场；推荐：飞剑、剑阵、箭雨大范围覆盖'} },
   archer:     { icon:'🏹', name:'弓箭手',    waveFirst:6,  waveDesc:'第6波起混入编队（2～7只）',         special:'保持约180px距离持续射箭，玄武护盾可抵挡其弓箭，近战武器难以追上', desc:'远程攻击型怪物，保持安全距离向玩家射箭',
     weakness:{tags:['近身'], tip:'近距离时无法维持射箭，快速靠近可打断其攻击节奏；推荐：提高移速快速接近，玄武护盾可格挡弓箭'} },
   boss_10:    { icon:'🐉', name:'暗影龙王',  waveFirst:10, waveDesc:'第10波随机50%概率出现',             special:'生命值极高，移速较慢，优先叠DPS，剑阵/散弹对其效果佳',          desc:'第10波Boss之一，速度较慢但生命极高',
-    weakness:{tags:['持續','高DPS'], tip:'速度较慢是最大弱点，保持距离持续输出即可；推荐：狙击枪+剑阵持续叠伤'} },
+    weakness:{tags:['持续','高DPS'], tip:'速度较慢是最大弱点，保持距离持续输出即可；推荐：狙击枪+剑阵持续叠伤'} },
   boss_10_cat:{ icon:'🐱', name:'暴食猫王',  waveFirst:10, waveDesc:'第10波随机50%概率出现',             special:'速度快、伤害高，需保持移动并配合治疗无人机续命',                desc:'第10波Boss之一，攻击频率高，行动敏捷',
-    weakness:{tags:['範圍','追蹤'], tip:'速度快需要广覆盖武器；推荐：导弹无人机锁定+大范围AoE持续压制'} },
+    weakness:{tags:['范围','追踪'], tip:'速度快需要广覆盖武器；推荐：导弹无人机锁定+大范围AoE持续压制'} },
   boss_10_dog:{ icon:'🐶', name:'狂野犬王',  waveFirst:10, waveDesc:'第10波随机50%概率出现',             special:'三个10波Boss中最危险，高速+高伤，建议配合闪避天赋',             desc:'第10波Boss之一，移速最快，伤害最高，极难躲避',
-    weakness:{tags:['追蹤'], tip:'移速最快的Boss，追踪类武器是核心克制手段；推荐：导弹无人机，配合闪避天赋求生'} },
+    weakness:{tags:['追踪'], tip:'移速最快的Boss，追踪类武器是核心克制手段；推荐：导弹无人机，配合闪避天赋求生'} },
   boss_20:    { icon:'🌋', name:'熔岩霸主',  waveFirst:20, waveDesc:'第20波固定出现',                    special:'HP 14000、伤害75，需满级武器+多重天赋方可正面硬撼',             desc:'第20波大Boss，体型巨大，需要全套强化才能应对',
-    weakness:{tags:['全輸出'], tip:'HP 14000需要满级武器全力输出；推荐：全套武器升满+多重天赋叠加，狂战士/狙神职业效果佳'} },
+    weakness:{tags:['全输出'], tip:'HP 14000需要满级武器全力输出；推荐：全套武器升满+多重天赋叠加，狂战士/狙神职业效果佳'} },
   boss_30:    { icon:'🌌', name:'虚空领主',  waveFirst:30, waveDesc:'第30波最终Boss',                    special:'HP 38000、伤害130，击败后通关游戏，推荐飞剑+天才搭配',          desc:'最终Boss，最强大的存在，击败它意味着征服全部30波',
-    weakness:{tags:['全輸出'], tip:'HP 38000终局Boss；推荐：飞剑+天才职业搭配，开局备好主动技能，全力爆发'} },
+    weakness:{tags:['全输出'], tip:'HP 38000终局Boss；推荐：飞剑+天才职业搭配，开局备好主动技能，全力爆发'} },
   // ── 宝石怪 (Gem Monsters) ──
   gem_life:   {icon:'❤', name:'生命宝石怪', waveFirst:8,  waveDesc:'第8波起偶尔出现（普通怪组内随机混入）',
     special:'血量极高，击败后有概率掉落生命宝石，可在强化工坊镶嵌使用',
     desc:'充满生命力的红色宝石形态怪物，血量远高于同波普通怪，是最早出现的宝石怪',
-    weakness:{tags:['持續','高DPS'],tip:'血量极高，需持续高输出；推荐：飞剑+加特林，或满级狙击枪单点'},
+    weakness:{tags:['持续','高DPS'],tip:'血量极高，需持续高输出；推荐：飞剑+加特林，或满级狙击枪单点'},
     _stats:{hp:600,spd:50,dmg:10,xp:25}},
   gem_luck:   {icon:'🟢', name:'幸运宝石怪', waveFirst:10, waveDesc:'第10波起偶尔出现',
     special:'击败时有50%概率额外掉落金币，且必定掉落幸运宝石碎片',
@@ -774,7 +825,7 @@ const _CODEX_ENEMY_META = {
   gem_thunder:{icon:'🟡', name:'迅雷宝石怪', waveFirst:12, waveDesc:'第12波起偶尔出现',
     special:'移动速度是同波最快的怪物，难以用直线武器命中',
     desc:'充满雷电能量的黄色宝石怪，极速移动，击败后掉落速度宝石',
-    weakness:{tags:['追蹤','範圍'],tip:'移速极快，推荐导弹无人机追踪锁定，或飞剑全屏自动覆盖'},
+    weakness:{tags:['追踪','范围'],tip:'移速极快，推荐导弹无人机追踪锁定，或飞剑全屏自动覆盖'},
     _stats:{hp:350,spd:120,dmg:9,xp:22}},
   gem_fire:   {icon:'🔴', name:'火焰宝石怪', waveFirst:15, waveDesc:'第15波起偶尔出现',
     special:'受击时散射短距离火焰微粒，对近距离玩家造成额外伤害',
@@ -784,12 +835,12 @@ const _CODEX_ENEMY_META = {
   gem_frost:  {icon:'🔵', name:'冰霜宝石怪', waveFirst:18, waveDesc:'第18波起偶尔出现',
     special:'移速极慢，但受击时对周围玩家附加冰霜减速效果（0.5秒）',
     desc:'凝结冰霜的蓝色宝石怪，行动迟缓，但靠近击杀有减速风险',
-    weakness:{tags:['遠程','火焰'],tip:'移速极慢，保持距离用远程武器；火焰系武器有额外克制效果'},
+    weakness:{tags:['远程','火焰'],tip:'移速极慢，保持距离用远程武器；火焰系武器有额外克制效果'},
     _stats:{hp:650,spd:30,dmg:18,xp:28}},
   gem_arcane: {icon:'🟣', name:'秘法宝石怪', waveFirst:20, waveDesc:'第20波起偶尔出现',
     special:'在玩家80px范围内持续释放减速气场，使玩家移动速度降低25%',
     desc:'散发紫色魔力的宝石怪，靠近会有减速惩罚，击败后掉落急速宝石',
-    weakness:{tags:['遠程'],tip:'靠近有减速陷阱，强烈推荐保持距离；狙击枪远程点射最佳'},
+    weakness:{tags:['远程'],tip:'靠近有减速陷阱，强烈推荐保持距离；狙击枪远程点射最佳'},
     _stats:{hp:550,spd:45,dmg:20,xp:32}},
   gem_crit:   {icon:'⭐', name:'暴击宝石怪', waveFirst:25, waveDesc:'第25波起偶尔出现（后期精英）',
     special:'攻击玩家时有25%概率暴击，造成2倍伤害，是伤害最高的宝石怪',
@@ -831,39 +882,83 @@ const _CODEX_CLASS_META = {
 };
 
 const _CODEX_WEAPON_META = {
-  shotgun:     { baseDmg:'10 → 38', baseCD:'1.4s → 1.1s', range:'近距扇形',
-    desc:'扇形同时射出5颗子弹，近战强势，范围广，新手友好。Lv8解锁双枪模式同时射出两组。',
-    recommend:'铁匠（+50%物理）· 力量强化 · 急速出手 · 时间裂隙' },
-  gatling:     { baseDmg:'16 → 56', baseCD:'0.9s → 0.78s/发', range:'中远直线',
-    desc:'高速8连发弹幕，连发后短暂停顿，远距持续压制，后期DPS极高。Lv8解锁双枪齐射。',
-    recommend:'铁匠（+50%物理）· 急速出手 · 混沌之力 · 时间裂隙' },
-  sword:       { baseDmg:'10 → 42 /把', baseCD:'持续旋转', range:'环绕 40-52px',
-    desc:'生成2-5把轨道剑绕玩家旋转，自动打击周围所有敌人，无需瞄准，贴脸战斗最优。',
-    recommend:'法师（+50%魔法）· 扩展攻击 · 元素共鸣 · 多重射击' },
-  arrow_rain:  { baseDmg:'20 → 66', baseCD:'2.4s → 1.3s', range:'大范围落点',
-    desc:'从空中密集落下箭雨，范围覆盖广，适合清理密集群怪，冷却时间较长。',
-    recommend:'法师（+50%魔法）· 扩展攻击 · 混沌之力 · 元素共鸣' },
-  heal_drone:  { baseDmg:'治疗 4→16 HP/s', baseCD:'光圈CD: 10→5s', range:'光圈38-50px',
-    desc:'治疗无人机，定期在脚下生成治疗光圈，站在光圈内持续回血，超强续战能力。',
-    recommend:'强化体魄 · 即时治愈 · 疾风步法（保持在光圈内移动）' },
-  missile_drone:{ baseDmg:'50+（爆炸AOE）', baseCD:'5s / 轮', range:'爆炸半径20px',
-    desc:'每5秒发射6枚导弹自动锁定最近敌人，落点爆炸AOE，可选原地/开路/狂轰三种模式。',
-    recommend:'扩展攻击 · 混沌之力 · 多重射击 · 元素共鸣' },
-  sniper:      { baseDmg:'120（基础）', baseCD:'3.5s → 2.5s', range:'全屏穿透',
-    desc:'超高单体伤害，每发穿透1次，可升级为连射/重狙/成长型/合金弹等多条流派。',
-    recommend:'西蒙·海耶（+50%枪械）· 急速出手 · 混沌之力 · 幸运星' },
-  flying_sword:{ baseDmg:'50 /把（×4把）', baseCD:'2.0s → 1.0s(Lv8)', range:'全屏锁定',
-    desc:'抽奖限定，每2秒发射4把飞剑锁定最近敌，40%暴击×3倍，可叠加元素，8级万剑归宗。',
-    recommend:'混沌之力 · 急速出手 · 天选者（幸运提升暴击收益）' },
-  kirby_copy:  { baseDmg:'随形态变化', baseCD:'形态专属', range:'形态专属',
-    desc:'模仿者职业专属，四种形态各有特色：火球喷射/轨道剑/闪电链/冰球，切换时机决定输出效率。',
-    recommend:'（仅模仿者可用）扩展攻击 · 元素共鸣 · 混沌之力' },
-  black_tortoise:{ baseDmg:'18 → 80（水球）', baseCD:'水球3s / 护盾60s', range:'自主移动',
-    desc:'召唤玄武自主战斗，每3s射3颗水球，每60s为玩家提供护盾，8级含多条升级路线。',
-    recommend:'强化体魄 · 硬化皮肤（减伤）· 混沌之力 · 扩展攻击' },
-  turret:       { baseDmg:'35基础（子弹/激光/炸弹/火箭）', baseCD:'1.2s（可速射强化）', range:'固定位置 · 180px范围',
-    desc:'在地图固定位置召唤炮台自动攻击敌人，每波刷新位置。炮台有独立血量（玩家50%HP），死亡后5秒自动在玩家附近重新补充。\n\n【等级效果】\nLv1 召唤1座炮台\nLv2 +1座 · 射速+30%\nLv3 +1座 · 子弹穿透\nLv4 三选一特殊炮台：治疗炮台（命中回血5%HP）/ 自爆机器人（靠近自爆·大范围）/ 机枪炮台（极快射速）\nLv5-6 随机强化：速射提升 / 多重建造+1座 / 弹药升级（子弹→激光→炸弹→火箭）\nLv7 三选一：更多炮台（+3台+3特殊）/ 防御炮台（敌人优先打炮台·免死护盾）/ 元素炮台（随机火焰/冰霜/毒素）\nLv8 地雷炮台（炮台死亡原地埋雷 · 大范围爆炸 · 再+5座上限）',
-    recommend:'范围补给（炸弹/火箭爆炸范围更大）· 穿透天赋 · 急速出手（射速提升）· 强化体魄（炮台HP=玩家50%·越高越耐打）' },
+  shotgun: {
+    baseDmg:'10（Lv1）→ 38（Lv7+）',
+    baseCD:'1.4s（Lv1）→ 1.1s（Lv7）',
+    range:'近距扇形 · 约80px',
+    desc:'枪械·物理武器。扇形同时射出多颗子弹，对近距离群怪覆盖极广，新手友好，零操作压力。弹数随等级增加，Lv8解锁双枪模式，单次输出翻倍。适合贴脸高速清场。\n\n【等级效果】\nLv1 ×5弹 · 伤害10 · CD1.4s\nLv2 ×5弹 · 伤害13 · CD1.35s\nLv3 ×5弹 · 伤害16 · CD1.3s\nLv4 ×6弹 · 伤害20 · CD1.25s（弹数+1 · 解锁随机强化：弹跳/穿透/分裂/元素）\nLv5 ×6弹 · 伤害25 · CD1.2s\nLv6 ×7弹 · 伤害31 · CD1.15s（弹数再+1）\nLv7 ×7弹 · 伤害38 · CD1.1s（满级）\nLv8 双枪模式 · 同时射出两组弹幕 · 等效输出×2',
+    recommend:'铁匠（物理+50%·基础最高收益）· 急速出手（CD降低·频率提升明显）· 扩展攻击（扇形覆盖更广）· 时间裂隙（CD-20%·强力选择）· 穿透天赋（子弹穿墙·纵深杀伤）',
+  },
+  gatling: {
+    baseDmg:'16/发（Lv1）→ 56/发（Lv7+）· 8连发',
+    baseCD:'0.9s（Lv1）→ 0.78s（Lv7）',
+    range:'中远直线 · 约160px',
+    desc:'枪械·物理武器。每轮高速射出8颗子弹，连发结束后短暂冷却，持续中远距离压制。单轮总伤害极高，后期配合伤害加成DPS登顶。Lv8解锁双枪齐射，两把加特林同时扫射，火力压制无可比拟。\n\n【等级效果】\nLv1 8连发 · 单发伤害16 · CD0.9s\nLv2 8连发 · 单发伤害20 · CD0.88s\nLv3 8连发 · 单发伤害25 · CD0.86s\nLv4 8连发 · 单发伤害31 · CD0.84s（解锁强化选项）\nLv5 8连发 · 单发伤害38 · CD0.82s\nLv6 8连发 · 单发伤害47 · CD0.8s\nLv7 8连发 · 单发伤害56 · CD0.78s（满级）\nLv8 双枪齐射 · 两把同时开火 · 等效输出×2',
+    recommend:'铁匠（物理+50%·叠加8发总伤极高）· 急速出手（CD降低·每秒轮次增加）· 混沌之力（全局乘算·高基础收益更大）· 时间裂隙（CD-20%·冷却缩减最明显）· 穿透天赋（直线穿透·连续贯穿多敌）',
+  },
+  sword: {
+    baseDmg:'10/把（Lv1）→ 42/把（Lv7）',
+    baseCD:'持续旋转 · 不可打断',
+    range:'环绕玩家 半径40-52px',
+    desc:'法术·物理武器。在玩家周围生成轨道剑持续高速旋转，自动打击触碰到的所有敌人，零操作完全自动。不受冷却减速天赋影响（持续旋转武器），越多怪贴身越强，贴脸混战首选。\n\n【等级效果】\nLv1 2把轨道剑 · 伤害10/把 · 半径40px · 转速2.2\nLv2 2把轨道剑 · 伤害14/把 · 半径42px · 转速2.4\nLv3 3把轨道剑 · 伤害17/把 · 半径44px（+1把）\nLv4 3把轨道剑 · 伤害22/把 · 半径46px · 剑色变亮转速加快\nLv5 4把轨道剑 · 伤害27/把 · 半径48px（+1把）\nLv6 4把轨道剑 · 伤害34/把 · 半径50px · 剑色纯白·全面强化\nLv7 5把轨道剑 · 伤害42/把 · 半径52px（满级·5把全覆盖）',
+    recommend:'法师（魔法+50%·所有把数同倍加成）· 扩展攻击（旋转半径扩大·近身覆盖更远）· 元素共鸣（旋转频率高·触发元素概率极高）· 多重射击（+1把剑·额外输出）· 吸血鬼（命中即回血·贴脸永续战斗）',
+  },
+  arrow_rain: {
+    baseDmg:'20（Lv1）→ 66（Lv7）',
+    baseCD:'2.4s（Lv1）→ 1.3s（Lv7）',
+    range:'大范围落点 · 半径50-75px',
+    desc:'法术·物理武器。从天而降的箭雨覆盖敌人周围区域，无需瞄准全自动，对密集群怪清理效率最高。冷却随等级显著缩短，箭数倍增，后期箭雨绵密近乎无间断。满级12箭+半径75px，正面全覆盖。\n\n【等级效果】\nLv1 ×7箭 · 伤害20 · 半径50px · CD2.4s\nLv2 ×5箭 · 伤害25 · 半径54px · CD2.2s（箭少但伤高）\nLv3 ×6箭 · 伤害30 · 半径58px · CD2.0s\nLv4 ×7箭 · 伤害36 · 半径62px · CD1.8s（恢复初始箭数）\nLv5 ×8箭 · 伤害44 · 半径66px · CD1.6s（箭数开始超越Lv1）\nLv6 ×10箭 · 伤害54 · 半径70px · CD1.45s\nLv7 ×12箭 · 伤害66 · 半径75px · CD1.3s（满级·12箭全覆盖）',
+    recommend:'法师（魔法+50%·每箭独立计算）· 扩展攻击（落点半径扩大·覆盖更广）· 急速出手（CD缩短·覆盖频率极高）· 元素共鸣（多箭同时命中·元素触发率极高）· 混沌之力（全局乘算·每箭受益）',
+  },
+  heal_drone: {
+    baseDmg:'回血 4 HP/s（Lv1）→ 16 HP/s（Lv8）',
+    baseCD:'光圈生成CD: 10s（Lv1）→ 5s（Lv8）',
+    range:'治疗光圈 半径38-50px · 持续5.5-6s',
+    desc:'支援·魔法武器。不造成伤害，定期在玩家脚下生成治疗光圈，站立其中持续回血。是游戏最佳续战武器，搭配高DPS主武器可抵消大量持续受伤，高HP上限时容错极高。光圈随等级扩大且CD缩短，满级几乎无间断覆盖。\n\n【等级效果】\nLv1 回血4 HP/s · 光圈半径38px · CD10s · 持续5.5s\nLv2 回血5 HP/s · 半径38px · CD9s\nLv3 回血6 HP/s · 半径38px · CD8s\nLv4 回血7 HP/s · 半径42px · CD8s（范围扩大·第一次扩圈）\nLv5 回血9 HP/s · 半径42px · CD7s\nLv6 回血11 HP/s · 半径42px · CD6s\nLv7 回血13 HP/s · 半径46px · CD6s（第二次扩圈）\nLv8 回血16 HP/s · 半径50px · CD5s · 持续6s（满级·光圈最大最频繁）',
+    recommend:'强化体魄（HP上限高·站桩容错极大）· 即时治愈（光圈触发时额外爆发回血）· 扩展攻击（光圈半径+10%·更容易保持在圈内）· 疾风步法（移速快·追光圈更轻松）',
+  },
+  missile_drone: {
+    baseDmg:'50+/枚 · 爆炸AOE半径20px',
+    baseCD:'5s/轮 · 每轮×6枚',
+    range:'全屏自动锁定 · 爆炸AOE',
+    desc:'枪械·物理武器。每轮自动发射6枚导弹锁定最近敌人，落点爆炸产生AOE范围伤害，穿透性强适合密集群怪。升级时从弹头类型和射击模式两个维度选择，打造专属流派。\n\n【等级效果】\nLv1 ×6导弹 · 单发伤害50+ · AOE半径20px · CD5s\nLv2 三选一弹头：震荡弹（命中1s眩晕）/ 燃烧弹（着火持续伤害）/ 双发弹（×12枚导弹）\nLv3 导弹伤害与AOE继续提升\nLv4 三选一模式：原地压制（对最近敌密集轰炸）/ 开路（朝移动方向发射）/ 狂轰（分散锁定6个目标）\nLv5-6 强化已选弹头与模式 · 冷却持续缩短\nLv7 弹药系统强化 · AOE半径大幅提升 · 单发伤害飞跃\nLv8 终极导弹 · 弹头+模式双重叠加 · 爆炸覆盖全场',
+    recommend:'扩展攻击（AOE半径+10%·爆炸范围更广）· 混沌之力（乘算加成·每发导弹受益明显）· 急速出手（5s→更短·轮次频率提升）· 多重射击（导弹数+1～2枚·总伤大增）',
+  },
+  sniper: {
+    baseDmg:'120（基础） · 可成长至数百甚至破千',
+    baseCD:'3.5s（Lv1-3）→ 3.2s（Lv4-6）→ 3.0s（Lv7）→ 2.5s（Lv8）',
+    range:'全屏穿透 · 优先最近/最远敌人',
+    desc:'枪械·精准武器。超高单体伤害，每发穿透1次，最擅长点杀精英怪与Boss。升级时可选差异化流派，形成完全不同的后期战斗风格，是游戏中路线分叉最多的武器。\n\n【等级效果】\nLv1 伤害120 · 穿透1次 · CD3.5s\nLv2-3 基础成长 · 可选强化：弹跳（反弹命中更多）/ 穿透+（贯穿更多层）/ 元素弹\nLv4 三选一路线：连射（+1～2发子弹同时射出）/ 重型狙击（伤害×3·CD稍增）/ 成长型（每击败敌人永久+伤害）\nLv5-6 强化已选路线 · CD3.2s\nLv7 三选一终极：龙魄弹（喷射龙息·范围）/ 烟雾战术（减速范围）/ 合金弹头（无限穿透·贯穿全场）\nLv8 CD2.5s · 三选一收尾：致命特训（0.5%概率即死）/ 暴击强化（暴击率·倍率双提升）/ 双弹/分裂',
+    recommend:'铁匠（枪械+50%·基础120伤提升极高）· 急速出手（CD缩减·穿透频率提升）· 混沌之力（乘算加成·对高倍率武器效果翻倍）· 幸运星（运气提暴击·配合成长型收益滚雪球）· 穿透天赋（叠加穿透·合金弹头流最强）',
+  },
+  flying_sword: {
+    baseDmg:'50/把 · ×4把 · 暴击率40% · 暴击倍率×3',
+    baseCD:'2.0s（Lv1-7）→ 1.0s（Lv8·万剑归宗）',
+    range:'全屏自动锁定最近敌人',
+    desc:'抽奖限定·物理武器。每2秒向最近敌发射4把飞剑，基础40%暴击率+3倍暴击伤害，期望DPS极高。可叠加元素效果，Lv8万剑归宗CD减半且飞出后自动返回，是游戏后期最强武器之一。\n\n【等级效果】\nLv1 ×4把飞剑 · 伤害50/把 · 暴击40%×3倍 · CD2.0s\nLv2-3 三选一成长：致命强化（暴击率+20%）/ 均衡成长（伤害+10%·暴击+10%）/ 锋利（伤害+30%）\nLv4 三选一元素：🔥火焰飞剑（+1把·命中引燃）/ ❄冰冻飞剑（+1把·命中冰冻2层）/ ☠淬毒飞剑（+1把·命中中毒2层）\nLv5-6 已选元素强化 · 剑数/伤害继续提升\nLv7 三选一收割：汲取（每10次击杀+1最大HP）/ 魔力灌注（命中0.45s后+100%额外伤害）/ 魔力吸取（命中回血1HP）\nLv8 万剑归宗：+2把飞剑 · CD1.0s · 穿透 · 攻速×2 · 扇形锁定 · 飞出自动返回',
+    recommend:'混沌之力（暴击乘算·高暴击率下收益最大）· 天选者（幸运提暴击率·与40%基础叠加）· 急速出手（CD缩减·满级后体感明显）· 吸血鬼（全屏锁定·命中即回血无需靠近）',
+  },
+  kirby_copy: {
+    baseDmg:'随形态：火焰8→45 / 轨道10→55 / 雷电6→33',
+    baseCD:'形态专属（主动技能触发后自动切换）',
+    range:'形态专属（近距喷射 / 环绕旋转 / 链式弹跳 / 落点爆炸）',
+    desc:'模仿者职业专属·变形武器。拥有四种轮流切换的战斗形态，使用主动技能后自动切换至下一形态，灵活应对不同战况。每级提升所有形态基础伤害，Lv8四形态均达峰值。\n\n【四种形态说明】\n🔥 火焰喷射·近距弧形连续喷火·适合贴脸清场\n⚔  轨道剑士·生成轨道剑绕身旋转（类剑阵·持续）\n⚡ 雷电链锁·发射闪电在多个敌人间弹跳·范围输出\n❄  冰球落地·发射冰球落点爆炸·附加冰冻减速\n\n【等级效果（四形态同步提升）】\nLv1 火焰伤害8 / 轨道伤害10 / 雷电伤害6 · 轨道半径36px\nLv3 火焰14 / 轨道18 / 雷电10 · 半径38px\nLv5 火焰23 / 轨道29 / 雷电17 · 半径40px\nLv7 火焰36 / 轨道45 / 雷电27 · 半径42px\nLv8 火焰45 / 轨道55 / 雷电33 · 半径43px（满级）',
+    recommend:'（仅模仿者职业可用）扩展攻击（所有形态范围+10%）· 元素共鸣（雷电/冰球触发元素加成）· 混沌之力（覆盖所有形态）· 急速出手（主动技能CD降低·切换形态更频繁）',
+  },
+  black_tortoise: {
+    baseDmg:'水球×3 伤害18（Lv1）→ 80（Lv8）',
+    baseCD:'水球每3s · 护盾每60s',
+    range:'玄武自主移动·全图跟随玩家',
+    desc:'召唤奖池·魔法武器。召唤玄武自主战斗，每3秒射出3颗水球，每60秒为玩家提供护盾。玄武有独立体型和HP，可吸引敌人攻击。升级可选输出型/坦克型/毒型等多条路线。\n\n【等级效果】\nLv1 水球×3 · 伤害18 · CD3s · 护盾CD60s\nLv2 水球伤害23 · 基础成长\nLv3 水球伤害29\nLv4 三选一路线：小玄武（召唤2只25%伤害·无护盾）/ 守护（护盾变3层·减伤10%）/ 毒蛇（水球附3层毒+毒液池）\nLv5 水球伤害44\nLv6 水球伤害54\nLv7 三选一进阶：神兽威压（80px内敌人持续减速）/ 神兽真身（体型+50%·每8s冲锋3倍伤害）/ 不灭功（致命→3s无敌+伤害×2+回血25%·CD150s）\nLv8 真·玄武：水球伤害80 · 每10s从天而降AOE+击退 · 护盾CD缩短',
+    recommend:'强化体魄（玄武HP=玩家50%·越耐打越稳定）· 硬化皮肤（减伤·配合护盾近乎无敌）· 混沌之力（水球全局乘算）· 扩展攻击（水球范围+·配合毒液池覆盖更大）',
+  },
+  turret: {
+    baseDmg:'35基础（子弹/激光/炸弹/火箭）',
+    baseCD:'1.2s（可速射强化）',
+    range:'固定位置 · 180px范围',
+    desc:'物理·机械武器。在地图固定位置召唤炮台自动攻击敌人，每波刷新位置。炮台有独立血量（玩家50%HP），死亡后5秒自动在玩家附近重新补充。\n\n【等级效果】\nLv1 召唤1座炮台\nLv2 +1座 · 射速+30%\nLv3 +1座 · 子弹穿透\nLv4 三选一特殊炮台：治疗炮台（命中回血5%HP）/ 自爆机器人（靠近自爆·大范围）/ 机枪炮台（极快射速）\nLv5-6 随机强化：速射提升 / 多重建造+1座 / 弹药升级（子弹→激光→炸弹→火箭）\nLv7 三选一：更多炮台（+3台+3特殊）/ 防御炮台（敌人优先打炮台·免死护盾）/ 元素炮台（随机火焰/冰霜/毒素）\nLv8 地雷炮台（炮台死亡原地埋雷 · 大范围爆炸 · 再+5座上限）',
+    recommend:'范围补给（炸弹/火箭爆炸范围更大）· 穿透天赋（子弹穿透命中更多目标）· 急速出手（射速提升）· 强化体魄（炮台HP=玩家50%·越高越耐打）',
+  },
 };
 
 const _CODEX_SUPPLY_META = {
@@ -933,7 +1028,7 @@ function _cdxStat(label,val){ return '<div class="cdx-stat-row"><span class="cdx
 function _cdxSection(title){ return '<div class="cdx-section-title">'+title+'</div>'; }
 function _cdxDesc(text){ return '<div class="cdx-desc-block">'+text+'</div>'; }
 function _cdxWeakness(w){
-  const _colors={'穿透':'#f84','散射':'#fd4','範圍':'#a4f','法術':'#4ef','追蹤':'#4f8','持續':'#f55','爆炸':'#f64','近身':'#bbb','任意':'#888','高DPS':'#f84','全輸出':'#fda'};
+  const _colors={'穿透':'#f84','散射':'#fd4','范围':'#a4f','法术':'#4ef','追踪':'#4f8','持续':'#f55','爆炸':'#f64','近身':'#bbb','任意':'#888','高DPS':'#f84','全输出':'#fda'};
   const tags=w.tags.map(t=>{const c=_colors[t]||'#888';return '<span class="cdx-wtag" style="color:'+c+';border-color:'+c+'40;background:'+c+'18">'+t+'</span>';}).join('');
   return '<div class="cdx-wtags">'+tags+'</div>'+_cdxDesc(w.tip);
 }
@@ -947,63 +1042,40 @@ function _gemGroupNav(dir){
 }
 
 function _renderGemGroupDetail(){
-  const _GQ=[
-    { name:'普通寶石怪',  img:'photo/Gem Monster/Common Gem Monster.png',
-      color:'#ccc', hp:100,  spd:60, dmg:5,  wave:'第8波起偶爾出現',
-      drop:'普通品質寶石（鑲嵌加成 +10%）' },
-    { name:'稀有寶石怪',  img:'photo/Gem Monster/Rare Gem Monster.png',
-      color:'#4f8', hp:200,  spd:58, dmg:8,  wave:'第10波起偶爾出現',
-      drop:'稀有品質寶石（鑲嵌加成 +20%）' },
-    { name:'較稀有寶石怪',img:'photo/Gem Monster/Uncommon Gem Monster.png',
-      color:'#4af', hp:400,  spd:55, dmg:12, wave:'第12波起偶爾出現',
-      drop:'較稀有品質寶石（鑲嵌加成 +35%）' },
-    { name:'史詩寶石怪',  img:'photo/Gem Monster/Epic Gem Monster.png',
-      color:'#a4f', hp:800,  spd:50, dmg:18, wave:'第15波起偶爾出現',
-      drop:'史詩品質寶石（鑲嵌加成 +55%）' },
-    { name:'傳說寶石怪',  img:'photo/Gem Monster/Legendary Gem Monster.png',
-      color:'#fd4', hp:1500, spd:48, dmg:25, wave:'第18波起稀少出現',
-      drop:'傳說品質寶石（鑲嵌加成 +70%）' },
-    { name:'神話寶石怪',  img:'photo/Gem Monster/Mythic Gem Monster.png',
-      color:'#f84', hp:3000, spd:45, dmg:35, wave:'第22波起稀少出現',
-      drop:'神話品質寶石（鑲嵌加成 +85%）' },
-    { name:'至臻寶石怪',  img:'photo/Gem Monster/Ultimate Gem Monster.png',
-      color:'#f4f', hp:6000, spd:42, dmg:50, wave:'第26波起極少出現',
-      drop:'至臻品質寶石（鑲嵌加成 +85% · 額外解鎖50%特效）', rainbow:true },
-  ];
-  const g=_GQ[_gemGroupIdx];
+  const g=_GEM_QUALITY_TIERS[_gemGroupIdx];
   const btnS='font-size:18px;background:none;border:none;color:#555;cursor:pointer;padding:2px 10px;font-family:monospace;line-height:1';
   const nameHtml=g.rainbow
     ?'<span style="background:linear-gradient(90deg,#f44,#f84,#fd4,#4f8,#4af,#a4f,#f4f);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-weight:700">'+g.name+'</span>'
     :'<span style="color:'+g.color+';font-weight:700">'+g.name+'</span>';
-  const dots=_GQ.map((q,i)=>
+  const dots=_GEM_QUALITY_TIERS.map((q,i)=>
     '<div style="width:7px;height:7px;border-radius:50%;background:'+(i===_gemGroupIdx?q.color:'#1e1e2e')+
     ';border:1px solid '+(i===_gemGroupIdx?q.color:'#333')+'"></div>'
   ).join('');
   return _cdxDetail(
-    // ── 頂部導航列 ──
+    // ── 顶部导航列 ──
     '<div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid #1a1a2e;margin-bottom:8px">'+
       '<button style="'+btnS+'" onclick="_gemGroupNav(-1)">◀</button>'+
       '<div style="text-align:center;font-size:12px">'+nameHtml+'</div>'+
       '<button style="'+btnS+'" onclick="_gemGroupNav(1)">▶</button>'+
     '</div>'+
-    // ── 圖片 ──
+    // ── 图片 ──
     '<div class="cdx-big-icon" style="margin:4px 0 6px">'+
       '<img src="'+g.img+'" style="width:72px;height:72px;image-rendering:pixelated;object-fit:contain" onerror="this.style.display=\'none\'">'+
     '</div>'+
-    // ── 名稱 & 波次 ──
+    // ── 名称 & 波次 ──
     '<div class="cdx-item-name" style="'+(g.rainbow?'background:linear-gradient(90deg,#f44,#f84,#fd4,#4f8,#4af,#a4f,#f4f);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text':'color:'+g.color)+'">'+g.name+'</div>'+
     '<div class="cdx-item-sub">'+g.wave+'</div>'+
-    // ── 屬性 ──
+    // ── 属性 ──
     _cdxStat('❤ 血量', g.hp)+
     _cdxStat('⚡ 速度', g.spd)+
-    _cdxStat('⚔ 攻擊', g.dmg)+
+    _cdxStat('⚔ 攻击', g.dmg)+
     // ── 掉落 ──
-    _cdxSection('掉落寶石')+
+    _cdxSection('掉落宝石')+
     _cdxDesc('💎 必定掉落 '+g.drop)+
-    // ── 弱點 ──
-    _cdxSection('⚠ 弱點')+
-    _cdxWeakness({tags:['任意'], tip:'任意武器均可擊殺，血量較低易速決。優先擊殺可獲得對應品質寶石，可在強化工坊鑲嵌武器。品質越高血量越高，出現越罕見。'})+
-    // ── 品質進度點 ──
+    // ── 弱点 ──
+    _cdxSection('⚠ 弱点')+
+    _cdxWeakness({tags:['任意'], tip:'任意武器均可击杀，血量较低易速决。优先击杀可获得对应品质宝石，可在强化工坊镶嵌武器。品质越高血量越高，出现越罕见。'})+
+    // ── 品质进度点 ──
     '<div style="display:flex;justify-content:center;align-items:center;gap:5px;margin-top:12px">'+dots+'</div>'
   );
 }
