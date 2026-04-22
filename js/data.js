@@ -200,9 +200,16 @@ function getWavePlan(n) {
 // ═══════════════════════════════════════════════════════
 // §0  版本号 & 更新公告  ← 每次更新只需修改这里
 // ═══════════════════════════════════════════════════════
-const GAME_VERSION = 'v0.9.5';
+const GAME_VERSION = 'v0.9.6';
 document.getElementById('load-version').textContent = GAME_VERSION;
 const CHANGELOG = [
+  { version:'v0.9.6', date:'2026-04-22', items:[
+    '新增貝殼系統：怪物死亡掉落🐚貝殼，HUD即時顯示',
+    '新增波次商店：每波結束彈出商店，支援購買/刷新/繼續',
+    '商店稀有度依幸運值線性插值（7品質×7檔），貝殼價格機制',
+    '升級選項只保留武器提升，移除屬性強化',
+    '加入測試道具：貝殼加倍符（普通/30🐚）',
+  ]},
   { version:'v0.9.5', date:'2026-04-21', items:[
     '新增10步新手教程系统（全屏遮罩对话框，像素风格与游戏UI一致）',
     '首次进入游戏自动弹出教程（localStorage: pw_tutorial_done），之后不再重复',
@@ -916,4 +923,19 @@ const WEAPON_ENHANCE = {
   dustRewardPerWave: 5,
   dustRewardPerKill: 0.1,
 };
+
+// ═══════════════════════════════════════════════════════
+// 商店道具定義
+// ═══════════════════════════════════════════════════════
+const SHOP_ITEMS = [
+  {
+    id:     'shell_doubler',
+    icon:   '🐚',
+    name:   '貝殼加倍符',
+    rarity: 'common',
+    price:  30,
+    desc:   '本局剩餘波次貝殼掉落×2',
+    apply(p) { p.shellDoubleMult = (p.shellDoubleMult || 1) * 2; },
+  },
+];
 

@@ -469,16 +469,24 @@ input[type=range]{width:120px;accent-color:#48f}
 
 #tut-box{
   position:fixed;z-index:10000;
+  top:50%;left:50%;transform:translate(-50%,-50%);
   background:#0d0d1a;border:2px solid #fd4;border-radius:6px;
   padding:18px 20px 14px;max-width:300px;width:88vw;
   pointer-events:auto;display:none;
   box-shadow:0 0 0 1px #1a1400,0 0 32px #fd45;
   font-family:'Courier New',monospace;
 }
+/* 初次出現：從中間淡入縮放，不移動位置 */
 #tut-box.tut-in{animation:tutBoxIn .22s ease}
 @keyframes tutBoxIn{
-  from{opacity:0;transform:scale(.93) translateY(10px)}
-  to{opacity:1;transform:scale(1) translateY(0)}
+  from{opacity:0;transform:translate(-50%,-50%) scale(0.95)}
+  to{opacity:1;transform:translate(-50%,-50%) scale(1)}
+}
+/* 切換步驟：只做內容淡入，不重新計算位置 */
+#tut-box.tut-step-in{animation:tutStepIn .15s ease}
+@keyframes tutStepIn{
+  from{opacity:0}
+  to{opacity:1}
 }
 #tut-box .tut-icon{font-size:30px;display:block;margin-bottom:7px;text-align:center}
 #tut-box .tut-title{

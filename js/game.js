@@ -175,6 +175,10 @@ function initGame(classIdx) {
     _rainbowChests: 0,
     gemInventory: { common:0, rare:0, relatively_rare:0, epic:0, legendary:0, mythical:0, ultimate:0 },
     _dustAwarded: false,
+    // 貝殼系統
+    shells:         0,   // 當局貝殼數，遊戲結束清零
+    shellBonus:     0,   // 貝殼值，越高掉落越多（公式: 基礎×(1+shellBonus×0.5)）
+    shellDoubleMult:1,   // 貝殼加倍符效果
   };
 
   waveCompleteTriggered = false;
@@ -783,6 +787,8 @@ function killEnemy(enemy) {
   gs.gems.push({ x:enemy.x, y:enemy.y, xp:enemy.xp });
   // 寶石怪：額外掉落寶石物品
   if (enemy.isGemMonster && enemy.gemQuality) spawnGemItem(enemy.x, enemy.y, enemy.gemQuality);
+  // 貝殼掉落
+  _dropShells(enemy);
   SFX.play(enemy.isBoss ? 'wave' : 'death');
   if (gs.talents.has('berserker')) gs.player.berserkerKills++;
   // Overload: count kills, trigger burst every 50
@@ -897,6 +903,28 @@ function spawnGemItem(x, y, quality) {
     y: y + (Math.random()-.5)*24,
     bobTimer: Math.random()*Math.PI*2,
   });
+}
+
+// 貝殼掉落（怪物死亡時調用）
+function _dropShells(enemy) {
+  if (!gs) return;
+  const p = gs.player;
+  // 決定基礎掉落量
+  let base;
+  if (enemy.isBoss) {
+    base = 20 + Math.floor(Math.random() * 31);                // Boss: 20-50
+  } else if (enemy.isGemMonster) {
+    base = 5  + Math.floor(Math.random() * 6);                 // 寶石怪: 5-10
+  } else {
+    const _bxp = (typeof ENEMY_TYPES !== 'undefined' && ENEMY_TYPES[enemy.type]?.xp) ?? enemy.xp;
+    base = (_bxp >= 30)
+      ? 5 + Math.floor(Math.random() * 6)                      // 精英 (orc/demon/troll): 5-10
+      : 1 + Math.floor(Math.random() * 3);                     // 普通: 1-3
+  }
+  const shells = Math.round(base * (1 + (p.shellBonus||0) * 0.5) * (p.shellDoubleMult||1));
+  if (shells <= 0) return;
+  p.shells = (p.shells||0) + shells;
+  addFloatingText(`🐚+${shells}`, enemy.x, enemy.y - 16, '#4df', 0.75);
 }
 
 // 遊戲結束粉塵計算（波次×10 + 擊殺數×1）
@@ -2524,20 +2552,23 @@ function checkWaveComplete() {
   checkAchievements();
 
   setTimeout(()=>{
-    if (!gs || gs.phase!=='playing') return;
-    gs.phase = 'upgrading';
-    if (gs.wave.num===30) {
+    if (!gs) return;
+    // 第30波勝利：直接進入結算
+    if (gs.wave.num === 30) {
+      gs.phase = 'upgrading';
       awardEndGameDust();
       showStageClearScreen();
-    } else if (gs.wave.num % 5 === 0) {
-      showSuperSupplyScreen();
-    } else if (gs.wave.num === 5 && !gs.summonOffered) {
-      const _ownedIds = new Set(gs.weapons.map(w => w.id));
-      const _hasSummons = Object.keys(WEAPON_DEFS).some(id => WEAPON_DEFS[id].type==='summon' && !_ownedIds.has(id));
-      if (_hasSummons) showSummonPickScreen(); else showUpgradeScreen(getUpgradeOptions());
-    } else {
-      showUpgradeScreen(getUpgradeOptions());
+      return;
     }
+    // 波次結束 → 開商店（若仍在 level-up 中則等待）
+    const _tryShop = () => {
+      if (!gs) return;
+      if (gs.phase === 'levelup') { setTimeout(_tryShop, 400); return; }
+      if (gs.phase !== 'playing') return;
+      gs.phase = 'shop';
+      showShopScreen();
+    };
+    _tryShop();
   }, 1000);
 }
 
@@ -3454,7 +3485,7 @@ function gameLoop(ts) {
         gs.chestPopup.timer = Math.max(0, gs.chestPopup.timer - dt);
       updateHUD();
       checkWaveComplete();
-    } else if (gs.phase==='upgrading'||gs.phase==='supply'||gs.phase==='dead'||gs.phase==='levelup'||gs.phase==='paused') {
+    } else if (gs.phase==='upgrading'||gs.phase==='supply'||gs.phase==='dead'||gs.phase==='levelup'||gs.phase==='paused'||gs.phase==='shop') {
       updateParticles(dt);
     }
     render();

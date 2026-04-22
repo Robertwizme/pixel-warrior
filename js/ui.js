@@ -711,42 +711,203 @@ function getUpgradeOptions() {
     });
   }
 
-  // ── Build stat pool (last resort fallback) ──
-  const isDoctor  = CLASSES[p.classIdx]?.id === 'doctor';
-  const isScholar = CLASSES[p.classIdx]?.id === 'scholar';
-  const statPool = shuffled(STAT_UPGRADES)
-    .filter(s => {
-      if (isDoctor  && s.id === 'maxhp') return false;
-      if (isScholar && s.id === 'speed') return false;
-      if (s.id === 'dodge' || s.id === 'dmgred') return lv >= 30 && Math.random() < 0.25;
-      if ((p.pickedStatIds||new Set()).has(s.id)) return false; // dedup
-      return true;
-    })
-    .map(s => ({ type:'stat', id:s.id, icon:s.icon, name:s.name, desc:s.desc }));
-
-  // ── Fill cards: ≥2 weapon, ≤1 stat (weapon upgrades prioritized) ──
+  // ── Fill cards: 全部武器升級，不含屬性強化 ──
   const wUpgShuf = shuffled(upgradePool);
   const wNewShuf = shuffled(newWeapPool);
   const result = [];
-  let ui=0, ni=0, si=0;
-  // Fill up to (cardCount-1) weapon slots first
-  while (result.length < cardCount-1) {
-    if (ui < wUpgShuf.length) result.push(wUpgShuf[ui++]);
-    else if (ni < wNewShuf.length) result.push(wNewShuf[ni++]);
-    else break;
-  }
-  // One stat slot (or weapon if no stats)
-  if (si < statPool.length) result.push(statPool[si++]);
-  else if (ui < wUpgShuf.length) result.push(wUpgShuf[ui++]);
-  else if (ni < wNewShuf.length) result.push(wNewShuf[ni++]);
-  // Fill remaining (lucky cardCount=4 players)
+  let ui=0, ni=0;
   while (result.length < cardCount) {
     if (ui < wUpgShuf.length) result.push(wUpgShuf[ui++]);
     else if (ni < wNewShuf.length) result.push(wNewShuf[ni++]);
-    else if (si < statPool.length) result.push(statPool[si++]);
     else break;
   }
   return result;
+}
+
+// ═══════════════════════════════════════════════════════
+// §17c  波次商店
+// ═══════════════════════════════════════════════════════
+
+// 商店稀有度插值（7 品質，4 幸運值檔位）
+// 欄位順序: [luck, common, rare, relatively_rare, epic, legendary, mythical, ultimate]
+const _SHOP_RARITY_PTS = [
+  [0,   50, 25, 12, 13,  0,   0,   0  ],
+  [10,  40, 25, 15, 15,  5,   0,   0  ],
+  [50,  30, 20, 15, 20, 10,   3,   0  ],
+  [100, 20, 15, 15, 20, 15,   5,   1  ],
+];
+const _SHOP_RARITY_KEYS = ['common','rare','relatively_rare','epic','legendary','mythical','ultimate'];
+
+function _shopRarityWeights(luck) {
+  const l = Math.max(0, luck);
+  const pts = _SHOP_RARITY_PTS;
+  let lo = pts[0], hi = pts[pts.length-1];
+  for (let i=0; i<pts.length-1; i++) {
+    if (l >= pts[i][0] && l <= pts[i+1][0]) { lo = pts[i]; hi = pts[i+1]; break; }
+  }
+  if (l >= hi[0]) lo = hi;
+  const t = lo[0]===hi[0] ? 0 : (l - lo[0]) / (hi[0] - lo[0]);
+  const w = lo.slice(1).map((v, i) => v + (hi[i+1] - v) * t);
+  const total = w.reduce((s,v)=>s+v, 0) || 1;
+  return w.map(v => v / total);
+}
+
+function _pickShopRarity(luck) {
+  const w = _shopRarityWeights(luck);
+  let r = Math.random();
+  for (let i=0; i<w.length; i++) { r -= w[i]; if (r <= 0) return _SHOP_RARITY_KEYS[i]; }
+  return 'common';
+}
+
+const _SHOP_RARITY_COLORS  = { common:'#ccc', rare:'#4f8', relatively_rare:'#4af', epic:'#b3f', legendary:'#fd4', mythical:'#f44', ultimate:'#f8f' };
+const _SHOP_RARITY_LABELS  = { common:'普通', rare:'稀有', relatively_rare:'較稀有', epic:'史詩', legendary:'傳說', mythical:'神話', ultimate:'至臻' };
+
+let _shopState = null; // { items, refreshCost, purchased:Set }
+
+function _buildShopItems(count) {
+  const pool = (typeof SHOP_ITEMS !== 'undefined') ? SHOP_ITEMS : [];
+  if (!pool.length) return [];
+  const luck = gs?.player?.luck || 0;
+  const result = [];
+  for (let i=0; i<count; i++) {
+    const rarity = _pickShopRarity(luck);
+    const same = pool.filter(it => it.rarity === rarity);
+    const src  = same.length ? same : pool;
+    result.push(src[Math.floor(Math.random() * src.length)]);
+  }
+  return result;
+}
+
+function showShopScreen() {
+  _shopState = { items: _buildShopItems(4), refreshCost: 10, purchased: new Set() };
+  _renderShopOverlay();
+}
+
+function _renderShopOverlay() {
+  document.getElementById('shop-overlay')?.remove();
+  if (!gs || !_shopState) return;
+  const p = gs.player;
+
+  const ov = document.createElement('div');
+  ov.id = 'shop-overlay';
+  ov.style.cssText = [
+    'position:fixed','inset:0','z-index:1200',
+    'background:rgba(5,5,20,0.92)',
+    'display:flex','flex-direction:column','align-items:center','justify-content:center',
+    "font-family:'Courier New',monospace",
+  ].join(';');
+
+  // ── 標題 ──
+  const title = document.createElement('div');
+  title.style.cssText = 'color:#fd4;font-size:20px;font-weight:bold;letter-spacing:2px;margin-bottom:8px;';
+  title.textContent = '🏪 波次商店';
+  ov.appendChild(title);
+
+  // ── 貝殼顯示 ──
+  const shellDisp = document.createElement('div');
+  shellDisp.id = 'shop-shell-disp';
+  shellDisp.style.cssText = 'color:#4df;font-size:15px;font-weight:bold;margin-bottom:16px;';
+  shellDisp.textContent = `🐚 ${p.shells||0}`;
+  ov.appendChild(shellDisp);
+
+  // ── 商品卡片 ──
+  const row = document.createElement('div');
+  row.style.cssText = 'display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;justify-content:center;max-width:620px;';
+  ov.appendChild(row);
+
+  _shopState.items.forEach((item, idx) => {
+    const col     = _SHOP_RARITY_COLORS[item.rarity] || '#ddd';
+    const lbl     = _SHOP_RARITY_LABELS[item.rarity] || '';
+    const bought  = _shopState.purchased.has(idx);
+    const afford  = (p.shells||0) >= item.price;
+
+    const card = document.createElement('div');
+    card.dataset.shopIdx = idx;
+    card.style.cssText = [
+      'width:128px','padding:14px 10px','background:#0e0e18',
+      `border:2px solid ${bought ? '#333' : col}`,
+      'border-radius:8px','text-align:center',
+      `cursor:${bought || !afford ? 'default' : 'pointer'}`,
+      `opacity:${bought ? 0.4 : 1}`,
+      'transition:transform 0.1s,opacity 0.2s',
+      'user-select:none',
+    ].join(';');
+    card.innerHTML =
+      `<div style="font-size:30px;margin-bottom:5px;">${item.icon}</div>` +
+      `<div style="color:${col};font-size:10px;font-weight:bold;margin-bottom:3px;">${lbl}</div>` +
+      `<div style="color:#eee;font-size:11px;font-weight:bold;margin-bottom:6px;line-height:1.25;">${item.name}</div>` +
+      `<div style="color:#999;font-size:10px;margin-bottom:8px;line-height:1.3;">${item.desc}</div>` +
+      `<div style="color:${afford&&!bought?'#4df':'#666'};font-size:12px;font-weight:bold;">🐚 ${item.price}</div>`;
+
+    if (!bought) {
+      card.addEventListener('mouseenter', () => { if ((p.shells||0) >= item.price) card.style.transform='scale(1.05)'; });
+      card.addEventListener('mouseleave', () => { card.style.transform='scale(1)'; });
+      card.addEventListener('click', () => {
+        if (_shopState.purchased.has(idx)) return;
+        if ((p.shells||0) < item.price) {
+          shellDisp.style.color='#f44';
+          setTimeout(()=>{ shellDisp.style.color='#4df'; }, 350);
+          return;
+        }
+        p.shells -= item.price;
+        _shopState.purchased.add(idx);
+        if (typeof item.apply === 'function') item.apply(p);
+        if (typeof addFloatingText === 'function')
+          addFloatingText(`🐚-${item.price}`, p.x, p.y-22, '#f84', 1.2);
+        _renderShopOverlay();
+      });
+    }
+    row.appendChild(card);
+  });
+
+  // ── 按鈕列 ──
+  const btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex;gap:14px;';
+  ov.appendChild(btnRow);
+
+  // 刷新
+  const canRefresh = (p.shells||0) >= _shopState.refreshCost;
+  const refreshBtn = document.createElement('button');
+  refreshBtn.style.cssText = [
+    'padding:9px 20px',
+    `background:${canRefresh?'#0a1f12':'#111'}`,
+    `border:2px solid ${canRefresh?'#4f8':'#444'}`,
+    `color:${canRefresh?'#4f8':'#555'}`,
+    "font-family:inherit",'font-size:13px','border-radius:6px',
+    `cursor:${canRefresh?'pointer':'default'}`,
+  ].join(';');
+  refreshBtn.textContent = `🔄 刷新 🐚${_shopState.refreshCost}`;
+  refreshBtn.addEventListener('click', () => {
+    if ((p.shells||0) < _shopState.refreshCost) return;
+    p.shells -= _shopState.refreshCost;
+    _shopState.refreshCost = Math.ceil(_shopState.refreshCost * 1.5);
+    _shopState.items     = _buildShopItems(4);
+    _shopState.purchased = new Set();
+    _renderShopOverlay();
+  });
+  btnRow.appendChild(refreshBtn);
+
+  // 繼續
+  const contBtn = document.createElement('button');
+  contBtn.style.cssText = [
+    'padding:9px 28px','background:#0a0a28',
+    'border:2px solid #4af','color:#4af',
+    "font-family:inherit",'font-size:14px','font-weight:bold',
+    'border-radius:6px','cursor:pointer',
+  ].join(';');
+  contBtn.textContent = '繼續 →';
+  contBtn.addEventListener('click', () => {
+    document.getElementById('shop-overlay')?.remove();
+    _shopState = null;
+    const nextWave = gs.wave.num + 1;
+    gs.phase = 'playing';
+    showGameScreen();
+    startWave(nextWave);
+  });
+  btnRow.appendChild(contBtn);
+
+  document.body.appendChild(ov);
+  if (typeof updateHUD === 'function') updateHUD();
 }
 
 function shuffled(arr) {
@@ -1210,7 +1371,7 @@ function updateHUD() {
   document.getElementById('hud-xp-fill').style.width = Math.min(100, p.xp/p.xpToNext*100).toFixed(1)+'%';
   document.getElementById('hud-wave').textContent    = `S${gs.stage||1} · ${gs.wave.num}/30波`;
   document.getElementById('hud-enemies').textContent = `敌人: ${gs.enemies.filter(e=>!e.dead).length}`;
-  document.getElementById('hud-kills').textContent   = `💀 ${gs.kills}`;
+  document.getElementById('hud-kills').textContent   = `💀 ${gs.kills}  🐚 ${gs.player.shells||0}`;
   document.getElementById('hud-score').textContent   = `得分: ${gs.score}`;
 
   // Stats
