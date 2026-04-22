@@ -417,3 +417,8 @@ function isEnemyEncountered(id){
   return getEncounteredEnemies().has(id);
 }
 
+// ── 新手教程状态 ──
+const _TUTORIAL_KEY = 'pw_tutorial_done';
+function isTutorialDone(){ return !!localStorage.getItem(_TUTORIAL_KEY); }
+function markTutorialDone(){ localStorage.setItem(_TUTORIAL_KEY,'1'); }
+

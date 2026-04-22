@@ -1737,6 +1737,226 @@ document.querySelectorAll('.cls-dot').forEach((dot, i) => {
 // Global SFX for btn clicks
 document.querySelectorAll('.btn').forEach(b=>b.addEventListener('click',()=>SFX.play('click'),{passive:true}));
 
+// ═══════════════════════════════════════════════════════
+// §TUT  新手教程
+// ═══════════════════════════════════════════════════════
+
+const _TUTORIAL_STEPS = [
+  {
+    icon: '⚔',
+    title: '欢迎来到像素勇士！',
+    html: '这是一款<b style="color:#fd4">像素风 RPG 肉鸽游戏</b>。<br>选择职业，在不断涌来的怪物浪潮中战斗，<br>击杀敌人获得升级和武器，挑战最终Boss！<br><br><span style="color:#666;font-size:10px">每局游戏都是全新的冒险体验 — 永远不会无聊！</span>',
+    target: null,
+  },
+  {
+    icon: '🕹',
+    title: '操控角色移动',
+    html: '键盘：按 <b style="color:#4ef">WASD</b> 或 <b style="color:#4ef">方向键</b> 控制移动方向。<br>手机：拖拽屏幕<b style="color:#4ef">左侧虚拟摇杆</b>即可。<br><br><div style="text-align:center;line-height:1.4;font-size:16px;letter-spacing:6px;margin:8px 0;color:#aaa">　⬆<br>⬅ 🧑 ➡<br>　⬇</div><span style="color:#666;font-size:10px">武器会<b style="color:#fd4">自动攻击</b>周围最近的敌人！</span>',
+    target: null,
+  },
+  {
+    icon: '✨',
+    title: '使用技能',
+    html: '每个职业都有独特的主动技能！<br>键盘：按 <b style="color:#fd4">空格键</b> 释放技能。<br>手机：点击屏幕<b style="color:#fd4">右下角技能按钮</b>。<br><br><div style="border:1px solid #fd4;border-radius:12px;padding:5px 14px;display:inline-block;color:#fd4;font-size:11px;margin:6px 0">✨ 技能 [就绪]</div><br><span style="color:#666;font-size:10px">技能有冷却时间，冷却结束后重新发光。</span>',
+    target: null,
+  },
+  {
+    icon: '🌊',
+    title: '波次与升级系统',
+    html: '击败<b style="color:#4ef">一波所有怪物</b>后，出现升级选择界面。<br>从3张卡片中选择一张：<br><br>• 🗡 <b>新武器</b> 或 武器升级<br>• 🌟 <b>角色天赋</b><br>• 🎁 <b>补给</b>（特殊强化）<br><br><b style="color:#f84">每10波</b>遭遇强力 <b style="color:#f84">Boss</b>，小心应对！',
+    target: null,
+  },
+  {
+    icon: '🗡',
+    title: '武器系统',
+    html: '最多携带 <b style="color:#fd4">6把武器</b>，每把可独立升级强化。<br><br>武器类型多样：<br>🔫 枪械 ／ ⚔ 剑类 ／ 🚁 无人机<br>🏹 箭类 ／ 🐢 召唤 ／ 🛡 炮台<br><br>不同武器针对不同怪物有<b style="color:#4ef">克制关系</b>，<br>多武器组合搭配是通关的关键！',
+    target: null,
+  },
+  {
+    icon: '🌟',
+    title: '补给与天赋',
+    html: '每隔几波出现<b style="color:#fd4">补给选择</b>，可获得强力天赋。<br>天赋<b>永久强化</b>角色直到本局结束：<br><br>• 提升攻击力 / 移速 / 暴击率<br>• 获得特殊被动技能<br>• 强化特定武器行为<br><br><span style="color:#aaa">天赋搭配决定角色实力的上限！</span>',
+    target: null,
+  },
+  {
+    icon: '🎰',
+    title: '抽奖系统',
+    html: '用游戏中获得的<b style="color:#fd4">金币</b>在抽奖系统中抽取奖励！<br>可以获得宝石、强化材料等丰厚奖励。<br><br>点击顶部高亮的 <b style="color:#f8a">🎰 抽奖</b> 按钮即可进入。',
+    target: 'btn-gacha',
+  },
+  {
+    icon: '⚒',
+    title: '强化工坊',
+    html: '在强化工坊中全面强化武器：<br><br>• <b style="color:#fd4">升级</b>：消耗金币提升武器等级<br>• <b style="color:#4ef">升星</b>：突破武器品质上限<br>• <b style="color:#4f8">宝石</b>：镶嵌宝石获得额外加成<br><br>点击顶部高亮的 <b style="color:#fd4">⚒ 工坊</b> 按钮进入。',
+    target: 'btn-forge',
+  },
+  {
+    icon: '💎',
+    title: '宝石怪与宝石系统',
+    html: '游戏中随机出现<b style="color:#4f8">宝石怪</b>，击败可获得宝石！<br><br>宝石共 <b>7种品质</b>（从低到高）：<br><span style="color:#ccc">普通</span> → <span style="color:#4f8">稀有</span> → <span style="color:#4af">较稀有</span> → <span style="color:#a4f">史诗</span><br>→ <span style="color:#fd4">传说</span> → <span style="color:#f84">神话</span> → <span style="background:linear-gradient(90deg,#f44,#fd4,#4f8,#4af,#f4f);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">至臻</span><br><br>宝石可在工坊镶嵌到武器上，提供强力加成！',
+    target: null,
+  },
+  {
+    icon: '🎉',
+    title: '准备好了！',
+    html: '你已了解游戏的基本玩法！<br><br>选择一个职业，踏上你的<b style="color:#fd4">像素冒险</b>旅程！<br><br><span style="color:#555;font-size:10px">随时可通过顶部「📖 教程」按钮重看本教程。</span>',
+    target: null,
+    isLast: true,
+  },
+];
+
+let _tutStep = 0;
+
+function _tutCreateDOM() {
+  if (document.getElementById('tut-backdrop')) return;
+  const frag = document.createDocumentFragment();
+
+  const backdrop = document.createElement('div');
+  backdrop.id = 'tut-backdrop';
+  frag.appendChild(backdrop);
+
+  const hl = document.createElement('div');
+  hl.id = 'tut-highlight';
+  frag.appendChild(hl);
+
+  const arrow = document.createElement('div');
+  arrow.id = 'tut-arrow';
+  frag.appendChild(arrow);
+
+  const box = document.createElement('div');
+  box.id = 'tut-box';
+  frag.appendChild(box);
+
+  document.body.appendChild(frag);
+}
+
+function openTutorial() {
+  _tutCreateDOM();
+  _tutStep = 0;
+  document.getElementById('tut-backdrop').classList.add('active');
+  _renderTutStep();
+}
+
+function _tutClose() {
+  const backdrop = document.getElementById('tut-backdrop');
+  const box      = document.getElementById('tut-box');
+  const hl       = document.getElementById('tut-highlight');
+  const arrow    = document.getElementById('tut-arrow');
+  if (backdrop) backdrop.classList.remove('active');
+  if (box)   { box.style.display='none'; box.classList.remove('tut-in'); }
+  if (hl)      hl.style.display = 'none';
+  if (arrow)   arrow.style.display = 'none';
+  markTutorialDone();
+}
+
+function _tutNext() {
+  if (_tutStep >= _TUTORIAL_STEPS.length - 1) { _tutClose(); return; }
+  _tutStep++;
+  _renderTutStep();
+}
+
+function _renderTutStep() {
+  const step  = _TUTORIAL_STEPS[_tutStep];
+  const total = _TUTORIAL_STEPS.length;
+  const box   = document.getElementById('tut-box');
+  const hl    = document.getElementById('tut-highlight');
+  const arrow = document.getElementById('tut-arrow');
+
+  // ── dots ──
+  const dots = _TUTORIAL_STEPS.map((_, i) => {
+    const cls = i === _tutStep ? 'cur' : (i < _tutStep ? 'done' : '');
+    return `<div class="tut-dot${cls?' '+cls:''}"></div>`;
+  }).join('');
+
+  // ── next button ──
+  const isLast = !!step.isLast;
+  const nextLabel = isLast ? '🎉&nbsp; 开始冒险！' : '下一步 ▶';
+  const nextCls   = isLast ? 'tut-btn-next last' : 'tut-btn-next';
+
+  box.innerHTML =
+    `<span class="tut-icon">${step.icon}</span>` +
+    `<div class="tut-title">${step.title}</div>` +
+    `<div class="tut-text">${step.html}</div>` +
+    `<div class="tut-dots">${dots}</div>` +
+    `<div class="tut-btns">` +
+      `<button class="tut-btn-skip" onclick="_tutClose()">跳过</button>` +
+      `<span class="tut-step-label">${_tutStep + 1}&thinsp;/&thinsp;${total}</span>` +
+      `<button class="${nextCls}" onclick="_tutNext()">${nextLabel}</button>` +
+    `</div>`;
+
+  // ── highlight & arrow ──
+  hl.style.display    = 'none';
+  arrow.style.display = 'none';
+  arrow.className     = '';
+  arrow.id            = 'tut-arrow';
+
+  const targetEl = step.target ? document.getElementById(step.target) : null;
+
+  if (targetEl) {
+    const r   = targetEl.getBoundingClientRect();
+    const pad = 5;
+    hl.style.cssText = `display:block;left:${r.left-pad}px;top:${r.top-pad}px;`+
+                       `width:${r.width+pad*2}px;height:${r.height+pad*2}px`;
+
+    // ── position dialog near the element ──
+    const bW      = Math.min(300, window.innerWidth * 0.88);
+    const elCX    = r.left + r.width  / 2;
+    const elCY    = r.top  + r.height / 2;
+    const inTop   = elCY < window.innerHeight / 2;
+    const gap     = 14;
+    const arrowSz = 22;
+
+    let boxTop, boxLeft;
+    if (inTop) {
+      // dialog below element
+      boxTop = r.bottom + arrowSz + gap;
+      arrow.textContent = '▲';
+      arrow.classList.add('dir-up');
+      arrow.style.cssText = `display:block;left:${elCX-11}px;top:${r.bottom+4}px`;
+    } else {
+      // dialog above element (estimate height ~260px)
+      const estH = 260;
+      boxTop = Math.max(8, r.top - estH - arrowSz - gap);
+      arrow.textContent = '▼';
+      arrow.classList.add('dir-down');
+      arrow.style.cssText = `display:block;left:${elCX-11}px;top:${r.top - arrowSz - 4}px`;
+    }
+    boxLeft = Math.max(8, Math.min(elCX - bW/2, window.innerWidth - bW - 8));
+    box.style.cssText = `display:block;left:${boxLeft}px;top:${boxTop}px;width:${bW}px`;
+  } else {
+    // center dialog
+    box.style.cssText = `display:block;left:50%;top:50%;transform:translate(-50%,-50%)`;
+  }
+
+  // ── re-trigger entrance animation ──
+  box.classList.remove('tut-in');
+  void box.offsetWidth; // reflow
+  box.classList.add('tut-in');
+}
+
+// ── Add tutorial button to menu topbar ──
+(function(){
+  const topbar = document.getElementById('menu-topbar');
+  if (!topbar) return;
+  const btn = document.createElement('button');
+  btn.className = 'btn icon-btn';
+  btn.title = '教程';
+  btn.innerHTML = '📖';
+  btn.id = 'btn-tutorial';
+  btn.style.cssText = 'border-color:#4ef;color:#4ef';
+  btn.addEventListener('click', () => { SFX.play('click'); openTutorial(); });
+  // Insert right after btn-settings
+  const ref = document.getElementById('btn-settings');
+  ref ? ref.after(btn) : topbar.appendChild(btn);
+})();
+
+// ── Auto-show on very first visit ──
+(function(){
+  if (typeof isTutorialDone === 'function' && !isTutorialDone()) {
+    setTimeout(openTutorial, 700);
+  }
+})();
+
 document.getElementById('tog-particles').addEventListener('click', ()=>{
   settings.particles=!settings.particles;
   document.getElementById('tog-particles').classList.toggle('on',settings.particles);

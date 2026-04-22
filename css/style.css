@@ -446,4 +446,90 @@ input[type=range]{width:120px;accent-color:#48f}
 @media (orientation:portrait) and (max-width:900px){
   #rotate-hint{display:flex !important;}
 }
+
+/* ── Tutorial overlay ── */
+#tut-backdrop{
+  position:fixed;inset:0;z-index:9990;
+  background:rgba(0,0,0,.8);
+  pointer-events:auto;display:none;
+}
+#tut-backdrop.active{display:block}
+
+#tut-highlight{
+  position:fixed;z-index:9995;
+  border:2px solid #fd4;border-radius:5px;
+  pointer-events:none;display:none;
+  transition:all .15s ease;
+  animation:tutGlow .75s ease-in-out infinite alternate;
+}
+@keyframes tutGlow{
+  from{box-shadow:0 0 6px #fd4,0 0 12px #fd42}
+  to{box-shadow:0 0 18px #fd4,0 0 35px #fd43;border-color:#ffa}
+}
+
+#tut-box{
+  position:fixed;z-index:10000;
+  background:#0d0d1a;border:2px solid #fd4;border-radius:6px;
+  padding:18px 20px 14px;max-width:300px;width:88vw;
+  pointer-events:auto;display:none;
+  box-shadow:0 0 0 1px #1a1400,0 0 32px #fd45;
+  font-family:'Courier New',monospace;
+}
+#tut-box.tut-in{animation:tutBoxIn .22s ease}
+@keyframes tutBoxIn{
+  from{opacity:0;transform:scale(.93) translateY(10px)}
+  to{opacity:1;transform:scale(1) translateY(0)}
+}
+#tut-box .tut-icon{font-size:30px;display:block;margin-bottom:7px;text-align:center}
+#tut-box .tut-title{
+  font-size:14px;font-weight:700;color:#fd4;
+  margin-bottom:8px;letter-spacing:1px;text-align:center;
+}
+#tut-box .tut-text{
+  font-size:11px;color:#bbb;line-height:1.75;
+  margin-bottom:10px;
+}
+#tut-box .tut-dots{
+  display:flex;gap:4px;align-items:center;
+  justify-content:center;margin:6px 0 10px;
+}
+.tut-dot{
+  width:6px;height:6px;border-radius:50%;
+  background:#1e1e2e;border:1px solid #333;
+  transition:background .2s,box-shadow .2s;
+}
+.tut-dot.cur{background:#fd4;border-color:#fd4;box-shadow:0 0 6px #fd45}
+.tut-dot.done{background:#3a3010;border-color:#665500}
+#tut-box .tut-btns{
+  display:flex;justify-content:space-between;
+  align-items:center;gap:6px;
+}
+.tut-btn-skip{
+  background:none;border:1px solid #2a2a3a;border-radius:3px;
+  color:#444;font-family:'Courier New',monospace;
+  font-size:10px;padding:5px 10px;cursor:pointer;letter-spacing:.5px;
+  transition:color .15s,border-color .15s;
+}
+.tut-btn-skip:hover{color:#777;border-color:#444}
+.tut-btn-next{
+  background:#0d0d1a;border:2px solid #fd4;border-radius:3px;
+  color:#fd4;font-family:'Courier New',monospace;
+  font-size:11px;padding:6px 14px;cursor:pointer;letter-spacing:1px;
+  box-shadow:0 0 8px #fd43;
+  transition:background .15s,box-shadow .15s;
+}
+.tut-btn-next:hover{background:#fd41;box-shadow:0 0 14px #fd46}
+.tut-btn-next.last{border-color:#4f8;color:#4f8;box-shadow:0 0 8px #4f83}
+.tut-btn-next.last:hover{background:#4f810;box-shadow:0 0 14px #4f86}
+.tut-step-label{font-size:9px;color:#333;letter-spacing:1px;flex-shrink:0}
+
+#tut-arrow{
+  position:fixed;z-index:9996;
+  font-size:22px;pointer-events:none;display:none;
+  color:#fd4;text-shadow:0 0 8px #fd4;
+}
+#tut-arrow.dir-up{animation:tutArrowUp .5s ease-in-out infinite alternate}
+#tut-arrow.dir-down{animation:tutArrowDown .5s ease-in-out infinite alternate}
+@keyframes tutArrowUp{from{transform:translateY(0)}to{transform:translateY(-8px)}}
+@keyframes tutArrowDown{from{transform:translateY(0)}to{transform:translateY(8px)}}
 </style>

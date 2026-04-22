@@ -200,9 +200,18 @@ function getWavePlan(n) {
 // ═══════════════════════════════════════════════════════
 // §0  版本号 & 更新公告  ← 每次更新只需修改这里
 // ═══════════════════════════════════════════════════════
-const GAME_VERSION = 'v0.9.4';
+const GAME_VERSION = 'v0.9.5';
 document.getElementById('load-version').textContent = GAME_VERSION;
 const CHANGELOG = [
+  { version:'v0.9.5', date:'2026-04-21', items:[
+    '新增10步新手教程系统（全屏遮罩对话框，像素风格与游戏UI一致）',
+    '首次进入游戏自动弹出教程（localStorage: pw_tutorial_done），之后不再重复',
+    '顶部按钮栏新增「📖 教程」按钮，随时可重看',
+    '步骤1~6居中显示，步骤7~8聚光灯高亮指向抽奖/工坊按钮并显示方向箭头',
+    '高亮元素：金色闪烁边框动画；对话框位于目标元素上下方并带入场动画',
+    '底部进度点：当前步骤金色发光，已完成步骤暗金色，未到达为深灰',
+    '第10步「开始冒险」按钮绿色高亮，点击完成后关闭并标记已完成',
+  ]},
   { version:'v0.9.4', date:'2026-04-21', items:[
     '图鉴怪物Tab新增"遇到后解锁"机制，未遭遇怪物显示❓/???，详情显示"尚未遇到此怪物"',
     'save.js 新增 recordEncounteredEnemy / isEnemyEncountered / getEncounteredEnemies（localStorage: pw_encountered_enemies）',
