@@ -200,9 +200,29 @@ function getWavePlan(n) {
 // ═══════════════════════════════════════════════════════
 // §0  版本号 & 更新公告  ← 每次更新只需修改这里
 // ═══════════════════════════════════════════════════════
-const GAME_VERSION = 'v0.9.6';
+const GAME_VERSION = 'v0.9.9';
 document.getElementById('load-version').textContent = GAME_VERSION;
 const CHANGELOG = [
+  { version:'v0.9.9', date:'2026-04-23', items:[
+    'applyUpgradeEffect() 新增 weplv_* 分支：補給箱選到武器升級選項時正確執行等級+1',
+    'getLevelUpOptions() 移除移速與拾取範圍選項（只保留 HP/回復/幸運/經驗/閃避/減傷）',
+    '商店卡片圖示放大至 48px，移除稀有度文字標籤（改由名稱著色顯示品質）',
+  ]},
+  { version:'v0.9.8', date:'2026-04-23', items:[
+    '波次商店UI全面重新设计，改为三栏布局（左20% 中55% 右25%）',
+    '左栏：实时玩家属性面板（HP进度条/贝壳/移速/攻击/减伤/闪避/幸运/回复）',
+    '中栏：4个道具格横排，稀有度颜色边框，右上角显示已购数量/上限',
+    '道具描述数值自动着色：正值绿色(+/×)，负值红色(-/÷)',
+    '贝壳不足时卡片变暗(opacity 0.6)且无法点击购买',
+    '达到maxCount上限的道具不再出现在刷新结果里',
+    '右栏：已获得道具列表（图标+名称+购买次数）',
+    '底部刷新/继续按钮栏，刷新费用显示当前实际数值',
+    'SHOP_ITEMS新增maxCount字段，贝壳加倍符上限3次',
+  ]},
+  { version:'v0.9.7', date:'2026-04-23', items:[
+    'STAT_UPGRADES 重构：移除全部属性强化（HP/速度/拾取/冷却/闪避/减伤等18项）',
+    '改为11个武器等级升级选项，每项对应一种武器（id: weplv_*），等级+1',
+  ]},
   { version:'v0.9.6', date:'2026-04-22', items:[
     '新增貝殼系統：怪物死亡掉落🐚貝殼，HUD即時顯示',
     '新增波次商店：每波結束彈出商店，支援購買/刷新/繼續',
@@ -763,24 +783,17 @@ const WEAPON_DEFS = {
 
 // ── STAT UPGRADES ──────────────────────────────────────
 const STAT_UPGRADES = [
-  { id:'maxhp',    icon:'❤',  name:'强化体魄',    desc:'+30 最大HP，恢复30HP' },
-  { id:'speed',    icon:'👟', name:'疾风步法',    desc:'+20 移动速度' },
-  { id:'physdmg',  icon:'⚔',  name:'物理强化',    desc:'物理武器伤害+30%（剑阵/箭雨/飞剑）' },
-  { id:'magicdmg', icon:'✨', name:'法术强化',    desc:'法术武器伤害+30%（玄武/治疗机）' },
-  { id:'gundmg',   icon:'🔫', name:'枪械强化',    desc:'枪械武器伤害+30%（散弹/加特林/狙击/导弹）' },
-  { id:'area',     icon:'💥', name:'扩展攻击',    desc:'+15% AoE范围倍率' },
-  { id:'cd',       icon:'⚡', name:'急速出手',    desc:'-12% 冷却 (最低0.2)' },
-  { id:'heal',     icon:'💊', name:'即时治愈',    desc:'立刻恢复60%最大HP' },
-  { id:'pickup',   icon:'🧲', name:'磁力场',      desc:'+40 拾取半径' },
-  { id:'luck',     icon:'🍀', name:'幸运加成',    desc:'+25 幸运值 (无上限)' },
-  { id:'dodge',        icon:'💨', name:'闪避训练',    desc:'+6% 基础闪避 (上限60%)' },
-  { id:'dmgred',       icon:'🛡', name:'硬化皮肤',    desc:'+5% 基础减伤 (上限60%)' },
-  { id:'magnet_boost', icon:'🧲', name:'磁场增幅',    desc:'拾取范围永久+50%' },
-  { id:'wave_shield',  icon:'🔰', name:'波次护盾',    desc:'每波开始获得一次格挡，可完全抵消一次伤害' },
-  { id:'ghost_shadow', icon:'👻', name:'残影',        desc:'每0.5秒在当前位置留下残影，对经过怪物造成伤害' },
-  { id:'land_mine',    icon:'💣', name:'地雷阵',      desc:'每波在地图生成3颗地雷，怪物踩到爆炸造成范围伤害' },
-  { id:'ice_armor',    icon:'🧊', name:'冰甲',        desc:'被攻击时20%概率冻结攻击者1.5秒' },
-  { id:'overload',     icon:'⚡', name:'过载',        desc:'每击杀50只怪物触发爆发，3秒内所有伤害翻倍' },
+  { id:'weplv_shotgun',        icon:'💥', name:'散弹枪升级',      desc:'散弹枪等级+1' },
+  { id:'weplv_gatling',        icon:'🔴', name:'加特林升级',      desc:'加特林等级+1' },
+  { id:'weplv_sword',          icon:'⚔',  name:'剑阵升级',        desc:'剑阵等级+1' },
+  { id:'weplv_arrow_rain',     icon:'🏹', name:'箭雨升级',        desc:'箭雨等级+1' },
+  { id:'weplv_heal_drone',     icon:'💚', name:'治疗无人机升级',  desc:'治疗无人机等级+1' },
+  { id:'weplv_missile_drone',  icon:'🚀', name:'导弹无人机升级',  desc:'导弹无人机等级+1' },
+  { id:'weplv_sniper',         icon:'🔭', name:'狙击枪升级',      desc:'狙击枪等级+1' },
+  { id:'weplv_flying_sword',   icon:'🗡', name:'飞剑升级',        desc:'飞剑等级+1' },
+  { id:'weplv_kirby_copy',     icon:'⭐', name:'模仿升级',        desc:'模仿等级+1' },
+  { id:'weplv_black_tortoise', icon:'🐢', name:'玄武升级',        desc:'召唤术·玄武等级+1' },
+  { id:'weplv_turret',         icon:'⚙',  name:'炮台升级',        desc:'炮台等级+1' },
 ];
 
 // ── SUPPLY TALENTS (boss wave rewards) ─────────────────
@@ -929,12 +942,13 @@ const WEAPON_ENHANCE = {
 // ═══════════════════════════════════════════════════════
 const SHOP_ITEMS = [
   {
-    id:     'shell_doubler',
-    icon:   '🐚',
-    name:   '貝殼加倍符',
-    rarity: 'common',
-    price:  30,
-    desc:   '本局剩餘波次貝殼掉落×2',
+    id:       'shell_doubler',
+    icon:     '🐚',
+    name:     '贝壳加倍符',
+    rarity:   'common',
+    price:    30,
+    maxCount: 3,
+    desc:     '本局剩余波次贝壳掉落 ×2',
     apply(p) { p.shellDoubleMult = (p.shellDoubleMult || 1) * 2; },
   },
 ];

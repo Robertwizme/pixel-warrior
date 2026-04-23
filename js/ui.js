@@ -762,25 +762,146 @@ function _pickShopRarity(luck) {
 const _SHOP_RARITY_COLORS  = { common:'#ccc', rare:'#4f8', relatively_rare:'#4af', epic:'#b3f', legendary:'#fd4', mythical:'#f44', ultimate:'#f8f' };
 const _SHOP_RARITY_LABELS  = { common:'普通', rare:'稀有', relatively_rare:'較稀有', epic:'史詩', legendary:'傳說', mythical:'神話', ultimate:'至臻' };
 
-let _shopState = null; // { items, refreshCost, purchased:Set }
+let _shopState = null; // { items, refreshCost, purchased:Set, ownedCounts:Map }
+
+// ── 描述文字中的數值著色 (+綠 / -紅 / ×綠 / ÷紅) ──
+function _shopColorDesc(desc) {
+  return String(desc)
+    .replace(/(\+[\d.]+%?)/g,  '<span style="color:#4f8">$1</span>')
+    .replace(/(×[\d.]+)/g,     '<span style="color:#4f8">$1</span>')
+    .replace(/(-[\d.]+%?)/g,   '<span style="color:#f55">$1</span>')
+    .replace(/(÷[\d.]+)/g,     '<span style="color:#f55">$1</span>');
+}
 
 function _buildShopItems(count) {
   const pool = (typeof SHOP_ITEMS !== 'undefined') ? SHOP_ITEMS : [];
   if (!pool.length) return [];
-  const luck = gs?.player?.luck || 0;
+  const luck   = gs?.player?.luck || 0;
+  const owned  = _shopState?.ownedCounts || new Map();
+  // 過濾已達上限的道具
+  const avail  = pool.filter(it => (owned.get(it.id)||0) < (it.maxCount ?? 99));
+  const src    = avail.length ? avail : pool; // 若全部達限則回退到完整池
   const result = [];
-  for (let i=0; i<count; i++) {
+  for (let i = 0; i < count; i++) {
     const rarity = _pickShopRarity(luck);
-    const same = pool.filter(it => it.rarity === rarity);
-    const src  = same.length ? same : pool;
-    result.push(src[Math.floor(Math.random() * src.length)]);
+    const same   = src.filter(it => it.rarity === rarity);
+    const pick   = same.length ? same : src;
+    result.push(pick[Math.floor(Math.random() * pick.length)]);
   }
   return result;
 }
 
 function showShopScreen() {
-  _shopState = { items: _buildShopItems(4), refreshCost: 10, purchased: new Set() };
+  _shopState = { items: [], refreshCost: 10, purchased: new Set(), ownedCounts: new Map() };
+  _shopState.items = _buildShopItems(4);
   _renderShopOverlay();
+}
+
+// ── 左欄：玩家數據 ──
+function _shopPlayerStats(p) {
+  const hp     = Math.ceil(p.hp);
+  const maxHp  = p.maxHp;
+  const hpPct  = Math.min(100, (hp / maxHp) * 100);
+  const hpCol  = hpPct > 50 ? '#4f8' : hpPct > 25 ? '#fd4' : '#f44';
+  const dmg    = ((p.dmgMult||1)*100).toFixed(0);
+  const arm    = (Math.min(0.6, p.baseDmgRed||0)*100).toFixed(0);
+  const dodge  = (Math.min(0.6, p.baseDodge||0)*100).toFixed(0);
+  const regen  = (p.hpRegen||0).toFixed(1);
+  const row = (icon, label, val, col='#ccc') =>
+    `<div class="shp-sr"><span>${icon} <span style="color:#666">${label}</span></span><b style="color:${col}">${val}</b></div>`;
+  return `
+    <div class="shp-sec-hd">角色数据</div>
+    ${row('❤','HP', `${hp}/${maxHp}`, hpCol)}
+    <div style="background:#200;border-radius:2px;height:4px;margin:-3px 0 5px;overflow:hidden">
+      <div style="width:${hpPct}%;height:100%;background:${hpCol};transition:width .3s"></div>
+    </div>
+    ${row('🐚','贝壳',  p.shells||0, '#4df')}
+    ${row('⚡','移速',  p.spd,       '#aef')}
+    ${row('⚔','攻击',  dmg+'%',     '#fd4')}
+    ${row('🛡','减伤',  arm+'%',     '#aaa')}
+    ${row('🌀','闪避',  dodge+'%',   '#8af')}
+    ${row('🍀','幸运',  p.luck||0,   '#4f8')}
+    ${row('💖','回复',  regen+'/s',  '#6f6')}
+  `;
+}
+
+// ── 右欄：已獲得道具 ──
+function _shopOwnedList() {
+  if (!_shopState) return '';
+  const owned = _shopState.ownedCounts;
+  const pool  = (typeof SHOP_ITEMS !== 'undefined') ? SHOP_ITEMS : [];
+  let rows = '';
+  owned.forEach((cnt, id) => {
+    const def = pool.find(x => x.id === id);
+    if (!def) return;
+    const col = _SHOP_RARITY_COLORS[def.rarity] || '#ddd';
+    rows += `
+      <div class="shp-owned-row">
+        <span style="font-size:18px;flex-shrink:0">${def.icon}</span>
+        <div style="flex:1;min-width:0">
+          <div style="color:${col};font-size:10px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${def.name}</div>
+          <div style="color:#555;font-size:9px">已购 × ${cnt}</div>
+        </div>
+      </div>`;
+  });
+  return `
+    <div class="shp-sec-hd">已获道具</div>
+    ${rows || '<div style="color:#333;font-size:10px;text-align:center;padding:14px 0">尚未购买</div>'}
+  `;
+}
+
+// ── 道具卡片 ──
+function _buildShopCard(item, idx, p) {
+  const col    = _SHOP_RARITY_COLORS[item.rarity] || '#ddd';
+  const lbl    = _SHOP_RARITY_LABELS[item.rarity] || '';
+  const bought = _shopState.purchased.has(idx);
+  const maxC   = item.maxCount ?? 99;
+  const ownedC = _shopState.ownedCounts.get(item.id) || 0;
+  const atMax  = ownedC >= maxC;
+  const afford = (p.shells||0) >= item.price;
+  const locked = bought || atMax;
+
+  const bdrCol = locked ? '#1e1e1e' : (!afford ? '#2a1400' : col);
+  const op     = locked ? 0.3 : (!afford ? 0.6 : 1);
+
+  const card = document.createElement('div');
+  card.className = 'shp-card';
+  card.style.cssText = `border-color:${bdrCol};opacity:${op};cursor:${locked||!afford?'default':'pointer'}`;
+
+  // 數量徽章（右上角）
+  const badge = maxC < 99
+    ? `<div class="shp-badge" style="color:${ownedC>0?col:'#444'};border-color:${ownedC>0?col:'#222'}">${ownedC}/${maxC}</div>`
+    : (ownedC > 0 ? `<div class="shp-badge" style="color:#4df;border-color:#1a3a4a">×${ownedC}</div>` : '');
+
+  card.innerHTML =
+    badge +
+    `<div class="shp-card-icon">${item.icon}</div>` +
+    `<div class="shp-card-name" style="color:${col}">${item.name}</div>` +
+    `<div class="shp-card-desc">${_shopColorDesc(item.desc)}</div>` +
+    `<div class="shp-card-price" style="color:${afford&&!locked?'#4df':'#3a3a3a'}">🐚 ${item.price}</div>`;
+
+  if (!locked) {
+    if (afford) {
+      card.addEventListener('mouseenter', () => { card.style.transform='translateY(-5px) scale(1.03)'; });
+      card.addEventListener('mouseleave', () => { card.style.transform=''; });
+    }
+    card.addEventListener('click', () => {
+      if (_shopState.purchased.has(idx)) return;
+      if ((p.shells||0) < item.price) {
+        const disp = document.getElementById('shop-shell-disp');
+        if (disp) { disp.style.color='#f44'; setTimeout(()=>{disp.style.color='#4df';},350); }
+        return;
+      }
+      p.shells -= item.price;
+      _shopState.purchased.add(idx);
+      _shopState.ownedCounts.set(item.id, ((_shopState.ownedCounts.get(item.id))||0) + 1);
+      if (typeof item.apply === 'function') item.apply(p);
+      if (typeof addFloatingText === 'function')
+        addFloatingText(`🐚-${item.price}`, p.x, p.y-22, '#f84', 1.2);
+      _renderShopOverlay();
+    });
+  }
+  return card;
 }
 
 function _renderShopOverlay() {
@@ -788,95 +909,54 @@ function _renderShopOverlay() {
   if (!gs || !_shopState) return;
   const p = gs.player;
 
+  // ── 根容器 ──
   const ov = document.createElement('div');
   ov.id = 'shop-overlay';
-  ov.style.cssText = [
-    'position:fixed','inset:0','z-index:1200',
-    'background:rgba(5,5,20,0.92)',
-    'display:flex','flex-direction:column','align-items:center','justify-content:center',
-    "font-family:'Courier New',monospace",
-  ].join(';');
 
-  // ── 標題 ──
-  const title = document.createElement('div');
-  title.style.cssText = 'color:#fd4;font-size:20px;font-weight:bold;letter-spacing:2px;margin-bottom:8px;';
-  title.textContent = '🏪 波次商店';
-  ov.appendChild(title);
+  // ── 頂部標題欄 ──
+  const topBar = document.createElement('div');
+  topBar.className = 'shp-topbar';
+  topBar.innerHTML =
+    `<div class="shp-title">🏪 波次商店</div>` +
+    `<div class="shp-shell-disp" id="shop-shell-disp">🐚 ${p.shells||0}</div>`;
+  ov.appendChild(topBar);
 
-  // ── 貝殼顯示 ──
-  const shellDisp = document.createElement('div');
-  shellDisp.id = 'shop-shell-disp';
-  shellDisp.style.cssText = 'color:#4df;font-size:15px;font-weight:bold;margin-bottom:16px;';
-  shellDisp.textContent = `🐚 ${p.shells||0}`;
-  ov.appendChild(shellDisp);
+  // ── 三欄主體 ──
+  const body = document.createElement('div');
+  body.className = 'shp-body';
+  ov.appendChild(body);
 
-  // ── 商品卡片 ──
-  const row = document.createElement('div');
-  row.style.cssText = 'display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;justify-content:center;max-width:620px;';
-  ov.appendChild(row);
+  // 左欄 — 玩家數據
+  const leftCol = document.createElement('div');
+  leftCol.className = 'shp-col-left';
+  leftCol.innerHTML = _shopPlayerStats(p);
+  body.appendChild(leftCol);
 
-  _shopState.items.forEach((item, idx) => {
-    const col     = _SHOP_RARITY_COLORS[item.rarity] || '#ddd';
-    const lbl     = _SHOP_RARITY_LABELS[item.rarity] || '';
-    const bought  = _shopState.purchased.has(idx);
-    const afford  = (p.shells||0) >= item.price;
+  // 中欄 — 道具卡片
+  const midCol = document.createElement('div');
+  midCol.className = 'shp-col-mid';
+  const cardsRow = document.createElement('div');
+  cardsRow.className = 'shp-cards-row';
+  _shopState.items.forEach((item, idx) => cardsRow.appendChild(_buildShopCard(item, idx, p)));
+  midCol.appendChild(cardsRow);
+  body.appendChild(midCol);
 
-    const card = document.createElement('div');
-    card.dataset.shopIdx = idx;
-    card.style.cssText = [
-      'width:128px','padding:14px 10px','background:#0e0e18',
-      `border:2px solid ${bought ? '#333' : col}`,
-      'border-radius:8px','text-align:center',
-      `cursor:${bought || !afford ? 'default' : 'pointer'}`,
-      `opacity:${bought ? 0.4 : 1}`,
-      'transition:transform 0.1s,opacity 0.2s',
-      'user-select:none',
-    ].join(';');
-    card.innerHTML =
-      `<div style="font-size:30px;margin-bottom:5px;">${item.icon}</div>` +
-      `<div style="color:${col};font-size:10px;font-weight:bold;margin-bottom:3px;">${lbl}</div>` +
-      `<div style="color:#eee;font-size:11px;font-weight:bold;margin-bottom:6px;line-height:1.25;">${item.name}</div>` +
-      `<div style="color:#999;font-size:10px;margin-bottom:8px;line-height:1.3;">${item.desc}</div>` +
-      `<div style="color:${afford&&!bought?'#4df':'#666'};font-size:12px;font-weight:bold;">🐚 ${item.price}</div>`;
+  // 右欄 — 已獲道具
+  const rightCol = document.createElement('div');
+  rightCol.className = 'shp-col-right';
+  rightCol.innerHTML = _shopOwnedList();
+  body.appendChild(rightCol);
 
-    if (!bought) {
-      card.addEventListener('mouseenter', () => { if ((p.shells||0) >= item.price) card.style.transform='scale(1.05)'; });
-      card.addEventListener('mouseleave', () => { card.style.transform='scale(1)'; });
-      card.addEventListener('click', () => {
-        if (_shopState.purchased.has(idx)) return;
-        if ((p.shells||0) < item.price) {
-          shellDisp.style.color='#f44';
-          setTimeout(()=>{ shellDisp.style.color='#4df'; }, 350);
-          return;
-        }
-        p.shells -= item.price;
-        _shopState.purchased.add(idx);
-        if (typeof item.apply === 'function') item.apply(p);
-        if (typeof addFloatingText === 'function')
-          addFloatingText(`🐚-${item.price}`, p.x, p.y-22, '#f84', 1.2);
-        _renderShopOverlay();
-      });
-    }
-    row.appendChild(card);
-  });
-
-  // ── 按鈕列 ──
-  const btnRow = document.createElement('div');
-  btnRow.style.cssText = 'display:flex;gap:14px;';
-  ov.appendChild(btnRow);
+  // ── 底部按鈕列 ──
+  const botBar = document.createElement('div');
+  botBar.className = 'shp-botbar';
+  ov.appendChild(botBar);
 
   // 刷新
   const canRefresh = (p.shells||0) >= _shopState.refreshCost;
   const refreshBtn = document.createElement('button');
-  refreshBtn.style.cssText = [
-    'padding:9px 20px',
-    `background:${canRefresh?'#0a1f12':'#111'}`,
-    `border:2px solid ${canRefresh?'#4f8':'#444'}`,
-    `color:${canRefresh?'#4f8':'#555'}`,
-    "font-family:inherit",'font-size:13px','border-radius:6px',
-    `cursor:${canRefresh?'pointer':'default'}`,
-  ].join(';');
-  refreshBtn.textContent = `🔄 刷新 🐚${_shopState.refreshCost}`;
+  refreshBtn.className = 'shp-btn' + (canRefresh ? ' shp-btn-green' : ' shp-btn-dim');
+  refreshBtn.innerHTML = `🔄 刷新 &nbsp;🐚${_shopState.refreshCost}`;
   refreshBtn.addEventListener('click', () => {
     if ((p.shells||0) < _shopState.refreshCost) return;
     p.shells -= _shopState.refreshCost;
@@ -885,17 +965,12 @@ function _renderShopOverlay() {
     _shopState.purchased = new Set();
     _renderShopOverlay();
   });
-  btnRow.appendChild(refreshBtn);
+  botBar.appendChild(refreshBtn);
 
   // 繼續
   const contBtn = document.createElement('button');
-  contBtn.style.cssText = [
-    'padding:9px 28px','background:#0a0a28',
-    'border:2px solid #4af','color:#4af',
-    "font-family:inherit",'font-size:14px','font-weight:bold',
-    'border-radius:6px','cursor:pointer',
-  ].join(';');
-  contBtn.textContent = '繼續 →';
+  contBtn.className = 'shp-btn shp-btn-blue';
+  contBtn.textContent = '继续 →';
   contBtn.addEventListener('click', () => {
     document.getElementById('shop-overlay')?.remove();
     _shopState = null;
@@ -904,7 +979,7 @@ function _renderShopOverlay() {
     showGameScreen();
     startWave(nextWave);
   });
-  btnRow.appendChild(contBtn);
+  botBar.appendChild(contBtn);
 
   document.body.appendChild(ov);
   if (typeof updateHUD === 'function') updateHUD();
@@ -1030,6 +1105,11 @@ function applyUpgradeEffect(opt) {
     }
     else if (opt.id==='ice_armor') p.hasIceArmor = true;
     else if (opt.id==='overload')  { p.hasOverload = true; p.overloadKills = 0; }
+    else if (opt.id.startsWith('weplv_')) {
+      const _wid = opt.id.slice(6); // e.g. 'weplv_shotgun' → 'shotgun'
+      const _w = gs.weapons.find(w => w.id === _wid);
+      if (_w && WEAPON_DEFS[_wid]) _w.level = Math.min(WEAPON_DEFS[_wid].maxLv, _w.level + 1);
+    }
     // Track picked stat (dedup)
     if (p.pickedStatIds && opt.id !== 'heal') p.pickedStatIds.add(opt.id);
     updateDerivedStats(p);
@@ -1191,10 +1271,6 @@ function getLevelUpOptions() {
   pool.push({ type:'lvstat', id:'hpregen', icon:'💖', name:'生命再生',   desc:'+1/s 自然回复' });
   const lkGain = getLuckGain(p.luck);
   pool.push({ type:'lvstat', id:'luck',    icon:'🍀', name:'幸运提升',   desc:`+${lkGain} 幸运值`, _val:lkGain });
-  const spdGain = 1 + Math.floor(Math.random()*10);
-  if (CLASSES[p.classIdx]?.id !== 'scholar')
-    pool.push({ type:'lvstat', id:'speed', icon:'👟', name:'身轻如燕', desc:`移速+${spdGain}`, _val:spdGain });
-  pool.push({ type:'lvstat', id:'pickup',  icon:'🧲', name:'磁力感应',   desc:'+10 拾取范围' });
   pool.push({ type:'lvstat', id:'xpmult',  icon:'⭐', name:'经验增幅',   desc:'+5% 经验获取' });
   // Rare ~15%
   if (Math.random() < 0.15) pool.push({ type:'lvstat', id:'dodge5',   icon:'💨', name:'幻影步伐', desc:'+5% 闪避率' });
