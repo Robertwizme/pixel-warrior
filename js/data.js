@@ -46,6 +46,10 @@ const IMG_GEM_MONSTERS  = {
   epic: IMG_GEM_EPIC, legendary: IMG_GEM_LEGENDARY, mythic: IMG_GEM_MYTHIC, pristine: IMG_GEM_PRISTINE,
 };
 
+// ── Shop prop images ──
+const IMG_PROP_GOLD_INGOT    = new Image(); IMG_PROP_GOLD_INGOT.src    = 'photo/props/Gold ingot.png';
+const IMG_PROP_HEALTH_POTION = new Image(); IMG_PROP_HEALTH_POTION.src = 'photo/props/Health Potion.png';
+
 
 const SPRITES = {
   player_warrior:[' yy ','yyyy',' nn ','nnnn','sRns','rrrr','Rkrr',' k k'],
@@ -200,9 +204,15 @@ function getWavePlan(n) {
 // ═══════════════════════════════════════════════════════
 // §0  版本号 & 更新公告  ← 每次更新只需修改这里
 // ═══════════════════════════════════════════════════════
-const GAME_VERSION = 'v1.0.1';
+const GAME_VERSION = 'v1.0.2';
 document.getElementById('load-version').textContent = GAME_VERSION;
 const CHANGELOG = [
+  { version:'v1.0.2', date:'2026-04-24', items:[
+    '为全部武器标记 dmgType 字段：飞剑/散弹枪/加特林/箭雨/狙击枪→远程，剑阵→近战，导弹无人机/炮台→工程，模仿→元素，玄武→召唤',
+    '新增商店道具：金元宝（50贝壳·上限10）：游戏结束金币+10%、贝壳收益-4%',
+    '新增商店道具：生命药水（30贝壳·上限15）：生命值+11，五类伤害各-1%',
+    '新增道具图片预载：IMG_PROP_GOLD_INGOT / IMG_PROP_HEALTH_POTION',
+  ]},
   { version:'v1.0.1', date:'2026-04-24', items:[
     '寶石怪每波出現概率從5%降至1%（每波最多1隻）',
     '寶石怪品質分佈調整：普通60%/稀有22%/較稀有10%/史詩5%/傳說2%/神話0.8%/至臻0.2%',
@@ -568,7 +578,7 @@ const WORLD_W = 700, WORLD_H = 480; // Player movement bounds (centered at 0,0)
 // ── WEAPON DEFS ───────────────────────────────────────────────────────────
 const WEAPON_DEFS = {
   shotgun: {
-    name:'散弹枪', icon:'💥', maxLv:8, type:'normal', wepCat:'gun', fire: (...a)=>fireShotgun(...a),
+    name:'散弹枪', icon:'💥', maxLv:8, type:'normal', wepCat:'gun', dmgType:'远程', fire: (...a)=>fireShotgun(...a),
     startDesc: '扇形5颗子弹·近战强势',
     levels: [
       {dmg:10, cd:1400, count:5},
@@ -591,7 +601,7 @@ const WEAPON_DEFS = {
     }
   },
   gatling: {
-    name:'加特林', icon:'🔴', maxLv:8, type:'normal', wepCat:'gun', fire: (...a)=>fireGatling(...a),
+    name:'加特林', icon:'🔴', maxLv:8, type:'normal', wepCat:'gun', dmgType:'远程', fire: (...a)=>fireGatling(...a),
     startDesc: '8连发弹幕后短暂休息',
     levels: [
       {dmg:26, cd:900},
@@ -614,7 +624,7 @@ const WEAPON_DEFS = {
     }
   },
   sword: {
-    name:'剑阵', icon:'⚔', maxLv:7, type:'orbit', wepCat:'phys',
+    name:'剑阵', icon:'⚔', maxLv:7, type:'orbit', wepCat:'phys', dmgType:'近战',
     levels: [
       {orbs:2, dmg:10, radius:40, rotSpeed:2.2, color:'#fd4'},
       {orbs:2, dmg:14, radius:42, rotSpeed:2.4, color:'#fd4'},
@@ -627,7 +637,7 @@ const WEAPON_DEFS = {
     describe: lv => { const s=WEAPON_DEFS.sword.levels[lv-1]; return `${s.orbs}轨道 | 伤害${s.dmg} | 半径${s.radius}`; }
   },
   arrow_rain: {
-    name:'箭雨', icon:'🏹', maxLv:7, type:'normal', wepCat:'phys', fire: (...a)=>fireArrowRain(...a),
+    name:'箭雨', icon:'🏹', maxLv:7, type:'normal', wepCat:'phys', dmgType:'远程', fire: (...a)=>fireArrowRain(...a),
     levels: [
       {dmg:20, cd:2400, count:7,  radius:50},
       {dmg:25, cd:2200, count:5,  radius:54},
@@ -662,7 +672,7 @@ const WEAPON_DEFS = {
     }
   },
   missile_drone: {
-    name:'导弹无人机', icon:'🚀', maxLv:8, type:'drone', wepCat:'gun', fire: (...a)=>fireMissileDrone(...a),
+    name:'导弹无人机', icon:'🚀', maxLv:8, type:'drone', wepCat:'gun', dmgType:'工程', fire: (...a)=>fireMissileDrone(...a),
     startDesc: '每5秒发射6枚导弹·范围爆炸',
     levels: [
       {cd:4000},{cd:4000},{cd:4000},{cd:4000},
@@ -685,7 +695,7 @@ const WEAPON_DEFS = {
     }
   },
   sniper: {
-    name:'狙击枪', icon:'🔭', maxLv:8, type:'normal', wepCat:'gun', fire: (...a)=>fireSniper(...a),
+    name:'狙击枪', icon:'🔭', maxLv:8, type:'normal', wepCat:'gun', dmgType:'远程', fire: (...a)=>fireSniper(...a),
     startDesc:'每5秒狙击最近敌人·穿透1次',
     levels: [
       {cd:3500,dmg:120},{cd:3500,dmg:120},{cd:3500,dmg:120},{cd:3200,dmg:120},
@@ -716,7 +726,7 @@ const WEAPON_DEFS = {
     }
   },
   flying_sword: {
-    name:'飞剑', icon:'🗡', maxLv:8, type:'normal', wepCat:'phys', fire: (...a)=>fireFlyingSword(...a),
+    name:'飞剑', icon:'🗡', maxLv:8, type:'normal', wepCat:'phys', dmgType:'远程', fire: (...a)=>fireFlyingSword(...a),
     startDesc: '每2秒锁定最近敌人发射4把飞剑·50伤害·40%暴击×3倍',
     levels: [
       {cd:2000},{cd:2000},{cd:2000},{cd:2000},
@@ -731,7 +741,7 @@ const WEAPON_DEFS = {
     }
   },
   kirby_copy: {
-    name:'模仿', icon:'⭐', maxLv:8, type:'kirby',
+    name:'模仿', icon:'⭐', maxLv:8, type:'kirby', dmgType:'元素',
     startDesc: '技能使用后随机切换四种能力形态',
     levels: [
       {fireDmg:8,  swordDmg:10, lightDmg:6,  orbRadius:36, rotSpeed:2.4},
@@ -751,7 +761,7 @@ const WEAPON_DEFS = {
     }
   },
   black_tortoise: {
-    name:'召唤术·玄武', icon:'🐢', maxLv:8, type:'summon', wepCat:'magic',
+    name:'召唤术·玄武', icon:'🐢', maxLv:8, type:'summon', wepCat:'magic', dmgType:'召唤',
     startDesc: '每10秒召唤玄武·每3秒发射3颗水球·每60秒为玩家护盾',
     levels: [
       {ballDmg:18},{ballDmg:23},{ballDmg:29},{ballDmg:36},
@@ -766,7 +776,7 @@ const WEAPON_DEFS = {
     }
   },
   turret: {
-    name:'⚙ 炮台', icon:'⚙', maxLv:8, type:'turret', wepCat:'phys',
+    name:'⚙ 炮台', icon:'⚙', maxLv:8, type:'turret', wepCat:'phys', dmgType:'工程',
     startDesc: '放置炮台·自动攻击附近敌人·炮台有血量',
     // All levels share the same base stats; actual power comes from
     // accumulated upgrades stored on the weapon object (rapidFireCount /
@@ -971,6 +981,36 @@ const SHOP_ITEMS = [
     maxCount: 3,
     desc:     '本局剩余波次贝壳掉落 ×2',
     apply(p) { p.shellDoubleMult = (p.shellDoubleMult || 1) * 2; },
+  },
+  {
+    id:       'gold_ingot',
+    img:      IMG_PROP_GOLD_INGOT,
+    name:     '金元宝',
+    rarity:   'common',
+    price:    50,
+    maxCount: 10,
+    desc:     '游戏结束金币+10%、贝壳收益-4%',
+    apply(p) {
+      p.coinBonusMult  = (p.coinBonusMult  || 1) * 1.10;
+      p.shellEarnMult  = (p.shellEarnMult  || 1) * 0.96;
+    },
+  },
+  {
+    id:       'health_potion',
+    img:      IMG_PROP_HEALTH_POTION,
+    name:     '生命药水',
+    rarity:   'common',
+    price:    30,
+    maxCount: 15,
+    desc:     '生命值+11，近战/远程/元素/工程/召唤伤害各-1%',
+    apply(p) {
+      if (typeof healPlayer === 'function') healPlayer(11);
+      p.meleeDmgMult   = (p.meleeDmgMult   || 1) * 0.99;
+      p.rangedDmgMult  = (p.rangedDmgMult  || 1) * 0.99;
+      p.elemDmgMult    = (p.elemDmgMult    || 1) * 0.99;
+      p.engDmgMult     = (p.engDmgMult     || 1) * 0.99;
+      p.summonDmgMult  = (p.summonDmgMult  || 1) * 0.99;
+    },
   },
 ];
 
