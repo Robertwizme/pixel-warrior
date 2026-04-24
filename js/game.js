@@ -38,13 +38,13 @@ const ENEMY_IMG_MAP = (function(){
 
 // ── 寶石怪品質定義（7 階）──
 const GEM_QUALITY_DEFS = {
-  common:          { w:50,   label:'普通', color:'#ccc', border:'#aaa', size:10, hpBase:60,   spd:70, xp:12,  radius:11, scale:1.0, name:'普通晶怪' },
-  rare:            { w:25,   label:'稀有', color:'#4f8', border:'#8fb', size:11, hpBase:130,  spd:65, xp:24,  radius:12, scale:1.1, name:'稀有晶怪' },
-  relatively_rare: { w:12,   label:'較稀有', color:'#4af', border:'#8df', size:12, hpBase:270,  spd:60, xp:44,  radius:14, scale:1.2, name:'精良晶怪' },
-  epic:            { w:7,    label:'史詩', color:'#b3f', border:'#d9f', size:14, hpBase:500,  spd:55, xp:80,  radius:16, scale:1.3, name:'史詩晶怪' },
-  legendary:       { w:4,    label:'傳說', color:'#fd4', border:'#ff8', size:16, hpBase:900,  spd:52, xp:140, radius:18, scale:1.4, name:'傳說晶怪' },
-  mythical:        { w:1.5,  label:'神話', color:'#f44', border:'#f88', size:18, hpBase:1600, spd:48, xp:240, radius:20, scale:1.5, name:'神話晶怪' },
-  ultimate:        { w:0.5,  label:'至臻', color:'#f8f', border:'#fff', size:20, hpBase:2800, spd:45, xp:400, radius:23, scale:1.7, name:'至臻晶怪' },
+  common:          { w:60,   label:'普通', color:'#ccc', border:'#aaa', size:10, hpBase:60,   spd:70, xp:12,  radius:11, scale:1.0, name:'普通晶怪' },
+  rare:            { w:22,   label:'稀有', color:'#4f8', border:'#8fb', size:11, hpBase:130,  spd:65, xp:24,  radius:12, scale:1.1, name:'稀有晶怪' },
+  relatively_rare: { w:10,   label:'較稀有', color:'#4af', border:'#8df', size:12, hpBase:270,  spd:60, xp:44,  radius:14, scale:1.2, name:'精良晶怪' },
+  epic:            { w:5,    label:'史詩', color:'#b3f', border:'#d9f', size:14, hpBase:500,  spd:55, xp:80,  radius:16, scale:1.3, name:'史詩晶怪' },
+  legendary:       { w:2,    label:'傳說', color:'#fd4', border:'#ff8', size:16, hpBase:900,  spd:52, xp:140, radius:18, scale:1.4, name:'傳說晶怪' },
+  mythical:        { w:0.8,  label:'神話', color:'#f44', border:'#f88', size:18, hpBase:1600, spd:48, xp:240, radius:20, scale:1.5, name:'神話晶怪' },
+  ultimate:        { w:0.2,  label:'至臻', color:'#f8f', border:'#fff', size:20, hpBase:2800, spd:45, xp:400, radius:23, scale:1.7, name:'至臻晶怪' },
 };
 const GEM_KIND_POOL = ['攻擊','生命','防禦','速度','冷卻','幸運'];
 
@@ -77,10 +77,14 @@ function initGame(classIdx) {
     sharpenTimer: 0, sharpenActive: false,
     manaTimer: 0, manaActive: false,
     reaperChanneling: false, reaperChannel: 0,
-    physDmgMult: 1.0,
-    magicDmgMult: 1.0,
-    gunDmgMult: 1.0,
+    physDmgMult:   1.0,  // 近戰傷害倍率
+    magicDmgMult:  1.0,  // 元素傷害倍率
+    gunDmgMult:    1.0,  // 遠程傷害倍率
+    engDmgMult:    1.0,  // 工程傷害倍率（炮台/地雷/無人機）
+    summonDmgMult: 1.0,  // 召喚傷害倍率（玄武等）
     reaperGunMult: 1.0,
+    armor:         0,    // 護甲：每點減少1點固定傷害，最高減少80%
+    rangeBonus:    0,    // 範圍加成：每點+1%攻擊範圍
     pickedStatIds: new Set(),
     kirbyForm: null,
     santaAtkTimer: 0,
@@ -137,6 +141,8 @@ function initGame(classIdx) {
   } catch(e){}
   // Recompute derived stats
   updateDerivedStats(p);
+  // 应用角色宝石镶嵌加成（chat.js 定义）
+  if (typeof applyStartCharGems === 'function') applyStartCharGems(p);
 
   gs = {
     phase: 'playing',
@@ -229,7 +235,8 @@ function castChosenStar(p) {
 
 
 function getAreaMult(p) {
-  return p.areaMult * ((CLASSES[p.classIdx]?.id === 'mage' && p.manaActive) ? 1.3 : 1);
+  const _rangeBonusMult = 1 + (p.rangeBonus || 0) * 0.01;
+  return p.areaMult * _rangeBonusMult * ((CLASSES[p.classIdx]?.id === 'mage' && p.manaActive) ? 1.3 : 1);
 }
 
 const REAPER_CHANNEL_TIME = 7.49;
@@ -557,6 +564,15 @@ function startWave(num) {
       if (_et && !(_et.type.startsWith('boss'))) queue.push({ type:_et.type, scale:sf, waveNum:num });
       else break;
     }
+    // 每5波額外+2怪物（波次累積）
+    const _extraFive = Math.floor(num / 5) * 2;
+    if (_extraFive > 0) {
+      const _ePool = plan.filter(e => !ENEMY_TYPES[e.type]?.isBoss);
+      for (let _fi=0; _fi<_extraFive; _fi++) {
+        const _et = _ePool[Math.floor(Math.random()*_ePool.length)];
+        if (_et) queue.push({ type:_et.type, scale:sf, waveNum:num });
+      }
+    }
   }
   // Boss waves: add 4-8 escort minions
   if (isBoss) {
@@ -568,12 +584,9 @@ function startWave(num) {
       queue.push({ type:_et, scale:Math.pow(1.15, num-1), waveNum:num });
     }
   }
-  // 寶石怪混入：非 Boss 波次，每個普通怪有 5% 機率替換為寶石怪
-  if (!isBoss) {
-    const _gemSlots = Math.max(1, Math.round(queue.length * 0.05));
-    for (let _gi = 0; _gi < _gemSlots; _gi++) {
-      queue.push({ type:'__gem__', scale:sf, waveNum:num, gemQuality:pickGemMonsterQuality() });
-    }
+  // 寶石怪混入：非 Boss 波次，每波 1% 機率出現一隻
+  if (!isBoss && Math.random() < 0.01) {
+    queue.push({ type:'__gem__', scale:sf, waveNum:num, gemQuality:pickGemMonsterQuality() });
     // 重新洗牌，讓寶石怪散落在波次中
     for (let i=queue.length-1; i>0; i--) {
       const j=Math.floor(Math.random()*(i+1)); [queue[i],queue[j]]=[queue[j],queue[i]];
@@ -720,10 +733,12 @@ function hitEnemy(enemy, rawDmg, _noProc, _isCrit, wepCat) {
   if (gs.talents.has('death_wish') && p.hp < p.maxHp*0.25) mult *= 3;
   if (gs.talents.has('berserker'))  mult *= (1 + p.berserkerKills*0.003);
   if (CLASSES[p.classIdx]?.id === 'berserker' && p.berserkActive) mult *= 2;
-  if (wepCat === 'phys'  && (p.physDmgMult||1) !== 1) mult *= p.physDmgMult;
-  if (wepCat === 'magic' && (p.magicDmgMult||1) !== 1) mult *= p.magicDmgMult;
-  if (wepCat === 'gun'   && (p.gunDmgMult||1)   !== 1) mult *= p.gunDmgMult;
-  if (wepCat === 'gun'   && (p.reaperGunMult||1) !== 1) mult *= p.reaperGunMult;
+  if (wepCat === 'phys'        && (p.physDmgMult||1)   !== 1) mult *= p.physDmgMult;
+  if (wepCat === 'magic'       && (p.magicDmgMult||1)  !== 1) mult *= p.magicDmgMult;
+  if (wepCat === 'gun'         && (p.gunDmgMult||1)    !== 1) mult *= p.gunDmgMult;
+  if (wepCat === 'gun'         && (p.reaperGunMult||1)  !== 1) mult *= p.reaperGunMult;
+  if (wepCat === 'engineering' && (p.engDmgMult||1)    !== 1) mult *= p.engDmgMult;
+  if (wepCat === 'summon'      && (p.summonDmgMult||1)  !== 1) mult *= p.summonDmgMult;
   if ((p.santaAtkTimer||0) > 0) mult *= 1.25;
   if ((p.chosenLuckDmgMult||1) > 1) mult *= p.chosenLuckDmgMult;
   if ((p.weapEnhMult||1) > 1) mult *= p.weapEnhMult;
@@ -1194,13 +1209,17 @@ function updatePlayer(dt) {
       // Chest: auto-apply stats (no card selection needed)
       autoApplyChest(drop.type);
     } else if (def.gemQuality) {
-      // 寶石物品：加入背包
+      // 寶石物品：加入背包（品質計數 + 隨機類型計入 localStorage）
       const q    = def.gemQuality;
-      const kind = drop.gemKind || GEM_KIND_POOL[Math.floor(Math.random()*GEM_KIND_POOL.length)];
+      const _GEM_TYPE_KEYS = ['atk','def','spd','luck','cd','hp','crit'];
+      const assignedType = _GEM_TYPE_KEYS[Math.floor(Math.random() * _GEM_TYPE_KEYS.length)];
       if (!gs.gemInventory) gs.gemInventory = {};
       gs.gemInventory[q] = (gs.gemInventory[q]||0) + 1;
+      // 永久存入類型背包供工坊使用
+      if (typeof addGemType === 'function') addGemType(assignedType, 1);
       const _qd  = GEM_QUALITY_DEFS[q] ?? GEM_QUALITY_DEFS.common;
-      addFloatingText(`💎 獲得 ${_qd.label}${kind} 寶石`, p.x, p.y-26, _qd.color, 2.0);
+      const _gt  = { atk:'攻击', def:'防御', spd:'速度', luck:'幸运', cd:'急速', hp:'生命', crit:'暴击' }[assignedType] || '';
+      addFloatingText(`💎 ${_qd.label}·${_gt}宝石`, p.x, p.y-26, _qd.color, 2.0);
       SFX.play('click');
     }
     return false;
@@ -1423,8 +1442,9 @@ function updateEnemies(dt) {
           addFloatingText('🔰 格挡！',p.x,p.y-22,'#7ef',0.9);
           continue;
         }
-        // Damage reduction
-        const actualDmg = e.dmg * (1 - p.dmgReduction) * (1 - Math.min(0.8,(e.paralysisStacks||0)*0.08));
+        // Damage reduction（護甲：每點減少1固定傷害，最高減80%；然後再乘百分比減傷）
+        const _armorRed = Math.min(0.8, (p.armor||0) / Math.max(1, e.dmg));
+        const actualDmg = e.dmg * (1 - _armorRed) * (1 - p.dmgReduction) * (1 - Math.min(0.8,(e.paralysisStacks||0)*0.08));
         p.hp -= actualDmg;
         addFloatingText('-'+String(Math.round(actualDmg)), p.x+(Math.random()-0.5)*12, p.y-14, '#f66', 0.7);
         SFX.play('playerhit');
@@ -1756,7 +1776,7 @@ function updateMines(dt) {
         gs.enemies.forEach(ne => {
           if (ne.dead) return;
           const ndx=ne.x-m.x, ndy=ne.y-m.y;
-          if (ndx*ndx+ndy*ndy < 90*90) hitEnemy(ne, mineDmg, true, false, 'phys');
+          if (ndx*ndx+ndy*ndy < 90*90) hitEnemy(ne, mineDmg, true, false, 'engineering');
         });
         if (settings.particles) spawnParticles(m.x,m.y,['#f84','#fd4','#f44','#fff'],18,140,0.9,5);
         addFloatingText('💥',m.x,m.y-22,'#fd4',0.8);
@@ -2139,7 +2159,7 @@ function updateTurrets(dt) {
         vx: Math.cos(ang)*_ammoSpd, vy: Math.sin(ang)*_ammoSpd,
         dmg: _dmg, radius: _ammoR, color: _ammoColor,
         life: _range / _ammoSpd + 0.15,
-        type: 'bullet', wepCat: 'phys',
+        type: 'bullet', wepCat: 'engineering',
         pierce: _ammoLv === 1, maxPierce: _ammoLv === 1 ? 9999 : undefined,
         // Element turret mode: randomly assign flame/frost/poison
         element: _tw.elementTurretMode ? (['flame','frost','poison'][Math.floor(Math.random()*3)]) : undefined,

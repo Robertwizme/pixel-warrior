@@ -1344,6 +1344,116 @@ function setCharGem(cid,slot,gem){try{localStorage.setItem('pw_cgem_'+cid+'_'+sl
 function getWepUpgLv(id){try{return Math.max(0,parseInt(localStorage.getItem('pw_wup_'+id)||'0',10));}catch{return 0;}}
 function setWepUpgLv(id,lv){try{localStorage.setItem('pw_wup_'+id,String(lv));}catch{}}
 
+// ── 宝石类型背包（localStorage持久化，跨对局） ──
+// 键: pw_gemtype_atk / def / spd / luck / cd / hp / crit
+function getGemTypeCount(type){
+  try{return Math.max(0,parseInt(localStorage.getItem('pw_gemtype_'+type)||'0',10));}catch{return 0;}
+}
+function addGemType(type,n){
+  if(!_GEM_TYPES[type])return;
+  try{localStorage.setItem('pw_gemtype_'+type,String(getGemTypeCount(type)+(n||1)));}catch{}
+}
+function useGemType(type){
+  const c=getGemTypeCount(type);
+  if(c<=0)return false;
+  try{localStorage.setItem('pw_gemtype_'+type,String(c-1));return true;}catch{return false;}
+}
+function returnGemType(type){addGemType(type,1);}
+
+// ── 单个宝石类型的属性增量（全部加法，便于撤销） ──
+function _gemStatDelta(type){
+  switch(type){
+    case 'atk':  return {dmgMult:0.10};
+    case 'def':  return {baseDmgRed:0.08};
+    case 'spd':  return {spd:15};
+    case 'luck': return {luck:20};
+    case 'cd':   return {cdMult:-0.08};
+    case 'hp':   return {maxHp:30};
+    case 'crit': return {critRate:0.08};
+    default: return {};
+  }
+}
+
+// ── 将增量应用到/从 player 身上 ──
+function _applyGemStat(p,stat,val){
+  switch(stat){
+    case 'dmgMult':    p.dmgMult    = Math.max(0.01,+((p.dmgMult||1)    +val).toFixed(4)); break;
+    case 'baseDmgRed': p.baseDmgRed = Math.min(0.6, Math.max(0,(p.baseDmgRed||0)+val));   break;
+    case 'spd':        p.spd        = Math.max(50,  (p.spd||100)+val);                    break;
+    case 'luck':       p.luck       = Math.max(0,   (p.luck||0)+val);                     break;
+    case 'cdMult':     p.cdMult     = Math.min(1,   Math.max(0.2,(p.cdMult||1)+val));      break;
+    case 'maxHp':      p.maxHp      = Math.max(10,  (p.maxHp||50)+val);
+                       if(val>0) p.hp=Math.min((p.hp||0)+val,p.maxHp);
+                       else      p.hp=Math.min(p.hp||0,p.maxHp);                          break;
+    case 'critRate':   p.critRate   = Math.min(0.8, Math.max(0,(p.critRate||0)+val));      break;
+  }
+}
+
+// ── 游戏开始时一次性应用所有镶嵌宝石（由 game.js initGame 调用）──
+function applyStartCharGems(p){
+  if(!p||typeof CLASSES==='undefined')return;
+  const classId=CLASSES[p.classIdx]?.id;
+  if(!classId)return;
+  p.charGemBonuses={};
+  for(let sl=0;sl<6;sl++){
+    const gk=getCharGem(classId,sl);
+    if(!gk||!_GEM_TYPES[gk])continue;
+    for(const[k,v]of Object.entries(_gemStatDelta(gk))){
+      p.charGemBonuses[k]=(p.charGemBonuses[k]||0)+v;
+    }
+  }
+  for(const[k,v]of Object.entries(p.charGemBonuses)) _applyGemStat(p,k,v);
+  if(typeof updateDerivedStats==='function') updateDerivedStats(p);
+}
+
+// ── 对局中实时重算宝石加成（装备/卸下时调用）──
+function _reapplyCharGems(classId){
+  if(!gs?.player)return;
+  const p=gs.player;
+  // 撤销旧加成
+  if(p.charGemBonuses){
+    for(const[k,v]of Object.entries(p.charGemBonuses)) _applyGemStat(p,k,-v);
+  }
+  // 重算
+  p.charGemBonuses={};
+  for(let sl=0;sl<6;sl++){
+    const gk=getCharGem(classId,sl);
+    if(!gk||!_GEM_TYPES[gk])continue;
+    for(const[k,v]of Object.entries(_gemStatDelta(gk))){
+      p.charGemBonuses[k]=(p.charGemBonuses[k]||0)+v;
+    }
+  }
+  for(const[k,v]of Object.entries(p.charGemBonuses)) _applyGemStat(p,k,v);
+  if(typeof updateDerivedStats==='function') updateDerivedStats(p);
+}
+
+// ── 当前职业宝石加成汇总（显示在角色Tab底部）──
+function _fCharGemSummary(classId){
+  const bonuses={};
+  for(let sl=0;sl<6;sl++){
+    const gk=getCharGem(classId,sl);
+    if(!gk||!_GEM_TYPES[gk])continue;
+    for(const[k,v]of Object.entries(_gemStatDelta(gk))){
+      bonuses[k]=(bonuses[k]||0)+v;
+    }
+  }
+  const parts=[];
+  if(bonuses.dmgMult)    parts.push('⚔ +'+Math.round(bonuses.dmgMult*100)+'%');
+  if(bonuses.baseDmgRed) parts.push('🛡 +'+Math.round(bonuses.baseDmgRed*100)+'%');
+  if(bonuses.spd)        parts.push('⚡ +'+bonuses.spd);
+  if(bonuses.luck)       parts.push('🍀 +'+bonuses.luck);
+  if(bonuses.cdMult)     parts.push('⏱ '+Math.round(bonuses.cdMult*100)+'%');
+  if(bonuses.maxHp)      parts.push('❤ +'+bonuses.maxHp);
+  if(bonuses.critRate)   parts.push('⭐ +'+Math.round(bonuses.critRate*100)+'%');
+  if(!parts.length)
+    return '<div style="font-size:9px;color:#333;text-align:center;padding:4px 0">（无宝石加成）</div>';
+  return '<div style="background:#0a0a18;border-radius:5px;padding:5px 8px;margin-bottom:6px">'+
+    '<div style="font-size:9px;color:#555;margin-bottom:3px">宝石加成合计：</div>'+
+    '<div style="display:flex;flex-wrap:wrap;gap:4px">'+
+    parts.map(t=>'<span style="font-size:9px;color:#4f8;background:#0d1a0d;border-radius:3px;padding:2px 5px">'+t+'</span>').join('')+
+    '</div></div>';
+}
+
 // ── §Forge redesign (3 tabs) ──
 // 武器列表从 WEAPON_DEFS 动态读取，新增武器后自动出现在强化工坊
 function _getForgeWeapList(){
@@ -1459,34 +1569,91 @@ function _fCharTab(body){
 function _fCharDetail(el,cls){
   if(!el||!cls)return;
   const m=_CODEX_CLASS_META[cls.id]||{icon:'⚔'};
+  const inGame=!!(gs?.player);
+  // 总背包剩余数
+  const totalInBag=Object.keys(_GEM_TYPES).reduce((s,k)=>s+getGemTypeCount(k),0);
+
   el.innerHTML=
     '<div style="text-align:center;margin-bottom:10px">'+
       (m.img?'<img src="'+m.img+'" style="width:44px;height:44px;object-fit:cover;border-radius:6px;border:2px solid #334">':'<div style="font-size:36px">'+m.icon+'</div>')+
       '<div style="font-size:13px;color:#fd4;font-weight:700;margin-top:4px">'+cls.name+'</div>'+
       '<div style="font-size:9px;color:#555;margin-top:2px">HP '+cls.hp+' · 速度 '+cls.spd+'</div>'+
     '</div>'+
-    '<div style="font-size:10px;color:#4fd;font-weight:700;margin-bottom:8px">💎 宝石镶嵌 <span style="color:#444;font-weight:400">（6槽）</span></div>'+
-    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:10px">'+
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'+
+      '<span style="font-size:10px;color:#4fd;font-weight:700">💎 宝石镶嵌 <span style="color:#444;font-weight:400">（6槽）</span></span>'+
+      '<span style="font-size:9px;color:#556">背包: <b style="color:'+(totalInBag>0?'#4fd':'#444')+'">'+totalInBag+'</b></span>'+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:8px">'+
     [0,1,2,3,4,5].map(slot=>{
-      const gk=getCharGem(cls.id,slot);const g=_GEM_TYPES[gk]||null;
-      return '<div class="fcg-slot" data-slot="'+slot+'" style="border-radius:6px;border:2px dashed '+(g?g.color:'#333')+';background:'+(g?g.color+'18':'#111')+';padding:10px 4px;cursor:pointer;text-align:center">'+
-        '<div style="font-size:22px">'+(g?g.icon:'➕')+'</div>'+
-        '<div style="font-size:8px;color:'+(g?g.color:'#444')+';margin-top:3px;line-height:1.1">'+(g?g.name:'空槽')+'</div>'+
-      '</div>';
+      const gk=getCharGem(cls.id,slot);
+      const g=_GEM_TYPES[gk]||null;
+      if(g){
+        // ── 已装备：显示宝石，右上角小×标记，点击卸下 ──
+        return '<div class="fcg-slot fcg-equipped" data-slot="'+slot+'" data-gk="'+gk+'"'+
+          ' style="border-radius:6px;border:2px solid '+g.color+';background:'+g.color+'1a;'+
+          'padding:8px 4px 6px;cursor:pointer;text-align:center;position:relative;'+
+          'transition:border-color .15s,background .15s">'+
+          '<div style="position:absolute;top:3px;right:4px;font-size:9px;color:#888;line-height:1;'+
+          'background:#0a0a14;border-radius:2px;padding:0 3px">✕</div>'+
+          '<div style="font-size:20px;line-height:1;margin-bottom:3px">'+g.icon+'</div>'+
+          '<div style="font-size:8px;color:'+g.color+';line-height:1.2">'+g.name+'</div>'+
+          '<div style="font-size:7px;color:#555;margin-top:2px">点击卸下</div>'+
+        '</div>';
+      } else {
+        // ── 空槽：显示背包内可用数量提示 ──
+        return '<div class="fcg-slot fcg-empty" data-slot="'+slot+'" data-gk=""'+
+          ' style="border-radius:6px;border:2px dashed '+(totalInBag>0?'#334':'#222')+';background:#0d0d18;'+
+          'padding:10px 4px 8px;cursor:'+(totalInBag>0?'pointer':'default')+';text-align:center;'+
+          'transition:border-color .15s">'+
+          '<div style="font-size:20px;line-height:1;margin-bottom:3px;color:'+(totalInBag>0?'#446':'#222')+'">➕</div>'+
+          '<div style="font-size:8px;color:#333;line-height:1.2">空槽</div>'+
+        '</div>';
+      }
     }).join('')+
     '</div>'+
-    '<div style="font-size:9px;color:#444">宝石效果将在下次对局开始时生效</div>';
-  el.querySelectorAll('.fcg-slot').forEach(s=>{
-    s.addEventListener('click',()=>{const sl=parseInt(s.dataset.slot);_openGemPicker(gk=>{setCharGem(cls.id,sl,gk);_fCharDetail(el,cls);});});
+    _fCharGemSummary(cls.id)+
+    (inGame
+      ? '<div style="font-size:9px;color:#4fd;text-align:center;margin-top:4px">✅ 效果已实时生效于当前对局</div>'
+      : '<div style="font-size:9px;color:#446;text-align:center;margin-top:4px">效果将在下次游戏开始时生效</div>');
+
+  // ── 事件：已装备槽 → 点击卸下 ──
+  el.querySelectorAll('.fcg-equipped').forEach(s=>{
+    s.addEventListener('mouseenter',()=>{s.style.background=(_GEM_TYPES[s.dataset.gk]?.color||'#fff')+'08';s.style.borderColor='#f55';});
+    s.addEventListener('mouseleave',()=>{const g=_GEM_TYPES[s.dataset.gk];s.style.background=g?g.color+'1a':'';s.style.borderColor=g?g.color:'';});
+    s.addEventListener('click',()=>{
+      const gk=s.dataset.gk;
+      returnGemType(gk);
+      setCharGem(cls.id,parseInt(s.dataset.slot),'');
+      _reapplyCharGems(cls.id);
+      SFX.play('click');
+      _fCharDetail(el,cls);
+    });
+  });
+
+  // ── 事件：空槽 → 打开背包选择器 ──
+  el.querySelectorAll('.fcg-empty').forEach(s=>{
+    if(totalInBag<=0)return;
+    s.addEventListener('mouseenter',()=>{s.style.borderColor='#4fd';s.style.background='#0d1a14';});
+    s.addEventListener('mouseleave',()=>{s.style.borderColor='#334';s.style.background='#0d0d18';});
+    s.addEventListener('click',()=>{
+      _openCharGemPicker(gk=>{
+        if(!useGemType(gk))return;
+        setCharGem(cls.id,parseInt(s.dataset.slot),gk);
+        _reapplyCharGems(cls.id);
+        _fCharDetail(el,cls);
+      });
+    });
   });
 }
+
+// ── 武器专属宝石槽选择器（不需要背包，自由选择）──
 function _openGemPicker(callback){
   const old=document.getElementById('gem-picker-modal');if(old)old.remove();
   const ov=document.createElement('div');
   ov.id='gem-picker-modal';
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;align-items:center;justify-content:center';
   const box=document.createElement('div');
-  box.style.cssText='background:#0d0d1a;border:2px solid #334;border-radius:12px;padding:18px 16px;max-width:320px;width:90%;text-align:center';
+  box.style.cssText='background:#0d0d1a;border:2px solid #334;border-radius:12px;padding:18px 16px;max-width:320px;width:90%;text-align:center;font-family:\'Courier New\',monospace';
   box.innerHTML='<div style="font-size:13px;color:#eee;font-weight:700;margin-bottom:12px">💎 选择宝石</div>'+
     '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">'+
     Object.entries(_GEM_TYPES).map(([k,g])=>
@@ -1499,6 +1666,52 @@ function _openGemPicker(callback){
     '<button id="gp-cancel-btn" class="btn" style="width:100%;padding:7px;font-size:11px">取消</button>';
   ov.appendChild(box);
   box.querySelectorAll('.gp-opt').forEach(opt=>{
+    opt.addEventListener('click',()=>{callback(opt.dataset.k);ov.remove();SFX.play('click');});
+  });
+  document.getElementById('gp-cancel-btn').addEventListener('click',()=>ov.remove());
+  ov.addEventListener('click',e=>{if(e.target===ov)ov.remove();});
+  document.body.appendChild(ov);
+}
+
+// ── 角色宝石槽选择器（从背包选，显示库存数量）──
+function _openCharGemPicker(callback){
+  const old=document.getElementById('gem-picker-modal');if(old)old.remove();
+  const ov=document.createElement('div');
+  ov.id='gem-picker-modal';
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9999;display:flex;align-items:center;justify-content:center';
+  const box=document.createElement('div');
+  box.style.cssText='background:#0d0d1a;border:2px solid #334;border-radius:12px;padding:16px;max-width:300px;width:90%;font-family:\'Courier New\',monospace';
+  const hasAny=Object.keys(_GEM_TYPES).some(k=>getGemTypeCount(k)>0);
+  box.innerHTML=
+    '<div style="font-size:13px;color:#4fd;font-weight:700;margin-bottom:3px;text-align:center">💎 选择宝石</div>'+
+    '<div style="font-size:9px;color:#445;margin-bottom:12px;text-align:center">从背包中选择一颗镶嵌</div>'+
+    (hasAny
+      ? '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:14px">'+
+        Object.entries(_GEM_TYPES).map(([k,g])=>{
+          const cnt=getGemTypeCount(k);
+          const ok=cnt>0;
+          return '<div class="gp-opt" data-k="'+k+'" data-ok="'+(ok?'1':'0')+'"'+
+            ' style="padding:8px 4px;border-radius:8px;position:relative;text-align:center;'+
+            'border:2px solid '+(ok?g.color+'88':g.color+'18')+';'+
+            'background:'+(ok?g.color+'12':'#080810')+';'+
+            'cursor:'+(ok?'pointer':'default')+';'+
+            'opacity:'+(ok?1:0.3)+'">'+
+            '<div style="font-size:20px">'+g.icon+'</div>'+
+            '<div style="font-size:7.5px;color:'+(ok?g.color:'#333')+';margin-top:2px;line-height:1.2">'+g.name+'</div>'+
+            (ok?'<div style="position:absolute;top:3px;right:3px;font-size:9px;font-weight:700;'+
+            'color:#0a0a10;background:'+g.color+';border-radius:50%;width:14px;height:14px;'+
+            'line-height:14px;text-align:center">'+cnt+'</div>':'')+
+          '</div>';
+        }).join('')+
+        '</div>'
+      : '<div style="text-align:center;padding:18px 0;color:#335;font-size:11px">'+
+        '背包中暂无宝石<br>'+
+        '<span style="font-size:9px;color:#224;display:block;margin-top:6px">击败宝石怪可获得宝石</span></div>'+
+        '<div style="height:8px"></div>'
+    )+
+    '<button id="gp-cancel-btn" class="btn" style="width:100%;padding:7px;font-size:11px">取消</button>';
+  ov.appendChild(box);
+  box.querySelectorAll('.gp-opt[data-ok="1"]').forEach(opt=>{
     opt.addEventListener('click',()=>{callback(opt.dataset.k);ov.remove();SFX.play('click');});
   });
   document.getElementById('gp-cancel-btn').addEventListener('click',()=>ov.remove());

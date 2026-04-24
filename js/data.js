@@ -200,9 +200,30 @@ function getWavePlan(n) {
 // ═══════════════════════════════════════════════════════
 // §0  版本号 & 更新公告  ← 每次更新只需修改这里
 // ═══════════════════════════════════════════════════════
-const GAME_VERSION = 'v0.9.9';
+const GAME_VERSION = 'v1.0.1';
 document.getElementById('load-version').textContent = GAME_VERSION;
 const CHANGELOG = [
+  { version:'v1.0.1', date:'2026-04-24', items:[
+    '寶石怪每波出現概率從5%降至1%（每波最多1隻）',
+    '寶石怪品質分佈調整：普通60%/稀有22%/較稀有10%/史詩5%/傳說2%/神話0.8%/至臻0.2%',
+    '怪物血量後期成長已由波次縮放因子 ×1.15^(n-1) 實現（第1波不變）',
+    '怪物數量：每5波額外增加2隻（第5波+2/第10波+4…累積）',
+    '新增玩家護甲(armor)：每點減少1固定傷害，上限80%',
+    '新增玩家範圍加成(rangeBonus)：每點+1%攻擊範圍，整合至 getAreaMult()',
+    '傷害拆分為5類：近戰(phys)/遠程(gun)/元素(magic)/工程(engineering)/召喚(summon)',
+    '炮台子彈、地雷爆炸改為 engineering 傷害類型',
+    '新增 engDmgMult/summonDmgMult 玩家屬性，初始值1.0',
+  ]},
+  { version:'v1.0.0', date:'2026-04-23', items:[
+    '强化工坊角色Tab寶石槽改为交互式：已装备格点击卸下放回背包，空格点击打开背包选择器',
+    '新增宝石类型背包系统（localStorage: pw_gemtype_*），击败宝石怪随机获得7种类型宝石之一',
+    '新增 getGemTypeCount/addGemType/useGemType/returnGemType 四个背包 API',
+    '装备/卸下时显示当前背包总数量；选择器仅显示背包有货的类型，无货则灰显并提示击败宝石怪',
+    '宝石效果实时生效：游戏开始时 applyStartCharGems() 应用所有已镶嵌宝石加成到 gs.player',
+    '对局中如装备/卸下宝石（未来功能接口），_reapplyCharGems() 增量更新无需重启',
+    '角色Tab底部新增宝石加成合计面板，列出所有当前生效的属性加成',
+    'game.js: 宝石物品拾取时同时写入类型背包并显示 [品质·类型]宝石 浮动文字',
+  ]},
   { version:'v0.9.9', date:'2026-04-23', items:[
     'applyUpgradeEffect() 新增 weplv_* 分支：補給箱選到武器升級選項時正確執行等級+1',
     'getLevelUpOptions() 移除移速與拾取範圍選項（只保留 HP/回復/幸運/經驗/閃避/減傷）',

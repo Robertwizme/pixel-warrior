@@ -564,7 +564,7 @@ input[type=range]{width:120px;accent-color:#48f}
 }
 /* Left col */
 .shp-col-left{
-  width:20%;flex-shrink:0;
+  width:12%;flex-shrink:0;
   overflow-y:auto;padding-right:4px;
 }
 /* Mid col */
@@ -574,12 +574,12 @@ input[type=range]{width:120px;accent-color:#48f}
   overflow:hidden;
 }
 .shp-cards-row{
-  display:flex;gap:8px;justify-content:center;
+  display:flex;gap:12px;justify-content:center;
   width:100%;overflow-x:auto;padding-bottom:4px;
 }
 /* Right col */
 .shp-col-right{
-  width:22%;flex-shrink:0;
+  width:15%;flex-shrink:0;
   overflow-y:auto;padding-left:4px;
 }
 /* Section header */
@@ -602,21 +602,23 @@ input[type=range]{width:120px;accent-color:#48f}
 }
 /* Item card */
 .shp-card{
-  flex:1;min-width:105px;max-width:160px;
-  padding:12px 10px 10px;
+  flex:1;min-width:0;
+  height:280px;
+  padding:16px 12px 12px;
   background:#0b0b16;
   border:2px solid #ccc;border-radius:8px;
   text-align:center;
   position:relative;
   transition:transform .12s,opacity .18s,border-color .18s;
   user-select:none;
+  display:flex;flex-direction:column;align-items:center;
 }
-.shp-card-icon{font-size:48px;line-height:1;margin-bottom:6px}
-.shp-card-name{font-size:11px;font-weight:700;margin-bottom:6px;line-height:1.3}
+.shp-card-icon{font-size:60px;line-height:1;margin-bottom:8px}
+.shp-card-name{font-size:15px;font-weight:700;margin-bottom:8px;line-height:1.3}
 .shp-card-desc{
-  color:#888;font-size:9.5px;line-height:1.6;
+  color:#888;font-size:12px;line-height:1.6;
   text-align:left;padding:0 2px;margin-bottom:8px;
-  min-height:36px;
+  min-height:48px;flex:1;
 }
 .shp-card-price{font-size:13px;font-weight:700}
 /* Count badge (top-right of card) */
