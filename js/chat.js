@@ -785,15 +785,15 @@ async function sendDmMsg(){
 
 // §28 Codex (图鉴)
 const _CODEX_ENEMY_META = {
-  slime:      { icon:'🟢', img:'photo/Slime.png',    name:'史莱姆',    waveFirst:1,  waveDesc:'第1波起出现，全程都有',             special:'无特殊行为，直线冲向玩家，数量最多',                        desc:'成群结队的绿色软体怪，血薄速慢，适合练手阶段',
+  slime:      { icon:'🟢', img:'photo/enemy/Slime.png',    name:'史莱姆',    waveFirst:1,  waveDesc:'第1波起出现，全程都有',             special:'无特殊行为，直线冲向玩家，数量最多',                        desc:'成群结队的绿色软体怪，血薄速慢，适合练手阶段',
     weakness:{tags:['穿透','散射'], tip:'成群聚集，穿透类武器可一次贯穿多只；推荐：散弹枪（多发散射）、狙击枪（开启穿透后）'} },
-  goblin:     { icon:'👺', img:'photo/goblin.png',   name:'哥布林',    waveFirst:2,  waveDesc:'第2波起出现',                       special:'移速较快，常与史莱姆混编出现',                               desc:'狡猾的小妖精，速度较快，常与史莱姆混编出现',
+  goblin:     { icon:'👺', img:'photo/enemy/goblin.png',   name:'哥布林',    waveFirst:2,  waveDesc:'第2波起出现',                       special:'移速较快，常与史莱姆混编出现',                               desc:'狡猾的小妖精，速度较快，常与史莱姆混编出现',
     weakness:{tags:['范围'], tip:'移速快但分布密集，大范围AoE武器覆盖效果佳；推荐：箭雨、剑阵、飞剑'} },
-  skeleton:   { icon:'💀', img:'photo/Skeleton.png', name:'骷髅兵',    waveFirst:4,  waveDesc:'第4波起出现',                       special:'无特殊行为，均衡型普通怪',                                    desc:'不死亡灵，血量中等，攻击力适中，是中期的标准威胁',
+  skeleton:   { icon:'💀', img:'photo/enemy/Skeleton.png', name:'骷髅兵',    waveFirst:4,  waveDesc:'第4波起出现',                       special:'无特殊行为，均衡型普通怪',                                    desc:'不死亡灵，血量中等，攻击力适中，是中期的标准威胁',
     weakness:{tags:['法术'], tip:'无特殊抗性，法术系武器效率最高；推荐：箭雨、模仿者（闪电/火球形态）'} },
-  bat:        { icon:'🦇', img:'photo/bat.png', name:'吸血蝙蝠',  waveFirst:5,  waveDesc:'第5波起出现',                       special:'移动速度极高，难以用慢速武器击中，成群时威胁极大',              desc:'移速极快，难以追踪，成群来袭时威胁极大',
+  bat:        { icon:'🦇', img:'photo/enemy/bat.png', name:'吸血蝙蝠',  waveFirst:5,  waveDesc:'第5波起出现',                       special:'移动速度极高，难以用慢速武器击中，成群时威胁极大',              desc:'移速极快，难以追踪，成群来袭时威胁极大',
     weakness:{tags:['追踪'], tip:'移速极快难以用直线武器命中，追踪类武器可精准锁定；推荐：导弹无人机'} },
-  orc:        { icon:'👹', img:'photo/orc.png', name:'兽人勇士',  waveFirst:6,  waveDesc:'第6波起出现',                       special:'高HP高伤害，需优先消灭，避免贴身',                              desc:'强壮的战士，高血量高伤害，但行动迟缓',
+  orc:        { icon:'👹', img:'photo/enemy/orc.png', name:'兽人勇士',  waveFirst:6,  waveDesc:'第6波起出现',                       special:'高HP高伤害，需优先消灭，避免贴身',                              desc:'强壮的战士，高血量高伤害，但行动迟缓',
     weakness:{tags:['持续','穿透'], tip:'血量高需要持续输出，移速慢易被狙击单点；推荐：狙击枪、加特林持续压制'} },
   wolf:       { icon:'🐺', name:'野狼',      waveFirst:8,  waveDesc:'第8波起出现，中后期大量出现',       special:'极速冲锋，成群围攻，大范围AoE武器克制效果好',                  desc:'速度极快的猛兽，以群体围攻方式猎杀目标',
     weakness:{tags:['范围','爆炸'], tip:'群体冲锋覆盖范围大，爆炸/AoE武器可一次清群；推荐：导弹无人机、箭雨、飞剑'} },
@@ -854,28 +854,28 @@ const _CODEX_ENEMY_META = {
 };
 
 const _CODEX_CLASS_META = {
-  doctor:    { icon:'💊', img:'photo/doctor.png',      regen:5,  xpBonus:0,
+  doctor:    { icon:'💊', img:'photo/hero/doctor.png',      regen:5,  xpBonus:0,
     passive:'每次从任何来源回复100HP时，永久+5%全局伤害（可无限叠加）',
     skillName:'妙手回春', skillEffect:'立刻回复100HP', skillCd:30 },
-  berserker: { icon:'⚔',  img:'photo/Berserker.png',  regen:2,  xpBonus:0,
+  berserker: { icon:'⚔',  img:'photo/hero/Berserker.png',  regen:2,  xpBonus:0,
     passive:'每次升级，最大HP永久+5',
     skillName:'狂暴', skillEffect:'20秒内所有伤害×2', skillCd:50 },
-  blacksmith:{ icon:'⚒',  img:'photo/blacksmith.png', regen:1,  xpBonus:0,
+  blacksmith:{ icon:'⚒',  img:'photo/hero/blacksmith.png', regen:1,  xpBonus:0,
     passive:'所有物理系武器（散弹/加特林/狙击）伤害永久+50%',
     skillName:'临阵磨枪', skillEffect:'10秒内所有武器冷却-40%', skillCd:50 },
-  mage:      { icon:'🔮', img:'photo/mage.png',        regen:1,  xpBonus:0,
+  mage:      { icon:'🔮', img:'photo/hero/mage.png',        regen:1,  xpBonus:0,
     passive:'所有魔法系武器（箭雨/剑阵）伤害永久+50%',
     skillName:'法力无天', skillEffect:'10秒内所有AoE范围+30%', skillCd:45 },
-  scholar:   { icon:'🎓', img:'photo/Doctorate.png',  regen:1,  xpBonus:50,
+  scholar:   { icon:'🎓', img:'photo/hero/Doctorate.png',  regen:1,  xpBonus:50,
     passive:'无法通过升级卡获得移速加成，但经验获取速度比任何职业都快',
     skillName:'经验老道', skillEffect:'瞬间吸取全场所有飘落的经验球', skillCd:50 },
-  reaper:    { icon:'🎯', img:'photo/simo.png', regen:1,  xpBonus:0,
+  reaper:    { icon:'🎯', img:'photo/hero/simo.png', regen:1,  xpBonus:0,
     passive:'枪械武器伤害+50%，且所有武器冷却时间永久×0.75（即-25%）',
     skillName:'狙神', skillEffect:'瞄准7.49秒后，秒杀当前HP最高的目标', skillCd:542 },
   kirby:     { icon:'🌀', regen:1,  xpBonus:0,
     passive:'拥有四种形态：🔥火焰（火球）/ ⚔剑士（轨道剑）/ ⚡雷电（闪电）/ ❄冰冻（冰球）',
     skillName:'模仿', skillEffect:'吞下最近的怪物，随机切换一种形态', skillCd:120 },
-  santa:     { icon:'🎅', img:'photo/santa.png', regen:1,  xpBonus:0,
+  santa:     { icon:'🎅', img:'photo/hero/santa.png', regen:1,  xpBonus:0,
     passive:'初始幸运+5；场上有0.5%概率随机生成超大礼盒（含大量道具）',
     skillName:'圣诞礼物', skillEffect:'在附近随机生成多个礼盒掉落道具', skillCd:60 },
   chosen:    { icon:'⭐', regen:1,  xpBonus:0,
@@ -1187,6 +1187,43 @@ function _codexSupplyDetail(s, isTalent){
   );
 }
 
+function _codexItemDetail(item){
+  if(!item) return _cdxDetail('<div style="color:#555;padding:40px 0;text-align:center">暂无数据</div>');
+  const col  = _SHOP_RARITY_COLORS[item.rarity] || '#ddd';
+  const lbl  = _SHOP_RARITY_LABELS[item.rarity] || '普通';
+  const maxC = (item.maxCount != null && item.maxCount < 99) ? item.maxCount + ' 个' : '无限';
+  // 数值着色（+绿 ×绿 -红 ÷红）
+  const descHtml = String(item.desc||'')
+    .replace(/(\+[\d.]+%?)/g, '<span style="color:#4f8">$1</span>')
+    .replace(/(×[\d.]+)/g,    '<span style="color:#4f8">$1</span>')
+    .replace(/(-[\d.]+%?)/g,  '<span style="color:#f55">$1</span>')
+    .replace(/(÷[\d.]+)/g,    '<span style="color:#f55">$1</span>');
+  const imgPath = 'photo/props/'+item.id+'.png';
+  return _cdxDetail(
+    // 图片（加载失败则回退emoji）
+    '<div class="cdx-big-icon" style="position:relative">'+
+      '<img src="'+imgPath+'" style="width:60px;height:60px;image-rendering:pixelated;object-fit:contain" '+
+        'onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">'+
+      '<span style="display:none;font-size:44px">'+item.icon+'</span>'+
+    '</div>'+
+    // 名称 + 稀有度徽章
+    '<div class="cdx-item-name" style="color:'+col+'">'+item.name+'</div>'+
+    '<div style="margin-bottom:10px">'+
+      '<span class="cdx-badge" style="color:'+col+';border-color:'+col+'40;background:'+col+'15">'+lbl+'</span>'+
+    '</div>'+
+    // 效果
+    _cdxSection('效果')+
+    _cdxDesc(descHtml)+
+    // 道具属性
+    _cdxSection('道具属性')+
+    _cdxStat('🐚 价格',  item.price + ' 贝壳')+
+    _cdxStat('📦 上限',  maxC)+
+    // 获得方式
+    _cdxSection('获得方式')+
+    _cdxDesc('🏪 <b>波次商店</b>购买<br><span style="color:#555;font-size:10px">每波结束后商店刷新，贝壳不足时无法购买。</span>')
+  );
+}
+
 function _codexBuildLayout(items, iconFn, nameFn, detailFn){
   if(!items||!items.length) return '<div class="codex-body"><div class="codex-grid-panel"></div><div class="codex-detail-panel"></div></div>';
   const grid=items.map((it,i)=>
@@ -1259,6 +1296,12 @@ function renderCodexContent(){
     iconFn=s=>s.icon;
     nameFn=s=>s.name;
     detailFn=s=>_codexSupplyDetail(s, _codexSubtab==='talent');
+  } else if(_codexTab==='item'){
+    const pool=(typeof SHOP_ITEMS!=='undefined')?SHOP_ITEMS:[];
+    items=pool;
+    iconFn=it=>it.icon;
+    nameFn=it=>it.name;
+    detailFn=it=>_codexItemDetail(it);
   }
 
   el.innerHTML=_codexBuildLayout(items, iconFn, nameFn, detailFn);

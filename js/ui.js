@@ -778,15 +778,20 @@ function _buildShopItems(count) {
   if (!pool.length) return [];
   const luck   = gs?.player?.luck || 0;
   const owned  = _shopState?.ownedCounts || new Map();
-  // 過濾已達上限的道具
-  const avail  = pool.filter(it => (owned.get(it.id)||0) < (it.maxCount ?? 99));
-  const src    = avail.length ? avail : pool; // 若全部達限則回退到完整池
-  const result = [];
+  // 過濾已達上限的道具，並排除沒有 id 的條目
+  let avail = pool.filter(it => it.id && (owned.get(it.id)||0) < (it.maxCount ?? 99));
+  if (!avail.length) avail = pool.filter(it => it.id); // 若全部達限則回退
+  const result  = [];
+  const usedIds = new Set(); // 同一次刷新內不重複
   for (let i = 0; i < count; i++) {
+    const remaining = avail.filter(it => !usedIds.has(it.id));
+    if (!remaining.length) break; // 道具池耗盡
     const rarity = _pickShopRarity(luck);
-    const same   = src.filter(it => it.rarity === rarity);
-    const pick   = same.length ? same : src;
-    result.push(pick[Math.floor(Math.random() * pick.length)]);
+    const same   = remaining.filter(it => it.rarity === rarity);
+    const pick   = same.length ? same : remaining;
+    const chosen = pick[Math.floor(Math.random() * pick.length)];
+    result.push(chosen);
+    usedIds.add(chosen.id);
   }
   return result;
 }
@@ -837,7 +842,7 @@ function _shopOwnedList() {
     const col = _SHOP_RARITY_COLORS[def.rarity] || '#ddd';
     rows += `
       <div class="shp-owned-row">
-        <span style="font-size:18px;flex-shrink:0">${def.icon}</span>
+        <span style="font-size:18px;flex-shrink:0;display:flex;align-items:center">${_shopItemIcon(def, 18)}</span>
         <div style="flex:1;min-width:0">
           <div style="color:${col};font-size:10px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${def.name}</div>
           <div style="color:#555;font-size:9px">已购 × ${cnt}</div>
@@ -848,6 +853,15 @@ function _shopOwnedList() {
     <div class="shp-sec-hd">已获道具</div>
     ${rows || '<div style="color:#333;font-size:10px;text-align:center;padding:14px 0">尚未购买</div>'}
   `;
+}
+
+// ── 道具圖示（支援 emoji icon 和 Image 物件 img 兩種來源）──
+function _shopItemIcon(item, size = 38) {
+  if (item.img && item.img.src) {
+    return `<img src="${item.img.src}" style="width:${size}px;height:${size}px;object-fit:contain;display:block;margin:0 auto" `
+         + `onerror="this.outerHTML='<span style=\\'font-size:${size}px\\'>${item.icon||'?'}</span>'" >`;
+  }
+  return `<span style="font-size:${size}px;line-height:1">${item.icon || '?'}</span>`;
 }
 
 // ── 道具卡片 ──
@@ -875,7 +889,7 @@ function _buildShopCard(item, idx, p) {
 
   card.innerHTML =
     badge +
-    `<div class="shp-card-icon">${item.icon}</div>` +
+    `<div class="shp-card-icon">${_shopItemIcon(item, 38)}</div>` +
     `<div class="shp-card-name" style="color:${col}">${item.name}</div>` +
     `<div class="shp-card-desc">${_shopColorDesc(item.desc)}</div>` +
     `<div class="shp-card-price" style="color:${afford&&!locked?'#4df':'#3a3a3a'}">🐚 ${item.price}</div>`;
@@ -1084,9 +1098,9 @@ function applyUpgradeEffect(opt) {
   if (opt.type === 'stat') {
     if      (opt.id==='maxhp')    { p.maxHp+=30; healPlayer(30); }
     else if (opt.id==='speed')    p.spd+=20;
-    else if (opt.id==='physdmg')  p.physDmgMult = Math.min(2.0, +(((p.physDmgMult||1)*1.30).toFixed(4)));
-    else if (opt.id==='magicdmg') p.magicDmgMult = Math.min(2.0, +(((p.magicDmgMult||1)*1.30).toFixed(4)));
-    else if (opt.id==='gundmg')   p.gunDmgMult = Math.min(2.0, +(((p.gunDmgMult||1)*1.30).toFixed(4)));
+    else if (opt.id==='physdmg')  p.meleeDmgMult  = Math.min(2.0, +(((p.meleeDmgMult||1)*1.30).toFixed(4)));
+    else if (opt.id==='magicdmg') p.elemDmgMult   = Math.min(2.0, +(((p.elemDmgMult||1)*1.30).toFixed(4)));
+    else if (opt.id==='gundmg')   p.rangedDmgMult = Math.min(2.0, +(((p.rangedDmgMult||1)*1.30).toFixed(4)));
     else if (opt.id==='area')     p.areaMult  = +(p.areaMult*1.15).toFixed(4);
     else if (opt.id==='cd')       p.cdMult    = Math.max(0.2,+(p.cdMult*0.88).toFixed(4));
     else if (opt.id==='heal')     healPlayer(p.maxHp*0.6);
@@ -1577,7 +1591,7 @@ function showDeadScreen() {
     <div class="stat-row">💀 击杀: <b style="color:#4ef">${gs.kills}</b></div>
     <div class="stat-row">⭐ 得分: <b style="color:#4f4">${gs.score}</b></div>
     <div class="stat-row">🍀 幸运: <b>${p.luck}</b> &nbsp;💨 闪避: <b>${effDodge}%</b> &nbsp;🛡 减伤: <b>${effArm}%</b></div>`;
-  const earned = calcCoinsEarned(gs.wave.num, gs.kills);
+  const earned = Math.floor(calcCoinsEarned(gs.wave.num, gs.kills) * (gs.player?.coinBonusMult||1));
   addCoins(earned);
   const _xpG=Math.floor(20+gs.wave.num*4+Math.floor(gs.kills/3));
   const _lvB=getPlayerLevel();addPlayerXP(_xpG);const _lvA=getPlayerLevel();
@@ -1598,7 +1612,7 @@ function showStageClearScreen() {
     <div class="stat-row">🌊 第<b style="color:#fd4">${_st}</b>关 全部30波通关</div>
     <div class="stat-row">💀 击杀: <b style="color:#4ef">${gs.kills}</b></div>
     <div class="stat-row">⭐ 得分: <b style="color:#4f4">${gs.score}</b></div>`;
-  const earned = calcCoinsEarned(30, gs.kills);
+  const earned = Math.floor(calcCoinsEarned(30, gs.kills) * (gs.player?.coinBonusMult||1));
   addCoins(earned);
   const _xpG=Math.floor(20+30*4+Math.floor(gs.kills/3));
   const _lvB=getPlayerLevel();addPlayerXP(_xpG);const _lvA=getPlayerLevel();
@@ -1843,7 +1857,8 @@ updateMailBadge();
   }, 2600);
 })();
 document.getElementById('btn-class-back').addEventListener('click', ()=>showOverlay('o-menu'));
-document.getElementById('btn-settings-back').addEventListener('click', ()=>showOverlay('o-menu'));
+// 使用 onclick（而非 addEventListener）使得遊戲内設置覆蓋能正確生效
+document.getElementById('btn-settings-back').onclick = ()=>showOverlay('o-menu');
 document.getElementById('btn-achieve-back').addEventListener('click', ()=>showOverlay('o-menu'));
 document.getElementById('btn-dead-menu').addEventListener('click', ()=>{ showOverlay('o-menu'); renderBestRun(); renderMenuCoins(); });
 document.getElementById('btn-victory-menu').addEventListener('click', ()=>{ showOverlay('o-menu'); renderBestRun(); renderMenuCoins(); });
@@ -1872,11 +1887,13 @@ document.getElementById('btn-resume').addEventListener('click', ()=>{
 });
 document.getElementById('btn-ingame-settings').addEventListener('click', ()=>{
   document.getElementById('o-ingame-menu').classList.remove('active');
-  showOverlay('o-settings');
+  // 覆蓋返回鍵邏輯：回到暫停選單，而非主選單
   document.getElementById('btn-settings-back').onclick = ()=>{
     document.getElementById('o-settings').classList.remove('active');
-    gs.phase = gs._prePausePhase || 'playing';
+    document.getElementById('o-ingame-menu').classList.add('active');
+    // gs.phase 保持 'paused'，等玩家在暫停選單點「繼續」才恢復
   };
+  showOverlay('o-settings');
 });
 document.getElementById('btn-quit-run').addEventListener('click', ()=>{
   document.getElementById('o-ingame-menu').classList.remove('active');

@@ -12,25 +12,33 @@ let tutorialTimer = 5.0;
 
 // ── Enemy sprite image overrides (preloaded) ──
 const ENEMY_IMG_MAP = (function(){
-  const _src = { slime:'photo/Slime.png', goblin:'photo/goblin.png', skeleton:'photo/Skeleton.png', bat:'photo/bat.png', orc:'photo/orc.png' };
-  // 寶石怪圖片（7 品質）— 路徑含空格需 encode
+  // 普通怪：统一放在 photo/enemy/ 目录
+  const _src = {
+    slime:    'photo/enemy/Slime.png',
+    goblin:   'photo/enemy/goblin.png',
+    skeleton: 'photo/enemy/Skeleton.png',
+    bat:      'photo/enemy/bat.png',
+    orc:      'photo/enemy/orc.png',
+  };
+  // 寶石怪圖片（7 品質）— 路徑統一用 photo/Gem Monster/ 目錄
+  // 檔名格式：[Quality] Gem Monster.png（與 data.js / chat.js 保持一致）
   const _gemFiles = {
     common:          'Common Gem Monster.png',
     rare:            'Rare Gem Monster.png',
-    relatively_rare: 'Relatively Rare Gem Monster.png',
+    relatively_rare: 'Uncommon Gem Monster.png',
     epic:            'Epic Gem Monster.png',
     legendary:       'Legendary Gem Monster.png',
-    mythical:        'Mythical Gem Monster.png',
-    ultimate:        'The Ultimate Gem Monster.png',
+    mythical:        'Mythic Gem Monster.png',
+    ultimate:        'Ultimate Gem Monster.png',
   };
   for (const q in _gemFiles) {
-    _src['gem_'+q] = 'photo/Gem%20Monster/' + _gemFiles[q].replace(/ /g, '%20');
+    _src['gem_'+q] = 'photo/Gem Monster/' + _gemFiles[q];
   }
   const _map = {};
   for (const k in _src) {
     const i = new Image();
     i.src = _src[k];
-    i.onerror = () => console.warn(`[GemMonster] 圖片載入失敗: ${_src[k]}`);
+    i.onerror = (function(path){ return () => console.warn('[IMG] 图片加载失败:', path); })(_src[k]);
     _map[k] = i;
   }
   return _map;
@@ -77,14 +85,23 @@ function initGame(classIdx) {
     sharpenTimer: 0, sharpenActive: false,
     manaTimer: 0, manaActive: false,
     reaperChanneling: false, reaperChannel: 0,
-    physDmgMult:   1.0,  // 近戰傷害倍率
-    magicDmgMult:  1.0,  // 元素傷害倍率
-    gunDmgMult:    1.0,  // 遠程傷害倍率
-    engDmgMult:    1.0,  // 工程傷害倍率（炮台/地雷/無人機）
-    summonDmgMult: 1.0,  // 召喚傷害倍率（玄武等）
+    // ── 傷害類型倍率（×%）──
+    meleeDmgMult:   1.0,  // 近戰
+    rangedDmgMult:  1.0,  // 遠程
+    elemDmgMult:    1.0,  // 元素
+    engDmgMult:     1.0,  // 工程（炮台/地雷/無人機）
+    summonDmgMult:  1.0,  // 召喚（玄武等）
+    // ── 傷害類型固定加成（+flat）──
+    meleeDmgBonus:  0,
+    rangedDmgBonus: 0,
+    elemDmgBonus:   0,
+    engDmgBonus:    0,
+    summonDmgBonus: 0,
     reaperGunMult: 1.0,
     armor:         0,    // 護甲：每點減少1點固定傷害，最高減少80%
     rangeBonus:    0,    // 範圍加成：每點+1%攻擊範圍
+    coinBonusMult: 1.0,  // 遊戲結束金幣倍率
+    shellEarnMult: 1.0,  // 貝殼掉落倍率
     pickedStatIds: new Set(),
     kirbyForm: null,
     santaAtkTimer: 0,
@@ -733,12 +750,16 @@ function hitEnemy(enemy, rawDmg, _noProc, _isCrit, wepCat) {
   if (gs.talents.has('death_wish') && p.hp < p.maxHp*0.25) mult *= 3;
   if (gs.talents.has('berserker'))  mult *= (1 + p.berserkerKills*0.003);
   if (CLASSES[p.classIdx]?.id === 'berserker' && p.berserkActive) mult *= 2;
-  if (wepCat === 'phys'        && (p.physDmgMult||1)   !== 1) mult *= p.physDmgMult;
-  if (wepCat === 'magic'       && (p.magicDmgMult||1)  !== 1) mult *= p.magicDmgMult;
-  if (wepCat === 'gun'         && (p.gunDmgMult||1)    !== 1) mult *= p.gunDmgMult;
-  if (wepCat === 'gun'         && (p.reaperGunMult||1)  !== 1) mult *= p.reaperGunMult;
-  if (wepCat === 'engineering' && (p.engDmgMult||1)    !== 1) mult *= p.engDmgMult;
-  if (wepCat === 'summon'      && (p.summonDmgMult||1)  !== 1) mult *= p.summonDmgMult;
+  // ── 傷害類型映射（向後相容舊 wepCat 名稱）──
+  const _dmgType = {
+    phys:'melee',   melee:'melee',
+    gun:'ranged',   ranged:'ranged',
+    magic:'element',element:'element',
+    engineering:'engineering',
+    summon:'summon',
+  }[wepCat] || null;
+  // reaperGunMult 仍掛在遠程類
+  if (_dmgType === 'ranged' && (p.reaperGunMult||1) !== 1) mult *= p.reaperGunMult;
   if ((p.santaAtkTimer||0) > 0) mult *= 1.25;
   if ((p.chosenLuckDmgMult||1) > 1) mult *= p.chosenLuckDmgMult;
   if ((p.weapEnhMult||1) > 1) mult *= p.weapEnhMult;
@@ -773,7 +794,10 @@ function hitEnemy(enemy, rawDmg, _noProc, _isCrit, wepCat) {
     const fy = tgt ? tgt.y + (Math.random()-0.5)*30 : p.y + (Math.random()-0.5)*80;
     gs.fallingGifts.push({ x:fx, y:fy, fallTimer:0, totalTime:0.8, radius:40 });
   }
-  const dmg = rawDmg * mult;
+  // ── 最終傷害 = (基礎 + 類型固定加成) × 總傷害% × 類型倍率 ──
+  const _typeBonus = _dmgType ? ({ melee:p.meleeDmgBonus||0, ranged:p.rangedDmgBonus||0, element:p.elemDmgBonus||0, engineering:p.engDmgBonus||0, summon:p.summonDmgBonus||0 }[_dmgType] || 0) : 0;
+  const _typeMult  = _dmgType ? ({ melee:p.meleeDmgMult||1,  ranged:p.rangedDmgMult||1,  element:p.elemDmgMult||1,  engineering:p.engDmgMult||1,  summon:p.summonDmgMult||1  }[_dmgType] || 1) : 1;
+  const dmg = (rawDmg + _typeBonus) * mult * _typeMult;
   enemy.hp -= dmg;
   if (dmg > 0) {
     const _isCritFinal = _isCrit || false;
@@ -936,7 +960,7 @@ function _dropShells(enemy) {
       ? 5 + Math.floor(Math.random() * 6)                      // 精英 (orc/demon/troll): 5-10
       : 1 + Math.floor(Math.random() * 3);                     // 普通: 1-3
   }
-  const shells = Math.round(base * (1 + (p.shellBonus||0) * 0.5) * (p.shellDoubleMult||1));
+  const shells = Math.round(base * (1 + (p.shellBonus||0) * 0.5) * (p.shellDoubleMult||1) * (p.shellEarnMult||1));
   if (shells <= 0) return;
   p.shells = (p.shells||0) + shells;
   addFloatingText(`🐚+${shells}`, enemy.x, enemy.y - 16, '#4df', 0.75);
