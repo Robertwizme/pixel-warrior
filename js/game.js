@@ -100,8 +100,9 @@ function initGame(classIdx) {
     reaperGunMult: 1.0,
     armor:         0,    // 護甲：每點減少1點固定傷害，最高減少80%
     rangeBonus:    0,    // 範圍加成：每點+1%攻擊範圍
-    coinBonusMult: 1.0,  // 遊戲結束金幣倍率
-    shellEarnMult: 1.0,  // 貝殼掉落倍率
+    coinBonusMult:    1.0,  // 遊戲結束金幣倍率
+    shellEarnMult:    1.0,  // 貝殼掉落倍率
+    goblinCountMult:  1.0,  // 寶寶哥布林道具：哥布林生成數量倍率
     pickedStatIds: new Set(),
     kirbyForm: null,
     santaAtkTimer: 0,
@@ -564,8 +565,10 @@ function startWave(num) {
   const sf = isBoss ? 1 : Math.pow(1.15, num-1) * stageMult;
   const countMult = isBoss ? 1 : (1 + (num-1)*0.06) * Math.pow(1.12, _stage-1);
   const queue = [];
+  const _goblinMult = gs.player.goblinCountMult || 1;
   plan.forEach(entry => {
-    const cnt = Math.round(entry.count * countMult);
+    const _extra = (entry.type === 'goblin' && _goblinMult !== 1) ? _goblinMult : 1;
+    const cnt = Math.round(entry.count * countMult * _extra);
     for (let i=0; i<cnt; i++) queue.push({ type:entry.type, scale:sf, waveNum:num });
   });
   // Shuffle

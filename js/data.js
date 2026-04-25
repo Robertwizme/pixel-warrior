@@ -53,6 +53,7 @@ const IMG_GEM_MONSTERS  = {
 // ── Shop prop images ──
 const IMG_PROP_GOLD_INGOT    = new Image(); IMG_PROP_GOLD_INGOT.src    = 'photo/props/Gold ingot.png';
 const IMG_PROP_HEALTH_POTION = new Image(); IMG_PROP_HEALTH_POTION.src = 'photo/props/Health Potion.png';
+const IMG_PROP_BABY_GOBLIN   = new Image(); IMG_PROP_BABY_GOBLIN.src   = 'photo/props/Baby Goblin.png';
 
 
 const SPRITES = {
@@ -208,9 +209,19 @@ function getWavePlan(n) {
 // ═══════════════════════════════════════════════════════
 // §0  版本号 & 更新公告  ← 每次更新只需修改这里
 // ═══════════════════════════════════════════════════════
-const GAME_VERSION = 'v1.0.6';
+const GAME_VERSION = 'v1.0.8';
 document.getElementById('load-version').textContent = GAME_VERSION;
 const CHANGELOG = [
+  { version:'v1.0.8', date:'2026-04-25', items:[
+    '宝宝哥布林品质修正：uncommon → relatively_rare（藍色·較稀有）',
+    'game.js player init 新增 goblinCountMult:1.0',
+    'startWave() 讀取 goblinCountMult，對 goblin 類型怪物數量乘倍',
+    '4個宝宝哥布林 = goblinCountMult 1.25^4 ≈ ×2.44 哥布林數量',
+  ]},
+  { version:'v1.0.7', date:'2026-04-25', items:[
+    '新增商店道具：宝宝哥布林（relatively_rare·60贝壳·上限4）：哥布林出现数量+25%',
+    '新增图片预载：IMG_PROP_BABY_GOBLIN → photo/props/Baby Goblin.png',
+  ]},
   { version:'v1.0.6', date:'2026-04-25', items:[
     '修復商店道具名稱顯示 undefined：新增 _shopItemIcon() 輔助函數，同時支援 icon（emoji）和 img（Image 物件）兩種來源',
     '修復同一次刷新同種道具重複出現（如3個金元寶）：_buildShopItems() 加入 usedIds Set，每種道具在同一次刷新最多出現一次',
@@ -1046,6 +1057,18 @@ const SHOP_ITEMS = [
       p.elemDmgMult    = (p.elemDmgMult    || 1) * 0.99;
       p.engDmgMult     = (p.engDmgMult     || 1) * 0.99;
       p.summonDmgMult  = (p.summonDmgMult  || 1) * 0.99;
+    },
+  },
+  {
+    id:       'baby_goblin',
+    img:      IMG_PROP_BABY_GOBLIN,
+    name:     '宝宝哥布林',
+    rarity:   'relatively_rare',
+    price:    60,
+    maxCount: 4,
+    desc:     '哥布林出现数量+25%',
+    apply(p) {
+      p.goblinCountMult = (p.goblinCountMult || 1) * 1.25;
     },
   },
 ];
