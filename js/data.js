@@ -212,9 +212,18 @@ function getWavePlan(n) {
 // ═══════════════════════════════════════════════════════
 // §0  版本号 & 更新公告  ← 每次更新只需修改这里
 // ═══════════════════════════════════════════════════════
-const GAME_VERSION = 'v1.1.0';
+const GAME_VERSION = 'v1.1.1';
 document.getElementById('load-version').textContent = GAME_VERSION;
 const CHANGELOG = [
+  { version:'v1.1.1', date:'2026-04-26', items:[
+    '圖鑑「🔫 武器」Tab 改名為「✨ 技能」，原功能不變（data-tab=weapon）',
+    '新增圖鑑「🔫 武器」Tab（data-tab=shopweapon）：木棍4品質詳情',
+    '  左欄網格：武器圖示（品質色 drop-shadow）+ 品質色名稱',
+    '  右欄詳情：圖片/品質徽章/傷害/暴擊/攻速/擊退/攻擊範圍/特殊效果/獲得方式',
+    '修復圖鑑「🛒 道具」Tab 圖示 undefined：iconFn/nameFn 加 img 物件支援',
+    '  _codexItemDetail imgSrc 改用 item.img.src（路徑大小寫正確）',
+    '  icon fallback 統一為 🎁 避免顯示 undefined',
+  ]},
   { version:'v1.1.0', date:'2026-04-26', items:[
     '新增裝備武器格子系統：6格上限，格滿同武器同品質自動融合升品質，金色封頂禁購',
     'tryBuyEquipWeapon(id,quality)：購買/融合入口；updateEquipWeapons(dt)：自動攻擊主循環',

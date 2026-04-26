@@ -1198,13 +1198,15 @@ function _codexItemDetail(item){
     .replace(/(×[\d.]+)/g,    '<span style="color:#4f8">$1</span>')
     .replace(/(-[\d.]+%?)/g,  '<span style="color:#f55">$1</span>')
     .replace(/(÷[\d.]+)/g,    '<span style="color:#f55">$1</span>');
-  const imgPath = 'photo/props/'+item.id+'.png';
+  // 優先使用預載 img.src（路徑大小寫正確），回退 id 推斷路徑
+  const imgSrc      = (item.img && item.img.src) ? item.img.src : ('photo/props/'+item.id+'.png');
+  const iconFallback = item.icon || '🎁';
   return _cdxDetail(
     // 图片（加载失败则回退emoji）
     '<div class="cdx-big-icon" style="position:relative">'+
-      '<img src="'+imgPath+'" style="width:60px;height:60px;image-rendering:pixelated;object-fit:contain" '+
+      '<img src="'+imgSrc+'" style="width:60px;height:60px;image-rendering:pixelated;object-fit:contain" '+
         'onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">'+
-      '<span style="display:none;font-size:44px">'+item.icon+'</span>'+
+      '<span style="display:none;font-size:44px">'+iconFallback+'</span>'+
     '</div>'+
     // 名称 + 稀有度徽章
     '<div class="cdx-item-name" style="color:'+col+'">'+item.name+'</div>'+
@@ -1221,6 +1223,70 @@ function _codexItemDetail(item){
     // 获得方式
     _cdxSection('获得方式')+
     _cdxDesc('🏪 <b>波次商店</b>购买<br><span style="color:#555;font-size:10px">每波结束后商店刷新，贝壳不足时无法购买。</span>')
+  );
+}
+
+// ═══════════════════════════════════════════════════════
+// 商店武器圖鑑資料
+// ═══════════════════════════════════════════════════════
+const _CODEX_SHOP_WEAPONS = [
+  {
+    id:'stick_common', name:'木棍', quality:'common', qualityLabel:'普通',
+    img:'photo/weapon/stick.png', icon:'🪵',
+    dmg:'5 – 8', crit:'3%  ×1.5', speed:'标准',
+    knockback:'轻微', range:'近战（贴身）',
+    special:'无特殊效果',
+    obtain:'初始装备 / 波次商店',
+  },
+  {
+    id:'stick_rare', name:'精良木棍', quality:'rare', qualityLabel:'稀有',
+    img:'photo/weapon/stick.png', icon:'🪵',
+    dmg:'12 – 18', crit:'8%  ×2.0', speed:'标准 +5%',
+    knockback:'轻微', range:'近战（贴身）',
+    special:'命中15%概率触发眩晕（持续 0.5 s）',
+    obtain:'波次商店（稀有概率）',
+  },
+  {
+    id:'stick_epic', name:'附魔木棍', quality:'epic', qualityLabel:'史诗',
+    img:'photo/weapon/stick.png', icon:'🪵',
+    dmg:'25 – 35', crit:'15% ×2.5', speed:'标准 +10%',
+    knockback:'中等', range:'近战（贴身）',
+    special:'攻击附带🔥火焰，命中后持续灼烧 2 s（每秒 8 伤害）',
+    obtain:'波次商店（史诗概率）',
+  },
+  {
+    id:'stick_legendary', name:'神木权杖', quality:'legendary', qualityLabel:'传说',
+    img:'photo/weapon/stick.png', icon:'🪵',
+    dmg:'50 – 70', crit:'25% ×3.0', speed:'标准 +20%',
+    knockback:'强烈', range:'近战（贴身）',
+    special:'每次击杀30%概率触发⚡闪电链，弹跳至附近3个敌人（各100%伤害）',
+    obtain:'波次商店（传说概率）',
+  },
+];
+
+function _codexShopWeaponDetail(w){
+  if(!w) return _cdxDetail('<div style="color:#555;padding:40px 0;text-align:center">暂无数据</div>');
+  const col = _SHOP_RARITY_COLORS[w.quality] || '#ddd';
+  return _cdxDetail(
+    '<div class="cdx-big-icon" style="position:relative">'+
+      '<img src="'+w.img+'" style="width:60px;height:60px;image-rendering:pixelated;object-fit:contain" '+
+        'onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">'+
+      '<span style="display:none;font-size:44px">'+w.icon+'</span>'+
+    '</div>'+
+    '<div class="cdx-item-name" style="color:'+col+'">'+w.name+'</div>'+
+    '<div style="margin-bottom:10px">'+
+      '<span class="cdx-badge" style="color:'+col+';border-color:'+col+'40;background:'+col+'15">'+w.qualityLabel+'</span>'+
+    '</div>'+
+    _cdxSection('武器属性')+
+    _cdxStat('⚔ 伤害',      w.dmg)+
+    _cdxStat('💥 暴击',     w.crit)+
+    _cdxStat('⚡ 攻速',     w.speed)+
+    _cdxStat('💨 击退',     w.knockback)+
+    _cdxStat('📏 攻击范围',  w.range)+
+    _cdxSection('特殊效果')+
+    _cdxDesc(w.special)+
+    _cdxSection('获得方式')+
+    _cdxDesc('🏪 <b>'+w.obtain+'</b>')
   );
 }
 
@@ -1296,11 +1362,27 @@ function renderCodexContent(){
     iconFn=s=>s.icon;
     nameFn=s=>s.name;
     detailFn=s=>_codexSupplyDetail(s, _codexSubtab==='talent');
+  } else if(_codexTab==='shopweapon'){
+    items=_CODEX_SHOP_WEAPONS;
+    iconFn=w=>{
+      const col=_SHOP_RARITY_COLORS[w.quality]||'#ddd';
+      return '<img src="'+w.img+'" style="width:28px;height:28px;object-fit:contain;'
+           + 'filter:drop-shadow(0 0 4px '+col+')" '
+           + 'onerror="this.outerHTML=\'<span>'+w.icon+'</span>\'">';
+    };
+    nameFn=w=>'<span style="color:'+(_SHOP_RARITY_COLORS[w.quality]||'#ddd')+'">'+w.name+'</span>';
+    detailFn=w=>_codexShopWeaponDetail(w);
   } else if(_codexTab==='item'){
     const pool=(typeof SHOP_ITEMS!=='undefined')?SHOP_ITEMS:[];
     items=pool;
-    iconFn=it=>it.icon;
-    nameFn=it=>it.name;
+    // 支援 icon (emoji) 和 img (Image 物件) 兩種來源
+    iconFn=it=>{
+      if(it.img && it.img.src)
+        return '<img src="'+it.img.src+'" style="width:28px;height:28px;object-fit:contain" '
+             + 'onerror="this.outerHTML=\'<span>'+(it.icon||'?')+'</span>\'">';
+      return it.icon||'?';
+    };
+    nameFn=it=>it.name||'?';
     detailFn=it=>_codexItemDetail(it);
   }
 
