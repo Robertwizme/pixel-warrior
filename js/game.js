@@ -103,6 +103,7 @@ function initGame(classIdx) {
     coinBonusMult:    1.0,  // 遊戲結束金幣倍率
     shellEarnMult:    1.0,  // 貝殼掉落倍率
     goblinCountMult:  1.0,  // 寶寶哥布林道具：哥布林生成數量倍率
+    maxEquipSlots:    6,    // 裝備武器格子上限（部分職業可能不同）
     pickedStatIds: new Set(),
     kirbyForm: null,
     santaAtkTimer: 0,
@@ -203,6 +204,8 @@ function initGame(classIdx) {
     shells:         0,   // 當局貝殼數，遊戲結束清零
     shellBonus:     0,   // 貝殼值，越高掉落越多（公式: 基礎×(1+shellBonus×0.5)）
     shellDoubleMult:1,   // 貝殼加倍符效果
+    // 裝備武器格子（EQUIP_WEAPON_DEFS 系統，最多 maxEquipSlots 格）
+    equipWeapons: [],
   };
 
   waveCompleteTriggered = false;
@@ -525,6 +528,94 @@ function addWeapon(id) {
 }
 function getWeapon(id)     { return gs.weapons.find(w=>w.id===id); }
 function weaponStats(w)    { return WEAPON_DEFS[w.id].levels[w.level-1]; }
+
+// ═══════════════════════════════════════════════════════
+// §EW  裝備武器格子系統（EQUIP_WEAPON_DEFS / 6格 / 融合）
+// ═══════════════════════════════════════════════════════
+
+/**
+ * 嘗試購買裝備武器。
+ * - 格未滿：直接佔格
+ * - 格滿 + 可融合（同id+同品質）：融合升一級，釋放一格
+ * - 格滿 + 無法融合 或 金色：拒絕
+ * @returns {boolean} 是否成功
+ */
+function tryBuyEquipWeapon(id, quality) {
+  if (typeof EQUIP_WEAPON_DEFS === 'undefined' || !EQUIP_WEAPON_DEFS[id]) return false;
+  const p   = gs.player;
+  const maxS = p.maxEquipSlots || 6;
+  const slots = gs.equipWeapons;
+
+  // 金色格滿 → 無法融合，直接拒絕
+  if (slots.length >= maxS && !EQUIP_QUALITY.canFuse(quality)) return false;
+
+  // 格未滿 → 直接入格
+  if (slots.length < maxS) {
+    slots.push({ id, quality, timer: 0, _flashTimer: 0 });
+    return true;
+  }
+
+  // 格滿 → 找可融合對（同 id + 同品質）
+  const fuseIdx = slots.findIndex(w => w.id === id && w.quality === quality);
+  if (fuseIdx === -1) return false;
+
+  const nextQ = EQUIP_QUALITY.nextQuality(quality);
+  if (!nextQ) return false;         // 金色不應到這裡，但防禦一下
+
+  slots[fuseIdx] = { id, quality: nextQ, timer: 0, _flashTimer: 0 };
+  const nLabel = EQUIP_QUALITY.defs[nextQ]?.label || nextQ;
+  const nColor = EQUIP_QUALITY.defs[nextQ]?.color || '#fd4';
+  addFloatingText(`⬆ ${EQUIP_WEAPON_DEFS[id].name}→${nLabel}！`, p.x, p.y - 44, nColor, 1.5);
+  return true;
+}
+
+// ── 裝備武器自動攻擊（每幀呼叫）──
+function updateEquipWeapons(dt) {
+  if (!gs.equipWeapons || !gs.equipWeapons.length) return;
+  const p = gs.player;
+  for (const w of gs.equipWeapons) {
+    const def = (typeof EQUIP_WEAPON_DEFS !== 'undefined') ? EQUIP_WEAPON_DEFS[w.id] : null;
+    if (!def) continue;
+    const qStats = def.qualities?.[w.quality];
+    if (!qStats) continue;
+    // 更新攻擊閃光計時器
+    if (w._flashTimer > 0) w._flashTimer -= dt;
+    // CD 倒數
+    w.timer -= dt;
+    if (w.timer > 0) continue;
+    // 重置 CD：1 / atkSpd（考慮玩家 cdMult）
+    const atkSpd = qStats.atkSpd || 1.0;
+    w.timer = (1.0 / atkSpd) * (p.cdMult || 1);
+    // 執行武器攻擊
+    if (w.id === 'stick') _fireStick(w, qStats, p);
+  }
+}
+
+// ── 木棍：近戰範圍攻擊 ──
+function _fireStick(w, qStats, p) {
+  const range    = qStats.range    || 200;
+  const baseDmg  = qStats.baseDmg  || 10;
+  const knockback = qStats.knockback || 1;
+  const finalDmg = baseDmg + (p.meleeDmgBonus || 0);
+  const r2 = range * range;
+  let hitAny = false;
+  gs.enemies.forEach(e => {
+    if (e.dead) return;
+    const dx = e.x - p.x, dy = e.y - p.y;
+    if (dx * dx + dy * dy > r2) return;
+    hitEnemy(e, finalDmg, false, false, 'melee');
+    // 擊退
+    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+    e.x += (dx / dist) * knockback * 30;
+    e.y += (dy / dist) * knockback * 30;
+    hitAny = true;
+  });
+  if (hitAny) {
+    w._flashTimer = 0.18;
+    if (settings.particles) spawnParticles(p.x, p.y, ['#fd4','#f84','#faa'], 7, range * 0.45, 0.3, 3);
+  }
+  SFX.play('swing');
+}
 
 function triggerMonsterSurge() {
   gs.wave.surgeTriggered = true;
@@ -3266,6 +3357,27 @@ function render() {
 
   // Black Tortoise
   renderBlackTortoise(ctx, cam);
+  // ── 裝備武器攻擊特效（木棍攻擊閃光圓）──
+  if (gs.equipWeapons) {
+    const _px = Math.floor(gs.player.x - cam.x);
+    const _py = Math.floor(gs.player.y - cam.y);
+    gs.equipWeapons.forEach(w => {
+      if (!(w._flashTimer > 0)) return;
+      const _def = typeof EQUIP_WEAPON_DEFS !== 'undefined' ? EQUIP_WEAPON_DEFS[w.id] : null;
+      if (!_def) return;
+      const _range = _def.qualities?.[w.quality]?.range || 200;
+      const _prog  = w._flashTimer / 0.18; // 0→1
+      const _qcol  = EQUIP_QUALITY.defs?.[w.quality]?.color || '#fd4';
+      ctx.save();
+      ctx.globalAlpha = 0.18 * _prog;
+      ctx.fillStyle   = _qcol;
+      ctx.beginPath(); ctx.arc(_px, _py, _range, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 0.45 * _prog;
+      ctx.strokeStyle = _qcol; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(_px, _py, _range, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore(); ctx.lineWidth = 1; ctx.globalAlpha = 1;
+    });
+  }
   // Drones — orbit the player visually
   if (gs.weapons) {
     let droneIdx = 0;
@@ -3508,6 +3620,7 @@ function gameLoop(ts) {
       gs.swordOrbs = [];
       updateOrbits(dt);
       updateWeapons(dt);
+      updateEquipWeapons(dt);
       updateHealCircles(dt);
       updatePendingExplosions(dt);
       updateKirbyWeapon(dt);
