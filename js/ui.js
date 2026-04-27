@@ -1276,58 +1276,76 @@ function getLuckGain(luck) {
 }
 
 function getLevelUpOptions() {
-  // Level-up: ONLY stat bonuses (no weapons)
-  const p = gs.player;
-  const pool = [];
+  // Level-up: 技能選擇（最多 maxSkillSlots 個技能同時裝備）
+  const p   = gs.player;
+  const maxS = p.maxSkillSlots ?? 3;
+  const equipped = gs.equippedSkills || [];
 
-  if (CLASSES[p.classIdx]?.id !== 'doctor')
-    pool.push({ type:'lvstat', id:'maxhp', icon:'❤', name:'强化体质', desc:'+10 最大HP' });
-  pool.push({ type:'lvstat', id:'hpregen', icon:'💖', name:'生命再生',   desc:'+1/s 自然回复' });
-  const lkGain = getLuckGain(p.luck);
-  pool.push({ type:'lvstat', id:'luck',    icon:'🍀', name:'幸运提升',   desc:`+${lkGain} 幸运值`, _val:lkGain });
-  pool.push({ type:'lvstat', id:'xpmult',  icon:'⭐', name:'经验增幅',   desc:'+5% 经验获取' });
-  // Rare ~15%
-  if (Math.random() < 0.15) pool.push({ type:'lvstat', id:'dodge5',   icon:'💨', name:'幻影步伐', desc:'+5% 闪避率' });
-  if (Math.random() < 0.15) pool.push({ type:'lvstat', id:'dmgred5',  icon:'🛡', name:'铁皮强化', desc:'+5% 伤害减免' });
-
-  // ~80% chance to offer a weapon upgrade (prioritise owned weapons)
-  if (gs?.weapons && Math.random()<0.80) {
-    const _owned = new Set(gs.weapons.map(w=>w.id));
-    const _upgW = gs.weapons.filter(w => WEAPON_DEFS[w.id] && w.level<WEAPON_DEFS[w.id].maxLv
-      && !['kirby_copy'].includes(w.id));
-    if (_upgW.length>0) {
-      const _rw = _upgW[Math.floor(Math.random()*_upgW.length)];
-      pool.push({ type:'wepup', weapId:_rw.id, icon:WEAPON_DEFS[_rw.id].icon,
-        name:WEAPON_DEFS[_rw.id].name+' Lv.'+_rw.level+'→Lv.'+(_rw.level+1), desc:describeWeapon(_rw.id,_rw.level+1) });
-    } else if (gs.weapons.length<8) {
-      const _avail = shuffled(Object.keys(WEAPON_DEFS).filter(id=>!_owned.has(id)&&!['kirby_copy','flying_sword'].includes(id)));
-      if (_avail.length>0) pool.push({ type:'wepadd', weapId:_avail[0], icon:WEAPON_DEFS[_avail[0]].icon,
-        name:'获得 '+WEAPON_DEFS[_avail[0]].name, desc:describeWeapon(_avail[0],1) });
-    }
+  // 技能格已滿 → 顯示提示佔位（不可選）
+  if (equipped.length >= maxS) {
+    return [{
+      type: 'skill_full',
+      icon: '🔒',
+      name: '技能格已满',
+      desc: `已装备 ${equipped.length}/${maxS} 个技能，无法继续选择`,
+    }];
   }
-  // Dedup: remove lvstat entries already picked
-  const _picked = p.pickedStatIds || new Set();
-  return shuffled(pool.filter(o => o.type !== 'lvstat' || !_picked.has(o.id))).slice(0, 3);
+
+  // 從 SUPPLY_TALENTS 中過濾掉已裝備的技能，隨機取 3 個
+  const available = (typeof SUPPLY_TALENTS !== 'undefined')
+    ? SUPPLY_TALENTS.filter(t => !gs.talents.has(t.id))
+    : [];
+
+  if (!available.length) {
+    return [{
+      type: 'skill_full',
+      icon: '✅',
+      name: '所有技能已习得',
+      desc: '已掌握全部可用技能',
+    }];
+  }
+
+  return shuffled(available).slice(0, 3).map(t => ({
+    type:  'skill',
+    id:    t.id,
+    icon:  t.icon,
+    name:  t.name,
+    desc:  t.desc,
+    _talent: t,
+  }));
 }
 
 function showLevelUpScreen() {
-  const p = gs.player;
-  document.getElementById('lvlup-title').textContent = `⬆ 升至 Lv.${p.level}！`;
+  const p   = gs.player;
+  const maxS = p.maxSkillSlots ?? 3;
+  const equipped = gs.equippedSkills || [];
+  document.getElementById('lvlup-title').textContent =
+    `⬆ 升至 Lv.${p.level}  ✨ 技能 ${equipped.length}/${maxS}`;
   const container = document.getElementById('lvlup-cards');
   container.innerHTML = '';
   getLevelUpOptions().forEach((opt, idx) => {
+    const isFull = opt.type === 'skill_full';
     const slot = document.createElement('div');
     slot.className = 'lvlup-slot';
-    slot.style.animationDelay = (idx*0.08)+'s';
+    slot.style.animationDelay = (idx * 0.08) + 's';
     const card = document.createElement('div');
     card.className = 'lvlup-card';
     card.innerHTML = `<span class="u-icon">${opt.icon}</span><div class="u-name">${opt.name}</div><div class="u-desc">${opt.desc}</div>`;
-    const btn = document.createElement('button');
-    btn.className = 'lvlup-btn';
-    btn.textContent = '✔ 选择';
-    btn.addEventListener('click', () => applyLevelUpUpgrade(opt));
     slot.appendChild(card);
-    slot.appendChild(btn);
+    if (!isFull) {
+      const btn = document.createElement('button');
+      btn.className = 'lvlup-btn';
+      btn.textContent = '✔ 装备';
+      btn.addEventListener('click', () => applyLevelUpUpgrade(opt));
+      slot.appendChild(btn);
+    } else {
+      // 技能格已滿：顯示「確定」直接關閉
+      const btn = document.createElement('button');
+      btn.className = 'lvlup-btn';
+      btn.textContent = '确定';
+      btn.addEventListener('click', () => applyLevelUpUpgrade(opt));
+      slot.appendChild(btn);
+    }
     container.appendChild(slot);
   });
   document.getElementById('o-levelup').classList.add('active');
@@ -1336,7 +1354,21 @@ function showLevelUpScreen() {
 function applyLevelUpUpgrade(opt) {
   document.getElementById('o-levelup').classList.remove('active');
   const p = gs.player;
-  if (opt.type === 'lvstat') {
+  if (opt.type === 'skill') {
+    // ── 裝備技能 ──
+    const maxS = p.maxSkillSlots ?? 3;
+    if (!gs.equippedSkills) gs.equippedSkills = [];
+    if (gs.equippedSkills.length < maxS && !gs.talents.has(opt.id)) {
+      gs.equippedSkills.push(opt.id);
+      gs.talents.add(opt.id);         // 保持向後相容，供 hitEnemy/killEnemy 查詢
+      if (typeof opt._talent?.apply === 'function') opt._talent.apply(p);
+      updateDerivedStats(p);
+      if (typeof addFloatingText === 'function')
+        addFloatingText(`✨ ${opt.name}`, p.x, p.y - 44, '#a4f', 1.5);
+    }
+  } else if (opt.type === 'skill_full') {
+    // 格滿或無技能可選 → 直接繼續，不做任何動作
+  } else if (opt.type === 'lvstat') {
     if      (opt.id === 'maxhp')   { p.maxHp += 10; healPlayer(10); }
     else if (opt.id === 'hpregen') { p.hpRegen = (p.hpRegen||0) + 1; }
     else if (opt.id === 'luck')    { p.luck += (opt._val||15); }
@@ -1349,7 +1381,6 @@ function applyLevelUpUpgrade(opt) {
       p.baseDodge  = Math.min(0.6, p.baseDodge  + 0.05);
       p.baseDmgRed = Math.min(0.6, p.baseDmgRed + 0.05);
     }
-    // Track picked lvstat (dedup); skip one-time use IDs
     if (p.pickedStatIds && !['maxhp','heal'].includes(opt.id)) p.pickedStatIds.add(opt.id);
     updateDerivedStats(p);
   } else {
@@ -1952,8 +1983,124 @@ document.getElementById('btn-confirm').addEventListener('click', ()=>{
     alert(`「${cls.name}」尚未解锁！\n请前往商城购买或完成解锁条件。`);
     return;
   }
+  showWeapSelScreen(); // 進入選武器步驟
+});
+
+// ═══════════════════════════════════════════════════════
+// §  起始武器選擇畫面
+// ═══════════════════════════════════════════════════════
+let _weapSelItems = []; // [{ id, quality, def, qDef }]
+let _weapSelIdx   = 0;
+
+/** 回傳職業的基礎幸運值（用於起始品質抽取） */
+function _getClassBaseLuck(cls) {
+  if (!cls) return 0;
+  if (cls.id === 'chosen') return 20;
+  if (cls.id === 'santa')  return 5;
+  return 0;
+}
+
+function showWeapSelScreen() {
+  const cls  = CLASSES[selectedClassIdx];
+  const luck = _getClassBaseLuck(cls);
+  // 對 EQUIP_WEAPON_DEFS 中每種武器各自抽一個品質
+  _weapSelItems = Object.keys(
+    (typeof EQUIP_WEAPON_DEFS !== 'undefined') ? EQUIP_WEAPON_DEFS : {}
+  ).map(id => {
+    const quality = (typeof EQUIP_REFRESH_WEIGHTS !== 'undefined')
+      ? EQUIP_REFRESH_WEIGHTS.rollQuality(luck)
+      : 'white';
+    const def  = EQUIP_WEAPON_DEFS[id];
+    const qDef = (typeof EQUIP_QUALITY !== 'undefined') ? EQUIP_QUALITY.defs[quality] : { label:'普通', color:'#ddd' };
+    return { id, quality, def, qDef };
+  });
+  _weapSelIdx = 0;
+  _renderWeapGrid();
+  _updateWeapPreview(0);
+  showOverlay('o-weapsel');
+}
+
+function _renderWeapGrid() {
+  const grid = document.getElementById('wep-grid');
+  if (!grid) return;
+  grid.innerHTML = _weapSelItems.map((w, i) => {
+    const col    = w.qDef?.color || '#ddd';
+    const imgSrc = w.def?.img?.src || '';
+    const sel    = i === _weapSelIdx;
+    const imgTag = imgSrc
+      ? `<img src="${imgSrc}" style="width:40px;height:40px;object-fit:contain;image-rendering:pixelated" onerror="this.style.display='none'">`
+      : `<span style="font-size:26px">🪵</span>`;
+    return `<div class="wep-dot${sel ? ' sel' : ''}" data-idx="${i}"
+      style="border-color:${col};${sel ? `box-shadow:0 0 16px ${col}55` : ''}">
+      ${imgTag}
+      <div class="wep-dot-name">${w.def?.name || '?'}</div>
+      <div class="wep-dot-qlabel" style="color:${col}">${w.qDef?.label || ''}</div>
+    </div>`;
+  }).join('');
+
+  grid.querySelectorAll('.wep-dot').forEach(dot => {
+    dot.addEventListener('click', () => {
+      _weapSelIdx = parseInt(dot.dataset.idx);
+      _renderWeapGrid();
+      _updateWeapPreview(_weapSelIdx);
+      if (typeof SFX !== 'undefined') SFX.play('click');
+    });
+  });
+}
+
+function _updateWeapPreview(idx) {
+  const w = _weapSelItems[idx]; if (!w) return;
+  const col    = w.qDef?.color || '#ddd';
+  const q      = w.def?.qualities?.[w.quality] || {};
+  const imgSrc = w.def?.img?.src || '';
+
+  // 圖片
+  const imgEl = document.getElementById('wep-prev-img');
+  if (imgEl) imgEl.innerHTML = imgSrc
+    ? `<img src="${imgSrc}" style="width:58px;height:58px;object-fit:contain;image-rendering:pixelated;filter:drop-shadow(0 0 8px ${col})" onerror="this.outerHTML='<span style=\\'font-size:44px\\'>🪵</span>'">`
+    : `<span style="font-size:44px">🪵</span>`;
+
+  // 名稱
+  const nameEl = document.getElementById('wep-prev-name');
+  if (nameEl) { nameEl.textContent = w.def?.name || '?'; nameEl.style.color = col; }
+
+  // 品質徽章
+  const qualEl = document.getElementById('wep-prev-quality');
+  if (qualEl) qualEl.innerHTML =
+    `<span style="color:${col};border:1px solid ${col}55;background:${col}18;border-radius:3px;padding:1px 12px;font-size:10px;font-weight:700">${w.qDef?.label || ''}</span>`;
+
+  // 屬性
+  const statEl = document.getElementById('wep-prev-stat');
+  if (statEl) {
+    if (q.baseDmg != null) {
+      const crit = q.critRate != null
+        ? `${(q.critRate * 100).toFixed(0)}% ×${q.critMult}`
+        : '—';
+      statEl.innerHTML =
+        `⚔ 伤害: <b style="color:${col}">${q.baseDmg}</b>&nbsp;&nbsp;` +
+        `💥 暴击: <b style="color:${col}">${crit}</b><br>` +
+        `⚡ 攻速: <b style="color:${col}">${q.atkSpd?.toFixed(2) || '—'}/s</b>&nbsp;&nbsp;` +
+        `💨 击退: <b style="color:${col}">${q.knockback ?? '—'}</b><br>` +
+        `📏 范围: <b style="color:${col}">${q.range ?? '—'} px</b>&nbsp;&nbsp;` +
+        `🗡 类型: <b style="color:#aaa">${w.def?.dmgType || '近战'}</b>`;
+    } else {
+      statEl.innerHTML = '<span style="color:#555">暂无属性数据</span>';
+    }
+  }
+}
+
+document.getElementById('btn-wep-confirm').addEventListener('click', () => {
+  const w = _weapSelItems[_weapSelIdx]; if (!w) return;
   showGameScreen();
   initGame(selectedClassIdx);
+  // 免費贈送：直接推入裝備武器槽，跳過貝殼消耗
+  if (gs && Array.isArray(gs.equipWeapons)) {
+    gs.equipWeapons.push({ id: w.id, quality: w.quality, timer: 0, _flashTimer: 0 });
+  }
+});
+
+document.getElementById('btn-wep-back').addEventListener('click', () => {
+  showOverlay('o-class');
 });
 
 // Christmas check: show Santa dot only on December 25

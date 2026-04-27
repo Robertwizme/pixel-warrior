@@ -122,23 +122,23 @@ function drawSprite(name, sx, sy, scale) {
 // ═══════════════════════════════════════════════════════
 
 const CLASSES = [
-  { id:'doctor', name:'医生',   hp:120, spd:80,  dmgMult:1.0, areaMult:1.0, cdMult:1.0,
+  { id:'doctor', name:'医生',   hp:12, spd:80,  dmgMult:1.0, areaMult:1.0, cdMult:1.0,
     bonus: p => { p.hpRegen = 5; p.pickupR = 10; p.xpMult = 1; p.healAccum = 0; } },
-  { id:'berserker', name:'狂战士', hp:100, spd:80,  dmgMult:1.0, areaMult:1.0, cdMult:1.0,
+  { id:'berserker', name:'狂战士', hp:10, spd:80,  dmgMult:1.0, areaMult:1.0, cdMult:1.0,
     bonus: p => { p.hpRegen = 2; p.pickupR = 10; p.xpMult = 1; } },
-  { id:'blacksmith', name:'铁匠',  hp:100, spd:80,  dmgMult:1.0, areaMult:1.0, cdMult:1.0,
+  { id:'blacksmith', name:'铁匠',  hp:10, spd:80,  dmgMult:1.0, areaMult:1.0, cdMult:1.0,
     bonus: p => { p.hpRegen = 1; p.pickupR = 10; p.xpMult = 1; p.physDmgMult = 1.5; } },
-  { id:'mage', name:'法师', hp:100, spd:80, dmgMult:1.0, areaMult:1.0, cdMult:1.0,
+  { id:'mage', name:'法师', hp:10, spd:80, dmgMult:1.0, areaMult:1.0, cdMult:1.0,
     bonus: p => { p.hpRegen = 1; p.pickupR = 10; p.xpMult = 1; p.magicDmgMult = 1.5; } },
-  { id:'scholar', name:'博士', hp:100, spd:72, dmgMult:1.0, areaMult:1.0, cdMult:1.0,
+  { id:'scholar', name:'博士', hp:10, spd:72, dmgMult:1.0, areaMult:1.0, cdMult:1.0,
     bonus: p => { p.hpRegen = 1; p.pickupR = 10; p.xpMult = 1.5; } },
-  { id:'reaper', name:'西蒙·海耶', hp:100, spd:80, dmgMult:1.0, areaMult:1.0, cdMult:0.75,
+  { id:'reaper', name:'西蒙·海耶', hp:10, spd:80, dmgMult:1.0, areaMult:1.0, cdMult:0.75,
     bonus: p => { p.hpRegen = 1; p.pickupR = 10; p.xpMult = 1; p.reaperGunMult = 1.5; } },
-  { id:'kirby', name:'模仿者', hp:100, spd:80, dmgMult:1.0, areaMult:1.0, cdMult:1.0,
+  { id:'kirby', name:'模仿者', hp:10, spd:80, dmgMult:1.0, areaMult:1.0, cdMult:1.0,
     bonus: p => { p.hpRegen = 1; p.pickupR = 10; p.xpMult = 1; } },
-  { id:'santa', name:'圣诞老人', hp:100, spd:80, dmgMult:1.0, areaMult:1.0, cdMult:1.0,
+  { id:'santa', name:'圣诞老人', hp:10, spd:80, dmgMult:1.0, areaMult:1.0, cdMult:1.0,
     bonus: p => { p.hpRegen = 1; p.pickupR = 10; p.xpMult = 1; p.luck = 5; } },
-  { id:'chosen', name:'天选者', hp:100, spd:80, dmgMult:1.0, areaMult:1.0, cdMult:1.0,
+  { id:'chosen', name:'天选者', hp:10, spd:80, dmgMult:1.0, areaMult:1.0, cdMult:1.0,
     bonus: p => { p.hpRegen = 1; p.pickupR = 10; p.xpMult = 1; p.luck = (p.luck||0) + 20; } },
 ];
 
@@ -212,9 +212,30 @@ function getWavePlan(n) {
 // ═══════════════════════════════════════════════════════
 // §0  版本号 & 更新公告  ← 每次更新只需修改这里
 // ═══════════════════════════════════════════════════════
-const GAME_VERSION = 'v1.1.1';
+const GAME_VERSION = 'v1.1.4';
 document.getElementById('load-version').textContent = GAME_VERSION;
 const CHANGELOG = [
+  { version:'v1.1.4', date:'2026-04-26', items:[
+    '技能系統改版：升級畫面改為選技能（SUPPLY_TALENTS），最多裝備 3 個技能（player.maxSkillSlots）',
+    'gs.equippedSkills[] 追蹤已裝備技能；gs.talents Set 保持向後相容（hitEnemy/killEnemy 判斷不變）',
+    'getLevelUpOptions() 隨機抽 3 個未裝備技能；格滿時顯示 skill_full 卡（無選項）',
+    'showLevelUpScreen() 標題顯示 Lv.X ✨ 技能 N/3；applyLevelUpUpgrade() 新增 skill / skill_full 處理',
+    '開局選角/選武器流程不受影響（使用 getUpgradeOptions() 而非 getLevelUpOptions()）',
+  ]},
+  { version:'v1.1.3', date:'2026-04-26', items:[
+    '選角色後新增「選武器」步驟（#o-weapsel overlay）',
+    '  btn-confirm 改為進入武器選擇，不再直接開始遊戲',
+    '  按職業基礎幸運值用 EQUIP_REFRESH_WEIGHTS.rollQuality() 抽取每把武器品質',
+    '  天選者 luck=20·聖誕老人 luck=5·其餘 luck=0',
+    '  選擇1把（免費），確認後 initGame + 直接 push 至 gs.equipWeapons',
+    '  CSS 新增 #wep-preview / #wep-grid / .wep-dot 樣式，風格與職業選擇一致',
+  ]},
+  { version:'v1.1.2', date:'2026-04-26', items:[
+    '所有英雄最大血量除以10：医生120→12，其余英雄100→10',
+    '木棍武器各品质 qualities 均新增 name:"木棍"，品质不改名',
+    '新增武器刷新品质概率表（EQUIP_REFRESH_WEIGHTS）：幸运0/10/50/100四档，线性插值',
+    'EQUIP_REFRESH_WEIGHTS.getWeights(luck) 返回[白,蓝,紫,金]权重，rollQuality(luck) 直接抽取品质key',
+  ]},
   { version:'v1.1.1', date:'2026-04-26', items:[
     '圖鑑「🔫 武器」Tab 改名為「✨ 技能」，原功能不變（data-tab=weapon）',
     '新增圖鑑「🔫 武器」Tab（data-tab=shopweapon）：木棍4品質詳情',
@@ -1134,6 +1155,44 @@ const EQUIP_SLOT_RULES = {
   blockBuyIfAllGold: true,// 全格金色时禁止购买
 };
 
+// ── 武器刷新品质概率表（受幸运值影响） ─────────────────
+// 权重顺序对应 EQUIP_QUALITY.order: [white, blue, purple, gold]
+// 中间值线性插值；超出范围取边界值
+const EQUIP_REFRESH_WEIGHTS = {
+  table: [
+    { luck:0,   w:[95, 5,  0,  0] },
+    { luck:10,  w:[85, 12, 3,  0] },
+    { luck:50,  w:[70, 20, 9,  1] },
+    { luck:100, w:[50, 30, 15, 5] },
+  ],
+  // 返回对应幸运值的 [white, blue, purple, gold] 权重数组（浮点，使用前取整再归一化）
+  getWeights(luck) {
+    const t = this.table;
+    const lv = Math.max(0, luck);
+    if (lv <= t[0].luck) return [...t[0].w];
+    if (lv >= t[t.length - 1].luck) return [...t[t.length - 1].w];
+    for (let i = 0; i < t.length - 1; i++) {
+      if (lv >= t[i].luck && lv <= t[i + 1].luck) {
+        const frac = (lv - t[i].luck) / (t[i + 1].luck - t[i].luck);
+        return t[i].w.map((a, j) => a + (t[i + 1].w[j] - a) * frac);
+      }
+    }
+    return [...t[t.length - 1].w];
+  },
+  // 根据权重随机抽取一个品质 key
+  rollQuality(luck) {
+    const weights = this.getWeights(luck);
+    const total = weights.reduce((s, v) => s + v, 0);
+    let r = Math.random() * total;
+    const keys = EQUIP_QUALITY.order;
+    for (let i = 0; i < weights.length; i++) {
+      r -= weights[i];
+      if (r <= 0) return keys[i];
+    }
+    return keys[keys.length - 1];
+  },
+};
+
 // ═══════════════════════════════════════════════════════
 // §W2  EQUIP_WEAPON_DEFS — 装备武器定义
 // ═══════════════════════════════════════════════════════
@@ -1148,10 +1207,10 @@ const EQUIP_WEAPON_DEFS = {
     dmgType: '近战',
     desc:    '实际伤害 = 基础值 + 玩家近战伤害数值',
     qualities: {
-      white:  { baseDmg:10, critMult:2.0, critRate:0.01, atkSpd:1.30, knockback:1, range:200, price:7   },
-      blue:   { baseDmg:13, critMult:2.2, critRate:0.03, atkSpd:1.25, knockback:2, range:200, price:30  },
-      purple: { baseDmg:15, critMult:2.4, critRate:0.03, atkSpd:1.19, knockback:2, range:200, price:70  },
-      gold:   { baseDmg:20, critMult:2.6, critRate:0.05, atkSpd:1.11, knockback:2, range:200, price:108 },
+      white:  { name:'木棍', baseDmg:10, critMult:2.0, critRate:0.01, atkSpd:1.30, knockback:1, range:200, price:7   },
+      blue:   { name:'木棍', baseDmg:13, critMult:2.2, critRate:0.03, atkSpd:1.25, knockback:2, range:200, price:30  },
+      purple: { name:'木棍', baseDmg:15, critMult:2.4, critRate:0.03, atkSpd:1.19, knockback:2, range:200, price:70  },
+      gold:   { name:'木棍', baseDmg:20, critMult:2.6, critRate:0.05, atkSpd:1.11, knockback:2, range:200, price:108 },
     },
     // 无特殊效果
     special: null,

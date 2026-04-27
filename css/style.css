@@ -82,6 +82,23 @@ body{background:#0d0d1a;color:#eee;font-family:'Courier New',monospace;overflow:
 .cls-dot:hover{border-color:#48f;box-shadow:0 0 10px #48f7;transform:scale(1.1)}
 .cls-dot.sel{border-color:#fd4;box-shadow:0 0 14px #fd46;transform:scale(1.1)}
 
+/* ── Weapon select ── */
+#wep-preview{background:#111827;border:2px solid #48f;border-radius:8px;padding:14px 20px;
+  margin-bottom:14px;min-height:100px;display:flex;flex-direction:column;align-items:center;gap:4px;
+  animation:previewFade .18s ease}
+#wep-prev-img{display:flex;align-items:center;justify-content:center;min-height:60px}
+#wep-prev-name{font-size:16px;font-weight:700}
+#wep-prev-stat{font-size:10px;color:#aaa;line-height:1.8;text-align:center;margin-top:3px}
+#wep-grid{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin:4px 0 14px}
+.wep-dot{width:76px;background:#111827;border:2px solid #334;border-radius:6px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:10px 6px 8px;cursor:pointer;
+  transition:border-color .15s,box-shadow .15s,transform .12s;text-align:center;gap:3px}
+.wep-dot:hover{transform:scale(1.08)}
+.wep-dot.sel{transform:scale(1.1)}
+.wep-dot-name{font-size:11px;font-weight:700;color:#ddd}
+.wep-dot-qlabel{font-size:9px;font-weight:700}
+
 /* ── Upgrade cards (normal wave) ── */
 #o-upgrade .upg-title{font-size:19px;color:#fd4;margin-bottom:16px;font-weight:900;letter-spacing:2px;text-shadow:0 0 12px #fd48}
 #o-upgrade .upg-cards{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}

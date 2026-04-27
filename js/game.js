@@ -104,6 +104,7 @@ function initGame(classIdx) {
     shellEarnMult:    1.0,  // 貝殼掉落倍率
     goblinCountMult:  1.0,  // 寶寶哥布林道具：哥布林生成數量倍率
     maxEquipSlots:    6,    // 裝備武器格子上限（部分職業可能不同）
+    maxSkillSlots:    3,    // 技能格子上限
     pickedStatIds: new Set(),
     kirbyForm: null,
     santaAtkTimer: 0,
@@ -192,7 +193,8 @@ function initGame(classIdx) {
     minigunTurrets: [],
     kills: 0,
     score: 0,
-    talents: new Set(),
+    talents: new Set(),       // 已裝備技能 ID 集合（保持向後相容，供 hitEnemy/killEnemy 查詢）
+    equippedSkills: [],       // 已裝備技能 ID 陣列（有序，最多 maxSkillSlots 個）
     wave: { num:0, total:0, spawnQueue:[], spawnTimer:0, spawning:false, timer:0 },
     weaponRefreshes: 5,
     stage: 1,
