@@ -214,9 +214,18 @@ function getWavePlan(n) {
 // ═══════════════════════════════════════════════════════
 // §0  版本号 & 更新公告  ← 每次更新只需修改这里
 // ═══════════════════════════════════════════════════════
-const GAME_VERSION = 'v1.1.7';
+const GAME_VERSION = 'v1.1.8';
 document.getElementById('load-version').textContent = GAME_VERSION;
 const CHANGELOG = [
+  { version:'v1.1.8', date:'2026-04-27', items:[
+    '起始技能選擇畫面改為顯示技能（WEAPON_DEFS），不再顯示裝備武器',
+    '  標題改為「✨ 選擇起始技能」；提示改為「選1項技能免費贈送」',
+    '  技能池：散彈槍/加特林/劍陣/箭雨/治療無人機/導彈無人機/狙擊槍/飛劍/玄武/炮台',
+    '  排除職業專屬技能（模仿者 kirby_copy）',
+    '  卡片色 = wepCat 色（gun:#4df 槍械 / phys:#fd4 物理 / magic:#b4f 魔法）',
+    '  預覽顯示：大圖示+名稱+類型徽章+Lv1傷害/CD+startDesc 一行簡介',
+    '  確認後呼叫 addWeapon(id) 免費給技能，不消耗貝殼',
+  ]},
   { version:'v1.1.7', date:'2026-04-27', items:[
     '修復木棍圖片顯示：500×500 PNG 現以 32×32 平滑縮放繪製，不再顯示像素點',
     '新增 IMG_EQUIP_STICK onerror → console.error 便於診斷路徑問題',
