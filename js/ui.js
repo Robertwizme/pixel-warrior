@@ -1902,8 +1902,20 @@ document.getElementById('btn-next-stage').addEventListener('click', ()=>{
   showGameScreen();
   startWave(1);
 });
-document.getElementById('btn-retry').addEventListener('click', ()=>{ showGameScreen(); initGame(lastClassIdx); });
-document.getElementById('btn-victory-retry').addEventListener('click', ()=>{ showGameScreen(); initGame(lastClassIdx); });
+function _retryGame() {
+  // 保留已裝備武器（id + quality），重置所有動畫狀態
+  const _savedEquip = gs?.equipWeapons?.map(w => ({ id: w.id, quality: w.quality })) || [];
+  showGameScreen();
+  initGame(lastClassIdx);
+  // initGame 建立新的 gs.equipWeapons = []，將武器還原（跳過購買流程，直接入格）
+  if (_savedEquip.length && gs?.equipWeapons) {
+    _savedEquip.forEach(({ id, quality }) => {
+      gs.equipWeapons.push({ id, quality, timer: 0 });
+    });
+  }
+}
+document.getElementById('btn-retry').addEventListener('click', _retryGame);
+document.getElementById('btn-victory-retry').addEventListener('click', _retryGame);
 
 // In-game menu buttons
 document.getElementById('btn-ingame-menu').addEventListener('click', ()=>{

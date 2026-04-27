@@ -540,9 +540,9 @@ const _STICK_THRUST_DUR = 0.12;  // 前刺耗時（秒）
 const _STICK_RETURN_DUR = 0.20;  // 收回耗時（秒）
 const _STICK_HIT_R      = 18;    // 刺尖命中半徑（px）
 const _STICK_REST_X     = 30;    // 靜止時距玩家橫向距離（px）
-const _STICK_HALF_LEN   = 22;    // 木棍圖片半長（px，圖片高44px）
-const _STICK_IMG_W      = 8;     // 渲染寬度（px）
-const _STICK_IMG_H      = 44;    // 渲染高度（px）
+const _STICK_HALF_LEN   = 16;    // 圖示半尺寸（px），用於刺尖碰撞偏移
+const _STICK_IMG_SIZE   = 32;    // 渲染邊長（px）；圖片為 500×500 正方形
+// 圖片預設朝向：尖端朝上（angle=-π/2），旋轉公式：ang + Math.PI/2
 
 /**
  * 嘗試購買裝備武器。
@@ -3535,53 +3535,60 @@ function render() {
   // ── 裝備武器（木棍）渲染 ──
   if (gs.equipWeapons && typeof EQUIP_WEAPON_DEFS !== 'undefined' && typeof IMG_EQUIP_STICK !== 'undefined') {
     const _stickSlots = gs.equipWeapons.filter(w => w.id === 'stick');
-    _stickSlots.forEach(w => {
-      const qStats   = EQUIP_WEAPON_DEFS.stick?.qualities?.[w.quality];
-      if (!qStats) return;
-      const _qcol    = EQUIP_QUALITY.defs?.[w.quality]?.color || '#c8a';
-      const _range   = qStats.range || 200;
-      const _sideX   = w._sideX ?? 30;
-      const _yOff    = w._yOff  ?? 0;
-      const _ang     = (w._state !== 'idle') ? (w._thrustAng ?? 0) : (w._angle ?? 0);
-      const _thrust  = w._thrust ?? 0;
+    const _half = _STICK_IMG_SIZE / 2;  // 16px
 
-      // 木棍中心（世界→畫布坐標）
+    _stickSlots.forEach(w => {
+      const qStats  = EQUIP_WEAPON_DEFS.stick?.qualities?.[w.quality];
+      if (!qStats) return;
+      const _qcol   = EQUIP_QUALITY.defs?.[w.quality]?.color || '#c8a';
+      const _range  = qStats.range || 200;
+      const _sideX  = w._sideX ?? 30;
+      const _yOff   = w._yOff  ?? 0;
+      const _ang    = (w._state !== 'idle') ? (w._thrustAng ?? 0) : (w._angle ?? 0);
+      const _thrust = w._thrust ?? 0;
+
+      // 木棍圖示中心（世界→畫布）
       const cx = Math.floor(p.x + _sideX + Math.cos(_ang) * _thrust * _range - cam.x);
       const cy = Math.floor(p.y + _yOff  + Math.sin(_ang) * _thrust * _range - cam.y);
 
       ctx.save();
       ctx.translate(cx, cy);
-      ctx.rotate(_ang + Math.PI / 2);  // 圖片朝上 → 旋轉至攻擊方向
-      ctx.imageSmoothingEnabled = false;
+      // 圖片尖端朝上（angle=-π/2） → 旋轉至目標方向 ang：旋轉量 = ang + π/2
+      ctx.rotate(_ang + Math.PI / 2);
+      // 500×500 圖片縮小至 32×32，開啟平滑插值
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
 
       if (IMG_EQUIP_STICK.complete && IMG_EQUIP_STICK.naturalWidth) {
-        // 品質色調：使用 globalCompositeOperation 或 tint overlay
-        ctx.drawImage(IMG_EQUIP_STICK, -_STICK_IMG_W / 2, -_STICK_IMG_H / 2, _STICK_IMG_W, _STICK_IMG_H);
-        // 品質色發光描邊
+        ctx.drawImage(IMG_EQUIP_STICK, -_half, -_half, _STICK_IMG_SIZE, _STICK_IMG_SIZE);
+        // 品質色發光框（非白色才顯示）
         if (w.quality !== 'white') {
-          ctx.globalAlpha = 0.35;
+          ctx.globalAlpha = 0.4;
           ctx.strokeStyle = _qcol;
-          ctx.lineWidth   = 2;
-          ctx.strokeRect(-_STICK_IMG_W / 2 - 1, -_STICK_IMG_H / 2 - 1, _STICK_IMG_W + 2, _STICK_IMG_H + 2);
+          ctx.lineWidth   = 1.5;
+          ctx.strokeRect(-_half, -_half, _STICK_IMG_SIZE, _STICK_IMG_SIZE);
           ctx.globalAlpha = 1;
         }
       } else {
-        // 圖片未載入：用品質色線條代替
+        // 圖片未載入的清晰備用：品質色棍棒輪廓
+        const _h2 = _STICK_IMG_SIZE * 0.6;
         ctx.strokeStyle = _qcol;
-        ctx.lineWidth   = 3;
+        ctx.lineWidth   = 4;
+        ctx.lineCap     = 'round';
         ctx.beginPath();
-        ctx.moveTo(0,  _STICK_HALF_LEN);
-        ctx.lineTo(0, -_STICK_HALF_LEN);
+        ctx.moveTo(0,  _h2 / 2);
+        ctx.lineTo(0, -_h2 / 2);
         ctx.stroke();
         ctx.fillStyle = _qcol;
         ctx.beginPath();
-        ctx.arc(0, -_STICK_HALF_LEN, 4, 0, Math.PI * 2);
+        ctx.arc(0, -_h2 / 2, 3, 0, Math.PI * 2);
         ctx.fill();
+        ctx.lineCap = 'butt';
       }
       ctx.restore();
 
       // 刺出時刺尖光暈
-      if (w._state !== 'idle') {
+      if (w._state !== 'idle' && _thrust > 0) {
         const tipCx = Math.floor(p.x + _sideX + Math.cos(_ang) * (_thrust * _range + _STICK_HALF_LEN) - cam.x);
         const tipCy = Math.floor(p.y + _yOff  + Math.sin(_ang) * (_thrust * _range + _STICK_HALF_LEN) - cam.y);
         ctx.save();
@@ -3595,6 +3602,7 @@ function render() {
       }
     });
     ctx.lineWidth = 1; ctx.globalAlpha = 1;
+    ctx.imageSmoothingEnabled = false;  // 恢復像素風設定
   }
 
   // Particles

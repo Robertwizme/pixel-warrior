@@ -56,7 +56,9 @@ const IMG_PROP_HEALTH_POTION = new Image(); IMG_PROP_HEALTH_POTION.src = 'photo/
 const IMG_PROP_BABY_GOBLIN   = new Image(); IMG_PROP_BABY_GOBLIN.src   = 'photo/props/Baby Goblin.png';
 
 // ── Equip weapon images ──
-const IMG_EQUIP_STICK = new Image(); IMG_EQUIP_STICK.src = 'photo/weapon/stick.png';
+const IMG_EQUIP_STICK = new Image();
+IMG_EQUIP_STICK.onerror = () => console.error('[IMG] 木棍圖片載入失敗: photo/weapon/stick.png');
+IMG_EQUIP_STICK.src = 'photo/weapon/stick.png';
 
 
 const SPRITES = {
@@ -212,9 +214,20 @@ function getWavePlan(n) {
 // ═══════════════════════════════════════════════════════
 // §0  版本号 & 更新公告  ← 每次更新只需修改这里
 // ═══════════════════════════════════════════════════════
-const GAME_VERSION = 'v1.1.5';
+const GAME_VERSION = 'v1.1.7';
 document.getElementById('load-version').textContent = GAME_VERSION;
 const CHANGELOG = [
+  { version:'v1.1.7', date:'2026-04-27', items:[
+    '修復木棍圖片顯示：500×500 PNG 現以 32×32 平滑縮放繪製，不再顯示像素點',
+    '新增 IMG_EQUIP_STICK onerror → console.error 便於診斷路徑問題',
+    '木棍渲染恢復後將 imageSmoothingEnabled 重置為 false（保持像素風其他圖形）',
+    '修復再來一次時裝備武器消失：_retryGame() 在 initGame() 前後保存/還原 equipWeapons id+quality',
+    'btn-retry / btn-victory-retry 改用共用 _retryGame() 函數',
+  ]},
+  { version:'v1.1.6', date:'2026-04-27', items:[
+    '木棍4品质名称确认统一为"木棍"（name字段无变动）',
+    '木棍4品质距离属性 range: 200 → 100',
+  ]},
   { version:'v1.1.5', date:'2026-04-27', items:[
     '木棍武器全面重做：刺擊動畫（前刺0.12s→收回0.20s），圖片渲染 photo/weapon/stick.png',
     '木棍依格子序號分配左右側（奇=右/偶=左），最多左3右3，Y偏移[0,-16,16]px',
@@ -1217,10 +1230,10 @@ const EQUIP_WEAPON_DEFS = {
     dmgType: '近战',
     desc:    '实际伤害 = 基础值 + 玩家近战伤害数值',
     qualities: {
-      white:  { name:'木棍', baseDmg:10, critMult:2.0, critRate:0.01, atkSpd:1.30, knockback:1, range:200, pierce:0, price:7   },
-      blue:   { name:'木棍', baseDmg:13, critMult:2.2, critRate:0.03, atkSpd:1.25, knockback:2, range:200, pierce:1, price:30  },
-      purple: { name:'木棍', baseDmg:15, critMult:2.4, critRate:0.03, atkSpd:1.19, knockback:2, range:200, pierce:2, price:70  },
-      gold:   { name:'木棍', baseDmg:20, critMult:2.6, critRate:0.05, atkSpd:1.11, knockback:2, range:200, pierce:3, price:108 },
+      white:  { name:'木棍', baseDmg:10, critMult:2.0, critRate:0.01, atkSpd:1.30, knockback:1, range:100, pierce:0, price:7   },
+      blue:   { name:'木棍', baseDmg:13, critMult:2.2, critRate:0.03, atkSpd:1.25, knockback:2, range:100, pierce:1, price:30  },
+      purple: { name:'木棍', baseDmg:15, critMult:2.4, critRate:0.03, atkSpd:1.19, knockback:2, range:100, pierce:2, price:70  },
+      gold:   { name:'木棍', baseDmg:20, critMult:2.6, critRate:0.05, atkSpd:1.11, knockback:2, range:100, pierce:3, price:108 },
     },
     // 无特殊效果
     special: null,
