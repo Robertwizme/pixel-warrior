@@ -212,9 +212,19 @@ function getWavePlan(n) {
 // ═══════════════════════════════════════════════════════
 // §0  版本号 & 更新公告  ← 每次更新只需修改这里
 // ═══════════════════════════════════════════════════════
-const GAME_VERSION = 'v1.1.4';
+const GAME_VERSION = 'v1.1.5';
 document.getElementById('load-version').textContent = GAME_VERSION;
 const CHANGELOG = [
+  { version:'v1.1.5', date:'2026-04-27', items:[
+    '木棍武器全面重做：刺擊動畫（前刺0.12s→收回0.20s），圖片渲染 photo/weapon/stick.png',
+    '木棍依格子序號分配左右側（奇=右/偶=左），最多左3右3，Y偏移[0,-16,16]px',
+    '刺擊時自動瞄準同側最近敵人，無敵人時靜止待機，圖片始終朝向目標旋轉',
+    '品質穿透屬性：白0/藍1/紫2/金3；每方向各自計算，白色命中後立即跳收回',
+    '暴擊：依品質 critRate/critMult 觸發；擊退：命中後沿攻擊方向推開敵人',
+    '品質光暈：藍/紫/金顯示側邊描邊；刺出時刺尖顯示圓形光圈（50%透明度）',
+    'EQUIP_WEAPON_DEFS.stick 各品質新增 pierce 欄位（0/1/2/3）',
+    '移除舊版範圍圓閃光特效（_flashTimer）',
+  ]},
   { version:'v1.1.4', date:'2026-04-26', items:[
     '技能系統改版：升級畫面改為選技能（SUPPLY_TALENTS），最多裝備 3 個技能（player.maxSkillSlots）',
     'gs.equippedSkills[] 追蹤已裝備技能；gs.talents Set 保持向後相容（hitEnemy/killEnemy 判斷不變）',
@@ -1207,10 +1217,10 @@ const EQUIP_WEAPON_DEFS = {
     dmgType: '近战',
     desc:    '实际伤害 = 基础值 + 玩家近战伤害数值',
     qualities: {
-      white:  { name:'木棍', baseDmg:10, critMult:2.0, critRate:0.01, atkSpd:1.30, knockback:1, range:200, price:7   },
-      blue:   { name:'木棍', baseDmg:13, critMult:2.2, critRate:0.03, atkSpd:1.25, knockback:2, range:200, price:30  },
-      purple: { name:'木棍', baseDmg:15, critMult:2.4, critRate:0.03, atkSpd:1.19, knockback:2, range:200, price:70  },
-      gold:   { name:'木棍', baseDmg:20, critMult:2.6, critRate:0.05, atkSpd:1.11, knockback:2, range:200, price:108 },
+      white:  { name:'木棍', baseDmg:10, critMult:2.0, critRate:0.01, atkSpd:1.30, knockback:1, range:200, pierce:0, price:7   },
+      blue:   { name:'木棍', baseDmg:13, critMult:2.2, critRate:0.03, atkSpd:1.25, knockback:2, range:200, pierce:1, price:30  },
+      purple: { name:'木棍', baseDmg:15, critMult:2.4, critRate:0.03, atkSpd:1.19, knockback:2, range:200, pierce:2, price:70  },
+      gold:   { name:'木棍', baseDmg:20, critMult:2.6, critRate:0.05, atkSpd:1.11, knockback:2, range:200, pierce:3, price:108 },
     },
     // 无特殊效果
     special: null,

@@ -535,6 +535,15 @@ function weaponStats(w)    { return WEAPON_DEFS[w.id].levels[w.level-1]; }
 // §EW  裝備武器格子系統（EQUIP_WEAPON_DEFS / 6格 / 融合）
 // ═══════════════════════════════════════════════════════
 
+// ── 木棍動畫常數 ──
+const _STICK_THRUST_DUR = 0.12;  // 前刺耗時（秒）
+const _STICK_RETURN_DUR = 0.20;  // 收回耗時（秒）
+const _STICK_HIT_R      = 18;    // 刺尖命中半徑（px）
+const _STICK_REST_X     = 30;    // 靜止時距玩家橫向距離（px）
+const _STICK_HALF_LEN   = 22;    // 木棍圖片半長（px，圖片高44px）
+const _STICK_IMG_W      = 8;     // 渲染寬度（px）
+const _STICK_IMG_H      = 44;    // 渲染高度（px）
+
 /**
  * 嘗試購買裝備武器。
  * - 格未滿：直接佔格
@@ -553,7 +562,7 @@ function tryBuyEquipWeapon(id, quality) {
 
   // 格未滿 → 直接入格
   if (slots.length < maxS) {
-    slots.push({ id, quality, timer: 0, _flashTimer: 0 });
+    slots.push({ id, quality, timer: 0 });
     return true;
   }
 
@@ -562,9 +571,9 @@ function tryBuyEquipWeapon(id, quality) {
   if (fuseIdx === -1) return false;
 
   const nextQ = EQUIP_QUALITY.nextQuality(quality);
-  if (!nextQ) return false;         // 金色不應到這裡，但防禦一下
+  if (!nextQ) return false;
 
-  slots[fuseIdx] = { id, quality: nextQ, timer: 0, _flashTimer: 0 };
+  slots[fuseIdx] = { id, quality: nextQ, timer: 0 };
   const nLabel = EQUIP_QUALITY.defs[nextQ]?.label || nextQ;
   const nColor = EQUIP_QUALITY.defs[nextQ]?.color || '#fd4';
   addFloatingText(`⬆ ${EQUIP_WEAPON_DEFS[id].name}→${nLabel}！`, p.x, p.y - 44, nColor, 1.5);
@@ -575,48 +584,135 @@ function tryBuyEquipWeapon(id, quality) {
 function updateEquipWeapons(dt) {
   if (!gs.equipWeapons || !gs.equipWeapons.length) return;
   const p = gs.player;
+  const _stickSlots = gs.equipWeapons.filter(w => w.id === 'stick');
   for (const w of gs.equipWeapons) {
     const def = (typeof EQUIP_WEAPON_DEFS !== 'undefined') ? EQUIP_WEAPON_DEFS[w.id] : null;
     if (!def) continue;
     const qStats = def.qualities?.[w.quality];
     if (!qStats) continue;
-    // 更新攻擊閃光計時器
-    if (w._flashTimer > 0) w._flashTimer -= dt;
-    // CD 倒數
-    w.timer -= dt;
-    if (w.timer > 0) continue;
-    // 重置 CD：1 / atkSpd（考慮玩家 cdMult）
-    const atkSpd = qStats.atkSpd || 1.0;
-    w.timer = (1.0 / atkSpd) * (p.cdMult || 1);
-    // 執行武器攻擊
-    if (w.id === 'stick') _fireStick(w, qStats, p);
+    // 木棍使用獨立動畫狀態機
+    if (w.id === 'stick') { _updateStick(w, qStats, p, _stickSlots, dt); continue; }
+    // 其他裝備武器：通用 CD 邏輯（留空備用）
   }
 }
 
-// ── 木棍：近戰範圍攻擊 ──
-function _fireStick(w, qStats, p) {
-  const range    = qStats.range    || 200;
-  const baseDmg  = qStats.baseDmg  || 10;
-  const knockback = qStats.knockback || 1;
-  const finalDmg = baseDmg + (p.meleeDmgBonus || 0);
-  const r2 = range * range;
-  let hitAny = false;
-  gs.enemies.forEach(e => {
-    if (e.dead) return;
+// ── 木棍：尋找指定側最近的敵人 ──
+function _stickNearestEnemy(p, isLeft) {
+  let best = null, bestD2 = Infinity;
+  // 優先搜同側（允許±40px 容差）
+  for (const e of gs.enemies) {
+    if (e.dead) continue;
     const dx = e.x - p.x, dy = e.y - p.y;
-    if (dx * dx + dy * dy > r2) return;
-    hitEnemy(e, finalDmg, false, false, 'melee');
-    // 擊退
-    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-    e.x += (dx / dist) * knockback * 30;
-    e.y += (dy / dist) * knockback * 30;
-    hitAny = true;
-  });
-  if (hitAny) {
-    w._flashTimer = 0.18;
-    if (settings.particles) spawnParticles(p.x, p.y, ['#fd4','#f84','#faa'], 7, range * 0.45, 0.3, 3);
+    if (isLeft ? dx > 40 : dx < -40) continue;
+    const d2 = dx*dx + dy*dy;
+    if (d2 < bestD2) { bestD2 = d2; best = e; }
   }
-  SFX.play('swing');
+  // 同側無敵 → 找全場最近
+  if (!best) {
+    for (const e of gs.enemies) {
+      if (e.dead) continue;
+      const dx = e.x - p.x, dy = e.y - p.y;
+      const d2 = dx*dx + dy*dy;
+      if (d2 < bestD2) { bestD2 = d2; best = e; }
+    }
+  }
+  return best;
+}
+
+// ── 木棍：刺尖碰撞傷害判定 ──
+function _stickHitCheck(w, qStats, p, isReturn) {
+  const range     = qStats.range    || 200;
+  const baseDmg   = qStats.baseDmg  || 10;
+  const knockback = qStats.knockback || 1;
+  const pierce    = qStats.pierce   || 0;   // 0=白色無穿透
+  const critRate  = qStats.critRate  || 0;
+  const critMult  = qStats.critMult  || 2.0;
+  const cntKey    = isReturn ? '_retCount' : '_fwdCount';
+  const maxHits   = pierce + 1;
+  if ((w[cntKey] || 0) >= maxHits) return;
+
+  // 計算刺尖世界坐標
+  const ang  = w._thrustAng;
+  const prog = w._thrust;
+  const tipX = p.x + w._sideX + Math.cos(ang) * (prog * range + _STICK_HALF_LEN);
+  const tipY = p.y + w._yOff  + Math.sin(ang) * (prog * range + _STICK_HALF_LEN);
+  const r2   = _STICK_HIT_R * _STICK_HIT_R;
+
+  for (const e of gs.enemies) {
+    if (e.dead || w._hits.has(e)) continue;
+    const dx = e.x - tipX, dy = e.y - tipY;
+    if (dx*dx + dy*dy > r2) continue;
+    // 命中
+    w._hits.add(e);
+    w[cntKey] = (w[cntKey] || 0) + 1;
+    const isCrit = Math.random() < critRate;
+    const dmg = (baseDmg + (p.meleeDmgBonus || 0)) * (isCrit ? critMult : 1);
+    hitEnemy(e, dmg, isCrit, false, 'melee');
+    const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+    e.x += (dx/dist) * knockback * 30;
+    e.y += (dy/dist) * knockback * 30;
+    // 白色木棍：命中後立即跳到收回階段
+    if (!isReturn && (w[cntKey] >= maxHits)) { w._thrust = 1; }
+    if (w[cntKey] >= maxHits) break;
+  }
+}
+
+// ── 木棍：狀態機主更新 ──
+function _updateStick(w, qStats, p, stickSlots, dt) {
+  // 確定此木棍在所有木棍中的序號（決定左右側與 Y 偏移）
+  const si = stickSlots.indexOf(w);
+  const isLeft   = (si % 2 === 0);
+  const yOffs    = [0, -16, 16];
+  const yOff     = yOffs[Math.floor(si / 2)] || 0;
+  const sideX    = isLeft ? -_STICK_REST_X : _STICK_REST_X;
+
+  // 初始化狀態（第一次更新）
+  if (w._stickInited === undefined) {
+    w._stickInited = true;
+    w._state       = 'idle';
+    w._thrust      = 0;
+    w._angle       = isLeft ? Math.PI : 0;
+    w._thrustAng   = isLeft ? Math.PI : 0;
+    w._hits        = new Set();
+    w._fwdCount    = 0;
+    w._retCount    = 0;
+    w.timer        = Math.random() * (1.0 / (qStats.atkSpd || 1.0));  // 初始 CD 隨機偏移
+  }
+
+  // 存入渲染用字段（每幀刷新，因為 si 可能變化）
+  w._sideX = sideX;
+  w._yOff  = yOff;
+  w._isLeft = isLeft;
+
+  const target = _stickNearestEnemy(p, isLeft);
+
+  if (w._state === 'idle') {
+    // 更新朝向角（跟隨最近敵人）
+    if (target) {
+      w._angle = Math.atan2(target.y - (p.y + yOff), target.x - (p.x + sideX));
+    }
+    // CD 倒數
+    w.timer -= dt;
+    if (w.timer <= 0 && target) {
+      const atkSpd = qStats.atkSpd || 1.0;
+      w.timer = (1.0 / atkSpd) * (p.cdMult || 1);
+      w._state     = 'forward';
+      w._thrust    = 0;
+      w._thrustAng = w._angle;
+      w._hits      = new Set();
+      w._fwdCount  = 0;
+      w._retCount  = 0;
+      SFX.play('swing');
+    }
+  } else if (w._state === 'forward') {
+    w._thrust += dt / _STICK_THRUST_DUR;
+    if (w._thrust >= 1) { w._thrust = 1; w._state = 'return'; }
+    _stickHitCheck(w, qStats, p, false);
+  } else if (w._state === 'return') {
+    w._thrust -= dt / _STICK_RETURN_DUR;
+    if (w._thrust <= 0) { w._thrust = 0; w._state = 'idle'; }
+    _stickHitCheck(w, qStats, p, true);
+  }
 }
 
 function triggerMonsterSurge() {
@@ -3359,27 +3455,6 @@ function render() {
 
   // Black Tortoise
   renderBlackTortoise(ctx, cam);
-  // ── 裝備武器攻擊特效（木棍攻擊閃光圓）──
-  if (gs.equipWeapons) {
-    const _px = Math.floor(gs.player.x - cam.x);
-    const _py = Math.floor(gs.player.y - cam.y);
-    gs.equipWeapons.forEach(w => {
-      if (!(w._flashTimer > 0)) return;
-      const _def = typeof EQUIP_WEAPON_DEFS !== 'undefined' ? EQUIP_WEAPON_DEFS[w.id] : null;
-      if (!_def) return;
-      const _range = _def.qualities?.[w.quality]?.range || 200;
-      const _prog  = w._flashTimer / 0.18; // 0→1
-      const _qcol  = EQUIP_QUALITY.defs?.[w.quality]?.color || '#fd4';
-      ctx.save();
-      ctx.globalAlpha = 0.18 * _prog;
-      ctx.fillStyle   = _qcol;
-      ctx.beginPath(); ctx.arc(_px, _py, _range, 0, Math.PI * 2); ctx.fill();
-      ctx.globalAlpha = 0.45 * _prog;
-      ctx.strokeStyle = _qcol; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(_px, _py, _range, 0, Math.PI * 2); ctx.stroke();
-      ctx.restore(); ctx.lineWidth = 1; ctx.globalAlpha = 1;
-    });
-  }
   // Drones — orbit the player visually
   if (gs.weapons) {
     let droneIdx = 0;
@@ -3455,6 +3530,71 @@ function render() {
       ctx.fillText(_lbl, _px, _py);
       ctx.textAlign = 'left';
     }
+  }
+
+  // ── 裝備武器（木棍）渲染 ──
+  if (gs.equipWeapons && typeof EQUIP_WEAPON_DEFS !== 'undefined' && typeof IMG_EQUIP_STICK !== 'undefined') {
+    const _stickSlots = gs.equipWeapons.filter(w => w.id === 'stick');
+    _stickSlots.forEach(w => {
+      const qStats   = EQUIP_WEAPON_DEFS.stick?.qualities?.[w.quality];
+      if (!qStats) return;
+      const _qcol    = EQUIP_QUALITY.defs?.[w.quality]?.color || '#c8a';
+      const _range   = qStats.range || 200;
+      const _sideX   = w._sideX ?? 30;
+      const _yOff    = w._yOff  ?? 0;
+      const _ang     = (w._state !== 'idle') ? (w._thrustAng ?? 0) : (w._angle ?? 0);
+      const _thrust  = w._thrust ?? 0;
+
+      // 木棍中心（世界→畫布坐標）
+      const cx = Math.floor(p.x + _sideX + Math.cos(_ang) * _thrust * _range - cam.x);
+      const cy = Math.floor(p.y + _yOff  + Math.sin(_ang) * _thrust * _range - cam.y);
+
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(_ang + Math.PI / 2);  // 圖片朝上 → 旋轉至攻擊方向
+      ctx.imageSmoothingEnabled = false;
+
+      if (IMG_EQUIP_STICK.complete && IMG_EQUIP_STICK.naturalWidth) {
+        // 品質色調：使用 globalCompositeOperation 或 tint overlay
+        ctx.drawImage(IMG_EQUIP_STICK, -_STICK_IMG_W / 2, -_STICK_IMG_H / 2, _STICK_IMG_W, _STICK_IMG_H);
+        // 品質色發光描邊
+        if (w.quality !== 'white') {
+          ctx.globalAlpha = 0.35;
+          ctx.strokeStyle = _qcol;
+          ctx.lineWidth   = 2;
+          ctx.strokeRect(-_STICK_IMG_W / 2 - 1, -_STICK_IMG_H / 2 - 1, _STICK_IMG_W + 2, _STICK_IMG_H + 2);
+          ctx.globalAlpha = 1;
+        }
+      } else {
+        // 圖片未載入：用品質色線條代替
+        ctx.strokeStyle = _qcol;
+        ctx.lineWidth   = 3;
+        ctx.beginPath();
+        ctx.moveTo(0,  _STICK_HALF_LEN);
+        ctx.lineTo(0, -_STICK_HALF_LEN);
+        ctx.stroke();
+        ctx.fillStyle = _qcol;
+        ctx.beginPath();
+        ctx.arc(0, -_STICK_HALF_LEN, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+
+      // 刺出時刺尖光暈
+      if (w._state !== 'idle') {
+        const tipCx = Math.floor(p.x + _sideX + Math.cos(_ang) * (_thrust * _range + _STICK_HALF_LEN) - cam.x);
+        const tipCy = Math.floor(p.y + _yOff  + Math.sin(_ang) * (_thrust * _range + _STICK_HALF_LEN) - cam.y);
+        ctx.save();
+        ctx.globalAlpha = 0.5 * _thrust;
+        ctx.strokeStyle = _qcol;
+        ctx.lineWidth   = 1.5;
+        ctx.beginPath();
+        ctx.arc(tipCx, tipCy, _STICK_HIT_R, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+    });
+    ctx.lineWidth = 1; ctx.globalAlpha = 1;
   }
 
   // Particles
