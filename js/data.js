@@ -214,9 +214,13 @@ function getWavePlan(n) {
 // ═══════════════════════════════════════════════════════
 // §0  版本号 & 更新公告  ← 每次更新只需修改这里
 // ═══════════════════════════════════════════════════════
-const GAME_VERSION = 'v1.2.1';
+const GAME_VERSION = 'v1.2.2';
 document.getElementById('load-version').textContent = GAME_VERSION;
 const CHANGELOG = [
+  { version:'v1.2.2', date:'2026-04-29', items:[
+    '新增 WAVE_SHOP_LAYOUT：波次商店固定4格，slot0=武器，slot1~3=道具',
+    '武器不再混入道具池随机出现，每次刷新必定有1把武器',
+  ]},
   { version:'v1.2.1', date:'2026-04-27', items:[
     '開局選擇介面改為選擇起始武器（EQUIP_WEAPON_DEFS）',
     '  標題改為「🔫 选择起始武器」',
@@ -1210,6 +1214,16 @@ const EQUIP_QUALITY = {
 const EQUIP_SLOT_RULES = {
   autoFuseOnFull: true,   // 格子满时自动融合
   blockBuyIfAllGold: true,// 全格金色时禁止购买
+};
+
+// ── 波次商店格子布局 ─────────────────────────────────────
+// 每次刷新固定 1 格武器 + 3 格道具
+// slot 0 = 武器（品质由 EQUIP_REFRESH_WEIGHTS.rollQuality 决定）
+// slot 1~3 = 道具（从 SHOP_ITEMS 随机抽取）
+const WAVE_SHOP_LAYOUT = {
+  totalSlots:   4,
+  weaponSlots:  1,  // 固定第0格为武器
+  itemSlots:    3,  // 固定后3格为道具
 };
 
 // ── 武器刷新品质概率表（受幸运值影响） ─────────────────
