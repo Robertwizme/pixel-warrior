@@ -2001,13 +2001,8 @@ document.getElementById('btn-confirm').addEventListener('click', ()=>{
 // ═══════════════════════════════════════════════════════
 // §  起始技能選擇畫面
 // ═══════════════════════════════════════════════════════
-// 技能池：所有可作為起始技能的 WEAPON_DEFS id（排除職業專屬 kirby_copy）
-const _SKILL_SEL_POOL = [
-  'shotgun','gatling','sword','arrow_rain',
-  'heal_drone','missile_drone','sniper',
-  'flying_sword','black_tortoise','turret',
-];
-// wepCat → 顯示色 / 標籤
+// 技能池由 WEAPON_DEFS.category === 'skill' 動態決定
+// （木棍等裝備武器在 EQUIP_WEAPON_DEFS，不含 category:'skill'，永遠不會出現在這裡）
 const _SKILL_CAT_COL = { gun:'#4df', phys:'#fd4', magic:'#b4f' };
 const _SKILL_CAT_LBL = { gun:'枪械', phys:'物理', magic:'魔法' };
 
@@ -2018,9 +2013,11 @@ function _skillCol(def) { return _SKILL_CAT_COL[def?.wepCat] || '#aaa'; }
 function _skillLbl(def) { return _SKILL_CAT_LBL[def?.wepCat] || (def?.wepCat || ''); }
 
 function showWeapSelScreen() {
-  _weapSelItems = _SKILL_SEL_POOL
-    .filter(id => typeof WEAPON_DEFS !== 'undefined' && WEAPON_DEFS[id])
-    .map(id => ({ id, def: WEAPON_DEFS[id] }));
+  // 只取 WEAPON_DEFS 中 category === 'skill' 的項目
+  const defs = (typeof WEAPON_DEFS !== 'undefined') ? WEAPON_DEFS : {};
+  _weapSelItems = Object.entries(defs)
+    .filter(([, def]) => def.category === 'skill')
+    .map(([id, def]) => ({ id, def }));
   _weapSelIdx = 0;
   _renderWeapGrid();
   _updateWeapPreview(0);
