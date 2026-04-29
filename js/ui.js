@@ -1999,26 +1999,35 @@ document.getElementById('btn-confirm').addEventListener('click', ()=>{
 });
 
 // ═══════════════════════════════════════════════════════
-// §  起始技能選擇畫面
+// §  起始武器選擇畫面
 // ═══════════════════════════════════════════════════════
-// 技能池由 WEAPON_DEFS.isSkill === true 動態決定
-// 木棍在 EQUIP_WEAPON_DEFS（isSkill:false），雙重保護確保不出現在技能選擇介面
-const _SKILL_CAT_COL = { gun:'#4df', phys:'#fd4', magic:'#b4f' };
-const _SKILL_CAT_LBL = { gun:'枪械', phys:'物理', magic:'魔法' };
+// 武器池由 EQUIP_WEAPON_DEFS 決定（目前只有木棍4個品質）
+// 品質由職業基礎幸運值決定：chosen=20, santa=5, 其他=0
 
-let _weapSelItems = []; // [{ id, def }]
+let _weapSelItems = []; // [{ id, quality, def, qDef }]
 let _weapSelIdx   = 0;
 
-function _skillCol(def) { return _SKILL_CAT_COL[def?.wepCat] || '#aaa'; }
-function _skillLbl(def) { return _SKILL_CAT_LBL[def?.wepCat] || (def?.wepCat || ''); }
+// 根據職業索引取得基礎幸運值（用於開局武器品質抽取）
+function _getClassBaseLuck(clsIdx) {
+  const cls = (typeof CLASSES !== 'undefined') ? CLASSES[clsIdx] : null;
+  if (!cls) return 0;
+  if (cls.id === 'chosen') return 20;
+  if (cls.id === 'santa')  return 5;
+  return 0;
+}
 
 function showWeapSelScreen() {
-  const defs      = (typeof WEAPON_DEFS       !== 'undefined') ? WEAPON_DEFS       : {};
   const equipDefs = (typeof EQUIP_WEAPON_DEFS !== 'undefined') ? EQUIP_WEAPON_DEFS : {};
-  // 雙重過濾：① isSkill === true  ② ID 不在裝備武器表（木棍等）
-  _weapSelItems = Object.entries(defs)
-    .filter(([id, def]) => def.isSkill === true && !equipDefs[id])
-    .map(([id, def]) => ({ id, def }));
+  const qualDefs  = (typeof EQUIP_QUALITY     !== 'undefined') ? EQUIP_QUALITY.defs : {};
+  const luck = _getClassBaseLuck(selectedClassIdx);
+
+  _weapSelItems = Object.entries(equipDefs).map(([id, def]) => {
+    const quality = (typeof EQUIP_REFRESH_WEIGHTS !== 'undefined')
+      ? EQUIP_REFRESH_WEIGHTS.rollQuality(luck)
+      : 'white';
+    const qDef = def.qualities?.[quality] || {};
+    return { id, quality, def, qDef };
+  });
   _weapSelIdx = 0;
   _renderWeapGrid();
   _updateWeapPreview(0);
@@ -2028,14 +2037,20 @@ function showWeapSelScreen() {
 function _renderWeapGrid() {
   const grid = document.getElementById('wep-grid');
   if (!grid) return;
+  const qualDefs = (typeof EQUIP_QUALITY !== 'undefined') ? EQUIP_QUALITY.defs : {};
+
   grid.innerHTML = _weapSelItems.map((w, i) => {
-    const col = _skillCol(w.def);
+    const qd  = qualDefs[w.quality] || {};
+    const col = qd.color || '#aaa';
     const sel = i === _weapSelIdx;
+    const imgHtml = w.def.img?.src
+      ? `<img src="${w.def.img.src}" style="width:32px;height:32px;object-fit:contain;display:block;margin:0 auto">`
+      : `<span style="font-size:26px;line-height:1">${w.def.icon || '?'}</span>`;
     return `<div class="wep-dot${sel ? ' sel' : ''}" data-idx="${i}"
       style="border-color:${col};${sel ? `box-shadow:0 0 16px ${col}55` : ''}">
-      <span style="font-size:26px;line-height:1">${w.def.icon || '?'}</span>
+      ${imgHtml}
       <div class="wep-dot-name">${w.def.name}</div>
-      <div class="wep-dot-qlabel" style="color:${col}">${_skillLbl(w.def)}</div>
+      <div class="wep-dot-qlabel" style="color:${col}">${qd.label || w.quality}</div>
     </div>`;
   }).join('');
 
@@ -2051,33 +2066,47 @@ function _renderWeapGrid() {
 
 function _updateWeapPreview(idx) {
   const w = _weapSelItems[idx]; if (!w) return;
-  const col = _skillCol(w.def);
-  const lv1 = w.def.levels?.[0] || {};
+  const qualDefs = (typeof EQUIP_QUALITY !== 'undefined') ? EQUIP_QUALITY.defs : {};
+  const qd  = qualDefs[w.quality] || {};
+  const col = qd.color || '#aaa';
+  const q   = w.qDef;
 
   // 大圖示
   const imgEl = document.getElementById('wep-prev-img');
-  if (imgEl) imgEl.innerHTML =
-    `<span style="font-size:52px;line-height:1;filter:drop-shadow(0 0 10px ${col})">${w.def.icon || '?'}</span>`;
+  if (imgEl) {
+    if (w.def.img?.src) {
+      imgEl.innerHTML =
+        `<img src="${w.def.img.src}" style="width:56px;height:56px;object-fit:contain;` +
+        `filter:drop-shadow(0 0 10px ${col});display:block;margin:0 auto">`;
+    } else {
+      imgEl.innerHTML =
+        `<span style="font-size:52px;line-height:1;filter:drop-shadow(0 0 10px ${col})">${w.def.icon || '?'}</span>`;
+    }
+  }
 
   // 名稱
   const nameEl = document.getElementById('wep-prev-name');
   if (nameEl) { nameEl.textContent = w.def.name; nameEl.style.color = col; }
 
-  // 類型徽章
+  // 品質徽章
   const qualEl = document.getElementById('wep-prev-quality');
   if (qualEl) qualEl.innerHTML =
     `<span style="color:${col};border:1px solid ${col}55;background:${col}18;` +
-    `border-radius:3px;padding:1px 12px;font-size:10px;font-weight:700">${_skillLbl(w.def)}</span>`;
+    `border-radius:3px;padding:1px 12px;font-size:10px;font-weight:700">${qd.label || w.quality}</span>`;
 
-  // 屬性 + 簡介
+  // 屬性
   const statEl = document.getElementById('wep-prev-stat');
   if (statEl) {
-    const dmg = lv1.dmg  != null ? `⚔ <b style="color:${col}">${lv1.dmg}</b>&emsp;` : '';
-    const cd  = lv1.cd   != null ? `⏱ <b style="color:${col}">${lv1.cd}s</b>` : '';
-    const desc = w.def.startDesc || '';
+    const fmt = (v, digits=2) => (v != null ? (+v).toFixed(digits).replace(/\.?0+$/, '') : '–');
     statEl.innerHTML =
-      (dmg || cd ? `<div>${dmg}${cd}</div>` : '') +
-      (desc ? `<div style="color:#888;margin-top:4px;font-size:9px;line-height:1.6">${desc}</div>` : '');
+      `<div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;font-size:10px;margin-top:4px">` +
+      `<span>⚔ 伤害 <b style="color:${col}">${fmt(q.baseDmg,0)}</b></span>` +
+      `<span>🎯 暴击率 <b style="color:${col}">${fmt((q.critRate||0)*100,1)}%</b></span>` +
+      `<span>💥 暴击倍率 <b style="color:${col}">${fmt(q.critMult,1)}×</b></span>` +
+      `<span>⚡ 攻速 <b style="color:${col}">${fmt(q.atkSpd,2)}s</b></span>` +
+      `<span>💨 击退 <b style="color:${col}">${fmt(q.knockback,0)}</b></span>` +
+      `<span>📏 范围 <b style="color:${col}">${fmt(q.range,0)}</b></span>` +
+      `</div>`;
   }
 }
 
@@ -2085,8 +2114,10 @@ document.getElementById('btn-wep-confirm').addEventListener('click', () => {
   const w = _weapSelItems[_weapSelIdx]; if (!w) return;
   showGameScreen();
   initGame(selectedClassIdx);
-  // 免費贈送起始技能
-  if (typeof addWeapon === 'function') addWeapon(w.id);
+  // 免費贈送起始裝備武器
+  if (typeof gs !== 'undefined' && gs.equipWeapons) {
+    gs.equipWeapons.push({ id: w.id, quality: w.quality, timer: 0, _flashTimer: 0 });
+  }
 });
 
 document.getElementById('btn-wep-back').addEventListener('click', () => {

@@ -214,9 +214,17 @@ function getWavePlan(n) {
 // ═══════════════════════════════════════════════════════
 // §0  版本号 & 更新公告  ← 每次更新只需修改这里
 // ═══════════════════════════════════════════════════════
-const GAME_VERSION = 'v1.2.0';
+const GAME_VERSION = 'v1.2.1';
 document.getElementById('load-version').textContent = GAME_VERSION;
 const CHANGELOG = [
+  { version:'v1.2.1', date:'2026-04-27', items:[
+    '開局選擇介面改為選擇起始武器（EQUIP_WEAPON_DEFS）',
+    '  標題改為「🔫 选择起始武器」',
+    '  品質由職業基礎幸運值決定：天選者luck=20/聖誕老人luck=5/其他luck=0',
+    '  確認後以 gs.equipWeapons.push({id,quality,timer:0,_flashTimer:0}) 贈送',
+    '  預覽顯示武器圖片＋品質徽章＋baseDmg/critRate/critMult/atkSpd/knockback/range',
+    '  移除技能選項（散彈槍等技能不再出現在開局選擇畫面）',
+  ]},
   { version:'v1.2.0', date:'2026-04-29', items:[
     '確立技能/武器區分標記：WEAPON_DEFS 改用 isSkill:true（原 category:"skill"）',
     '  原因：type 欄位已被 normal/orbit/drone/summon/turret/kirby 佔用，不可覆蓋',
