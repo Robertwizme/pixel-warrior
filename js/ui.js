@@ -2001,8 +2001,8 @@ document.getElementById('btn-confirm').addEventListener('click', ()=>{
 // ═══════════════════════════════════════════════════════
 // §  起始技能選擇畫面
 // ═══════════════════════════════════════════════════════
-// 技能池由 WEAPON_DEFS.category === 'skill' 動態決定
-// （木棍等裝備武器在 EQUIP_WEAPON_DEFS，不含 category:'skill'，永遠不會出現在這裡）
+// 技能池由 WEAPON_DEFS.isSkill === true 動態決定
+// 木棍在 EQUIP_WEAPON_DEFS（isSkill:false），雙重保護確保不出現在技能選擇介面
 const _SKILL_CAT_COL = { gun:'#4df', phys:'#fd4', magic:'#b4f' };
 const _SKILL_CAT_LBL = { gun:'枪械', phys:'物理', magic:'魔法' };
 
@@ -2013,10 +2013,11 @@ function _skillCol(def) { return _SKILL_CAT_COL[def?.wepCat] || '#aaa'; }
 function _skillLbl(def) { return _SKILL_CAT_LBL[def?.wepCat] || (def?.wepCat || ''); }
 
 function showWeapSelScreen() {
-  // 只取 WEAPON_DEFS 中 category === 'skill' 的項目
-  const defs = (typeof WEAPON_DEFS !== 'undefined') ? WEAPON_DEFS : {};
+  const defs      = (typeof WEAPON_DEFS       !== 'undefined') ? WEAPON_DEFS       : {};
+  const equipDefs = (typeof EQUIP_WEAPON_DEFS !== 'undefined') ? EQUIP_WEAPON_DEFS : {};
+  // 雙重過濾：① isSkill === true  ② ID 不在裝備武器表（木棍等）
   _weapSelItems = Object.entries(defs)
-    .filter(([, def]) => def.category === 'skill')
+    .filter(([id, def]) => def.isSkill === true && !equipDefs[id])
     .map(([id, def]) => ({ id, def }));
   _weapSelIdx = 0;
   _renderWeapGrid();

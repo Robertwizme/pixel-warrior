@@ -214,9 +214,18 @@ function getWavePlan(n) {
 // ═══════════════════════════════════════════════════════
 // §0  版本号 & 更新公告  ← 每次更新只需修改这里
 // ═══════════════════════════════════════════════════════
-const GAME_VERSION = 'v1.1.9';
+const GAME_VERSION = 'v1.2.0';
 document.getElementById('load-version').textContent = GAME_VERSION;
 const CHANGELOG = [
+  { version:'v1.2.0', date:'2026-04-29', items:[
+    '確立技能/武器區分標記：WEAPON_DEFS 改用 isSkill:true（原 category:"skill"）',
+    '  原因：type 欄位已被 normal/orbit/drone/summon/turret/kirby 佔用，不可覆蓋',
+    '  散彈槍/加特林/劍陣/箭雨/治療無人機/導彈無人機/狙擊槍/飛劍/玄武/炮台 → isSkill:true',
+    '  kirby_copy（職業專屬）→ 無 isSkill 欄位 → 自動排除',
+    'EQUIP_WEAPON_DEFS.stick 新增 isSkill:false，明確標記為裝備武器',
+    'ui.js showWeapSelScreen() 雙重過濾：isSkill===true 且 ID不在EQUIP_WEAPON_DEFS',
+    '  木棍永遠無法出現在技能選擇介面',
+  ]},
   { version:'v1.1.9', date:'2026-04-29', items:[
     '修復起始技能選擇介面顯示裝備武器（木棍）的問題',
     '  WEAPON_DEFS 10個技能新增 category:"skill" 標記',
@@ -713,7 +722,7 @@ const WORLD_W = 700, WORLD_H = 480; // Player movement bounds (centered at 0,0)
 // ── WEAPON DEFS ───────────────────────────────────────────────────────────
 const WEAPON_DEFS = {
   shotgun: {
-    name:'散弹枪', icon:'💥', maxLv:8, type:'normal', wepCat:'gun', dmgType:'远程', category:'skill', fire: (...a)=>fireShotgun(...a),
+    name:'散弹枪', icon:'💥', maxLv:8, type:'normal', wepCat:'gun', dmgType:'远程', isSkill:true, fire: (...a)=>fireShotgun(...a),
     startDesc: '扇形5颗子弹·近战强势',
     levels: [
       {dmg:10, cd:1400, count:5},
@@ -736,7 +745,7 @@ const WEAPON_DEFS = {
     }
   },
   gatling: {
-    name:'加特林', icon:'🔴', maxLv:8, type:'normal', wepCat:'gun', dmgType:'远程', category:'skill', fire: (...a)=>fireGatling(...a),
+    name:'加特林', icon:'🔴', maxLv:8, type:'normal', wepCat:'gun', dmgType:'远程', isSkill:true, fire: (...a)=>fireGatling(...a),
     startDesc: '8连发弹幕后短暂休息',
     levels: [
       {dmg:26, cd:900},
@@ -759,7 +768,7 @@ const WEAPON_DEFS = {
     }
   },
   sword: {
-    name:'剑阵', icon:'⚔', maxLv:7, type:'orbit', wepCat:'phys', dmgType:'近战', category:'skill',
+    name:'剑阵', icon:'⚔', maxLv:7, type:'orbit', wepCat:'phys', dmgType:'近战', isSkill:true,
     levels: [
       {orbs:2, dmg:10, radius:40, rotSpeed:2.2, color:'#fd4'},
       {orbs:2, dmg:14, radius:42, rotSpeed:2.4, color:'#fd4'},
@@ -772,7 +781,7 @@ const WEAPON_DEFS = {
     describe: lv => { const s=WEAPON_DEFS.sword.levels[lv-1]; return `${s.orbs}轨道 | 伤害${s.dmg} | 半径${s.radius}`; }
   },
   arrow_rain: {
-    name:'箭雨', icon:'🏹', maxLv:7, type:'normal', wepCat:'phys', dmgType:'远程', category:'skill', fire: (...a)=>fireArrowRain(...a),
+    name:'箭雨', icon:'🏹', maxLv:7, type:'normal', wepCat:'phys', dmgType:'远程', isSkill:true, fire: (...a)=>fireArrowRain(...a),
     levels: [
       {dmg:20, cd:2400, count:7,  radius:50},
       {dmg:25, cd:2200, count:5,  radius:54},
@@ -785,7 +794,7 @@ const WEAPON_DEFS = {
     describe: lv => { const s=WEAPON_DEFS.arrow_rain.levels[lv-1]; return `伤害${s.dmg} | ×${s.count}箭 | CD${s.cd}ms`; }
   },
   heal_drone: {
-    name:'治疗无人机', icon:'💚', maxLv:8, type:'drone', wepCat:'magic', category:'skill', fire: (...a)=>fireHealDrone(...a),
+    name:'治疗无人机', icon:'💚', maxLv:8, type:'drone', wepCat:'magic', isSkill:true, fire: (...a)=>fireHealDrone(...a),
     startDesc: '定期在脚下生成治疗光圈',
     levels: [
       {healPs:4,  circleCd:10, circleR:38, circleDur:5.5},
@@ -807,7 +816,7 @@ const WEAPON_DEFS = {
     }
   },
   missile_drone: {
-    name:'导弹无人机', icon:'🚀', maxLv:8, type:'drone', wepCat:'gun', dmgType:'工程', category:'skill', fire: (...a)=>fireMissileDrone(...a),
+    name:'导弹无人机', icon:'🚀', maxLv:8, type:'drone', wepCat:'gun', dmgType:'工程', isSkill:true, fire: (...a)=>fireMissileDrone(...a),
     startDesc: '每5秒发射6枚导弹·范围爆炸',
     levels: [
       {cd:4000},{cd:4000},{cd:4000},{cd:4000},
@@ -830,7 +839,7 @@ const WEAPON_DEFS = {
     }
   },
   sniper: {
-    name:'狙击枪', icon:'🔭', maxLv:8, type:'normal', wepCat:'gun', dmgType:'远程', category:'skill', fire: (...a)=>fireSniper(...a),
+    name:'狙击枪', icon:'🔭', maxLv:8, type:'normal', wepCat:'gun', dmgType:'远程', isSkill:true, fire: (...a)=>fireSniper(...a),
     startDesc:'每5秒狙击最近敌人·穿透1次',
     levels: [
       {cd:3500,dmg:120},{cd:3500,dmg:120},{cd:3500,dmg:120},{cd:3200,dmg:120},
@@ -861,7 +870,7 @@ const WEAPON_DEFS = {
     }
   },
   flying_sword: {
-    name:'飞剑', icon:'🗡', maxLv:8, type:'normal', wepCat:'phys', dmgType:'远程', category:'skill', fire: (...a)=>fireFlyingSword(...a),
+    name:'飞剑', icon:'🗡', maxLv:8, type:'normal', wepCat:'phys', dmgType:'远程', isSkill:true, fire: (...a)=>fireFlyingSword(...a),
     startDesc: '每2秒锁定最近敌人发射4把飞剑·50伤害·40%暴击×3倍',
     levels: [
       {cd:2000},{cd:2000},{cd:2000},{cd:2000},
@@ -896,7 +905,7 @@ const WEAPON_DEFS = {
     }
   },
   black_tortoise: {
-    name:'召唤术·玄武', icon:'🐢', maxLv:8, type:'summon', wepCat:'magic', dmgType:'召唤', category:'skill',
+    name:'召唤术·玄武', icon:'🐢', maxLv:8, type:'summon', wepCat:'magic', dmgType:'召唤', isSkill:true,
     startDesc: '每10秒召唤玄武·每3秒发射3颗水球·每60秒为玩家护盾',
     levels: [
       {ballDmg:18},{ballDmg:23},{ballDmg:29},{ballDmg:36},
@@ -911,7 +920,7 @@ const WEAPON_DEFS = {
     }
   },
   turret: {
-    name:'⚙ 炮台', icon:'⚙', maxLv:8, type:'turret', wepCat:'phys', dmgType:'工程', category:'skill',
+    name:'⚙ 炮台', icon:'⚙', maxLv:8, type:'turret', wepCat:'phys', dmgType:'工程', isSkill:true,
     startDesc: '放置炮台·自动攻击附近敌人·炮台有血量',
     // All levels share the same base stats; actual power comes from
     // accumulated upgrades stored on the weapon object (rapidFireCount /
@@ -1242,6 +1251,7 @@ const EQUIP_WEAPON_DEFS = {
 
   stick: {
     id:      'stick',
+    isSkill: false,   // 裝備武器，不是技能，不得出現在技能選擇介面
     name:    '木棍',
     img:     IMG_EQUIP_STICK,
     dmgType: '近战',
