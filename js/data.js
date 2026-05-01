@@ -217,9 +217,17 @@ function getWavePlan(n) {
 // ═══════════════════════════════════════════════════════
 // §0  版本号 & 更新公告  ← 每次更新只需修改这里
 // ═══════════════════════════════════════════════════════
-const GAME_VERSION = 'v1.2.7';
+const GAME_VERSION = 'v1.2.8';
 document.getElementById('load-version').textContent = GAME_VERSION;
 const CHANGELOG = [
+  { version:'v1.2.8', date:'2026-04-30', items:[
+    '修復開局選擇介面：改回顯示武器（EQUIP_WEAPON_DEFS）',
+    '  顯示木棍＋醫療箱，各自根據職業幸運值抽取品質',
+    '  品質顯示：白/藍/紫/金，品質色彩對應',
+    '  預覽顯示武器圖片＋品質徽章＋動態屬性表格（含DPS說明）',
+    '  確認後 gs.equipWeapons.push({id,quality,timer:0,_flashTimer:0})',
+    '  移除技能選項（WEAPON_DEFS 技能不再出現在開局選擇畫面）',
+  ]},
   { version:'v1.2.7', date:'2026-05-01', items:[
     '醫療箱攻擊邏輯：弧線揮砍（0.30s，從正上掃至正下），右側順時針，左側逆時針',
     '揮砍傷害：baseDmg + 25%近戰加成 + maxHpPct/100 × 目標最大HP；無暴擊',
