@@ -773,6 +773,39 @@ function _shopColorDesc(desc) {
     .replace(/(÷[\d.]+)/g,     '<span style="color:#f55">$1</span>');
 }
 
+// ── 波次商店武器欄位（固定第 0 格）──
+function _buildWeaponShopEntry(luck) {
+  if (typeof EQUIP_WEAPON_DEFS === 'undefined' || typeof EQUIP_REFRESH_WEIGHTS === 'undefined') return null;
+  if (typeof WAVE_SHOP_WEAPON_POOL === 'undefined' || !WAVE_SHOP_WEAPON_POOL.length) return null;
+  const _pool = WAVE_SHOP_WEAPON_POOL;
+  const _id   = _pool[Math.floor(Math.random() * _pool.length)];
+  const _def  = EQUIP_WEAPON_DEFS[_id];
+  if (!_def) return null;
+  const _q       = EQUIP_REFRESH_WEIGHTS.rollQuality(luck);
+  const _qd      = _def.qualities?.[_q] || {};
+  const _qualCol = (typeof EQUIP_QUALITY !== 'undefined') ? (EQUIP_QUALITY.defs[_q]?.color || '#aaa') : '#aaa';
+  const _qualLbl = (typeof EQUIP_QUALITY !== 'undefined') ? (EQUIP_QUALITY.defs[_q]?.label || _q)    : _q;
+  // 品質對應到商店 rarity key（複用顯示色系）
+  const _qualToRarity = { white:'common', blue:'rare', purple:'epic', gold:'legendary' };
+  return {
+    _isEquipWeapon: true,
+    _equipId:       _id,
+    _equipQuality:  _q,
+    id:             `_wep_${_id}_${_q}`,
+    name:           `${_def.name} [${_qualLbl}]`,
+    rarity:         _qualToRarity[_q] || 'common',
+    img:            _def.img || null,
+    icon:           _def.icon || '⚔',
+    desc:           `⚔ ${_def.desc || '裝備武器'}`,
+    dpsLabel:       _qd.dpsLabel || null,
+    price:          _qd.price || 0,
+    maxCount:       99,
+    apply: () => {
+      if (typeof tryBuyEquipWeapon === 'function') tryBuyEquipWeapon(_id, _q);
+    },
+  };
+}
+
 function _buildShopItems(count) {
   const pool = (typeof SHOP_ITEMS !== 'undefined') ? SHOP_ITEMS : [];
   if (!pool.length) return [];
@@ -797,8 +830,10 @@ function _buildShopItems(count) {
 }
 
 function showShopScreen() {
-  _shopState = { items: [], refreshCost: 10, purchased: new Set(), ownedCounts: new Map() };
-  _shopState.items = _buildShopItems(4);
+  const _luck = gs?.player?.luck || 0;
+  _shopState  = { items: [], refreshCost: 10, purchased: new Set(), ownedCounts: new Map() };
+  const _wep  = _buildWeaponShopEntry(_luck);
+  _shopState.items = _wep ? [_wep, ..._buildShopItems(3)] : _buildShopItems(4);
   _renderShopOverlay();
 }
 
@@ -910,6 +945,21 @@ function _buildShopCard(item, idx, p) {
         if (disp) { disp.style.color='#f44'; setTimeout(()=>{disp.style.color='#4df';},350); }
         return;
       }
+      // 裝備武器：先確認格子可放入
+      if (item._isEquipWeapon) {
+        const _maxS  = p.maxEquipSlots || 6;
+        const _slots = gs?.equipWeapons || [];
+        const _canFuse = _slots.some(w =>
+          w.id === item._equipId && w.quality === item._equipQuality &&
+          typeof EQUIP_QUALITY !== 'undefined' && EQUIP_QUALITY.canFuse(item._equipQuality));
+        if (_slots.length >= _maxS && !_canFuse) {
+          const disp = document.getElementById('shop-shell-disp');
+          if (disp) { disp.style.color='#f44'; setTimeout(()=>{disp.style.color='#4df';},350); }
+          if (typeof addFloatingText === 'function')
+            addFloatingText('格子已满！', p.x, p.y-28, '#f84', 1.2);
+          return;
+        }
+      }
       p.shells -= item.price;
       _shopState.purchased.add(idx);
       _shopState.ownedCounts.set(item.id, ((_shopState.ownedCounts.get(item.id))||0) + 1);
@@ -979,7 +1029,9 @@ function _renderShopOverlay() {
     if ((p.shells||0) < _shopState.refreshCost) return;
     p.shells -= _shopState.refreshCost;
     _shopState.refreshCost = Math.ceil(_shopState.refreshCost * 1.5);
-    _shopState.items     = _buildShopItems(4);
+    const _luck2 = p.luck || 0;
+    const _wep2  = _buildWeaponShopEntry(_luck2);
+    _shopState.items     = _wep2 ? [_wep2, ..._buildShopItems(3)] : _buildShopItems(4);
     _shopState.purchased = new Set();
     _renderShopOverlay();
   });

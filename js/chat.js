@@ -1230,43 +1230,104 @@ function _codexItemDetail(item){
 // 商店武器圖鑑資料
 // ═══════════════════════════════════════════════════════
 const _CODEX_SHOP_WEAPONS = [
+  // ── 木棍 ──────────────────────────────────────────────
   {
-    id:'stick_common', name:'木棍', quality:'common', qualityLabel:'普通',
+    id:'stick_white', name:'木棍', quality:'common', qualityLabel:'普通',
     img:'photo/weapon/stick.png', icon:'🪵',
-    dmg:'5 – 8', crit:'3%  ×1.5', speed:'标准',
-    knockback:'轻微', range:'近战（贴身）',
+    dmgType:'近战',
+    dmg:'10（+近战值）', crit:'1%  ×2.0', speed:'1.30s',
+    knockback:'1', range:'近战',
     special:'无特殊效果',
-    obtain:'初始装备 / 波次商店',
+    obtain:'初始选择 / 波次商店',
   },
   {
-    id:'stick_rare', name:'精良木棍', quality:'rare', qualityLabel:'稀有',
+    id:'stick_blue', name:'木棍', quality:'rare', qualityLabel:'精良',
     img:'photo/weapon/stick.png', icon:'🪵',
-    dmg:'12 – 18', crit:'8%  ×2.0', speed:'标准 +5%',
-    knockback:'轻微', range:'近战（贴身）',
-    special:'命中15%概率触发眩晕（持续 0.5 s）',
-    obtain:'波次商店（稀有概率）',
+    dmgType:'近战',
+    dmg:'13（+近战值）', crit:'3%  ×2.2', speed:'1.25s',
+    knockback:'2', range:'近战',
+    special:'贯穿 1 个敌人',
+    obtain:'初始选择 / 波次商店',
   },
   {
-    id:'stick_epic', name:'附魔木棍', quality:'epic', qualityLabel:'史诗',
+    id:'stick_purple', name:'木棍', quality:'epic', qualityLabel:'史诗',
     img:'photo/weapon/stick.png', icon:'🪵',
-    dmg:'25 – 35', crit:'15% ×2.5', speed:'标准 +10%',
-    knockback:'中等', range:'近战（贴身）',
-    special:'攻击附带🔥火焰，命中后持续灼烧 2 s（每秒 8 伤害）',
-    obtain:'波次商店（史诗概率）',
+    dmgType:'近战',
+    dmg:'15（+近战值）', crit:'3%  ×2.4', speed:'1.19s',
+    knockback:'2', range:'近战',
+    special:'贯穿 2 个敌人',
+    obtain:'初始选择 / 波次商店',
   },
   {
-    id:'stick_legendary', name:'神木权杖', quality:'legendary', qualityLabel:'传说',
+    id:'stick_gold', name:'木棍', quality:'legendary', qualityLabel:'传说',
     img:'photo/weapon/stick.png', icon:'🪵',
-    dmg:'50 – 70', crit:'25% ×3.0', speed:'标准 +20%',
-    knockback:'强烈', range:'近战（贴身）',
-    special:'每次击杀30%概率触发⚡闪电链，弹跳至附近3个敌人（各100%伤害）',
-    obtain:'波次商店（传说概率）',
+    dmgType:'近战',
+    dmg:'20（+近战值）', crit:'5%  ×2.6', speed:'1.11s',
+    knockback:'2', range:'近战',
+    special:'贯穿 3 个敌人',
+    obtain:'初始选择 / 波次商店',
+  },
+  // ── 医疗箱 ────────────────────────────────────────────
+  {
+    id:'medkit_white', name:'医疗箱', quality:'common', qualityLabel:'普通',
+    img:'photo/weapon/Medical kit.png', icon:'🩺',
+    dmgType:'最大生命值伤害',
+    dmg:'5（+25%近战值）', maxHpDmg:'目标最大HP的 80%',
+    speed:'2.00s',
+    lifesteal:'1', healBonus:'+5%',
+    crit:'无', knockback:'无',
+    special:'弧线挥砍（从上至下扫击）；命中恢复 1 滴HP；治疗效果+5%',
+    obtain:'初始选择 / 波次商店',
+  },
+  {
+    id:'medkit_blue', name:'医疗箱', quality:'rare', qualityLabel:'精良',
+    img:'photo/weapon/Medical kit.png', icon:'🩺',
+    dmgType:'最大生命值伤害',
+    dmg:'7（+25%近战值）', maxHpDmg:'目标最大HP的 85%',
+    speed:'1.80s',
+    lifesteal:'1', healBonus:'+10%',
+    crit:'无', knockback:'无',
+    special:'弧线挥砍；命中恢复 1 滴HP；治疗效果+10%',
+    obtain:'初始选择 / 波次商店',
+  },
+  {
+    id:'medkit_purple', name:'医疗箱', quality:'epic', qualityLabel:'史诗',
+    img:'photo/weapon/Medical kit.png', icon:'🩺',
+    dmgType:'最大生命值伤害',
+    dmg:'10（+25%近战值）', maxHpDmg:'目标最大HP的 90%',
+    speed:'1.56s',
+    lifesteal:'2', healBonus:'+15%',
+    crit:'无', knockback:'无',
+    special:'弧线挥砍；命中恢复 2 滴HP；治疗效果+15%',
+    obtain:'初始选择 / 波次商店',
+  },
+  {
+    id:'medkit_gold', name:'医疗箱', quality:'legendary', qualityLabel:'传说',
+    img:'photo/weapon/Medical kit.png', icon:'🩺',
+    dmgType:'最大生命值伤害',
+    dmg:'15（+25%近战值）', maxHpDmg:'目标最大HP的 100%',
+    speed:'1.30s',
+    lifesteal:'3', healBonus:'+20%',
+    crit:'无', knockback:'无',
+    special:'弧线挥砍；命中恢复 3 滴HP；治疗效果+20%',
+    obtain:'初始选择 / 波次商店',
   },
 ];
 
 function _codexShopWeaponDetail(w){
   if(!w) return _cdxDetail('<div style="color:#555;padding:40px 0;text-align:center">暂无数据</div>');
   const col = _SHOP_RARITY_COLORS[w.quality] || '#ddd';
+  // 動態組合屬性行（有值才顯示）
+  const stats =
+    _cdxStat('⚔ 伤害',        w.dmg)+
+    (w.maxHpDmg  ? _cdxStat('❤ HP伤害',  w.maxHpDmg)  : '')+
+    (w.dmgType   ? _cdxStat('🔰 类型',   w.dmgType)   : '')+
+    (w.crit && w.crit !== '无' ? _cdxStat('💥 暴击', w.crit) : '')+
+    _cdxStat('⚡ 攻速',        w.speed)+
+    (w.knockback && w.knockback !== '无' ? _cdxStat('💨 击退', w.knockback) : '')+
+    (w.range     ? _cdxStat('📏 范围',   w.range)     : '')+
+    (w.lifesteal ? _cdxStat('🩸 吸血',   w.lifesteal+' HP/hit') : '')+
+    (w.healBonus ? _cdxStat('💊 治疗加成', w.healBonus) : '');
   return _cdxDetail(
     '<div class="cdx-big-icon" style="position:relative">'+
       '<img src="'+w.img+'" style="width:60px;height:60px;image-rendering:pixelated;object-fit:contain" '+
@@ -1278,11 +1339,7 @@ function _codexShopWeaponDetail(w){
       '<span class="cdx-badge" style="color:'+col+';border-color:'+col+'40;background:'+col+'15">'+w.qualityLabel+'</span>'+
     '</div>'+
     _cdxSection('武器属性')+
-    _cdxStat('⚔ 伤害',      w.dmg)+
-    _cdxStat('💥 暴击',     w.crit)+
-    _cdxStat('⚡ 攻速',     w.speed)+
-    _cdxStat('💨 击退',     w.knockback)+
-    _cdxStat('📏 攻击范围',  w.range)+
+    stats+
     _cdxSection('特殊效果')+
     _cdxDesc(w.special)+
     _cdxSection('获得方式')+

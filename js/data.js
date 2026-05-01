@@ -217,9 +217,30 @@ function getWavePlan(n) {
 // ═══════════════════════════════════════════════════════
 // §0  版本号 & 更新公告  ← 每次更新只需修改这里
 // ═══════════════════════════════════════════════════════
-const GAME_VERSION = 'v1.2.8';
+const GAME_VERSION = 'v1.3.0';
 document.getElementById('load-version').textContent = GAME_VERSION;
 const CHANGELOG = [
+  { version:'v1.3.0', date:'2026-04-30', items:[
+    'chat.js 圖鑑「武器」Tab 新增醫療箱 4 個品質條目',
+    '  名稱：醫療箱 / 類型：最大生命值傷害',
+    '  各品質：baseDmg / maxHpPct / atkSpd / lifesteal / healBonus',
+    '  特殊效果：弧線揮砍說明',
+    '_codexShopWeaponDetail 更新：動態顯示 maxHpDmg / lifesteal / healBonus',
+    '  暴擊/擊退若為「無」則不顯示；新增 ❤ HP傷害 / 🩸 吸血 / 💊 治療加成 行',
+    '木棍圖鑑數值同步更新為 data.js 實際值（baseDmg/critRate/critMult/pierce）',
+  ]},
+  { version:'v1.2.9', date:'2026-04-30', items:[
+    '医疗箱攻击范围 range: 100 → 50px',
+    '医疗箱改为双向攻击：使用 nearestEnemy(p.x,p.y) 不再区分左右侧',
+    '医疗箱弧线拖尾：每帧记录角度进 _trailSegs（最多14帧），渲染为渐隐残影弧线',
+    '怪物受击白闪：hitEnemy() 命中时设 enemy._hitFlash=0.1，渲染时覆盖白色半透明圆',
+    '怪物受击音效：hitEnemy() 命中时同步播放 SFX.play("hit")',
+    '波次商店武器格：showShopScreen/刷新 → 固定第0格为装备武器(stick/medical_kit)',
+    '  武器品质由 EQUIP_REFRESH_WEIGHTS.rollQuality(luck) 决定',
+    '  点击购买调用 tryBuyEquipWeapon(id,quality)；格子满且无法融合时提示并阻止扣贝',
+    '新增 WAVE_SHOP_WEAPON_POOL: [stick, medical_kit]',
+    '新增 _buildWeaponShopEntry(luck) 函数（ui.js）',
+  ]},
   { version:'v1.2.8', date:'2026-04-30', items:[
     '修復開局選擇介面：改回顯示武器（EQUIP_WEAPON_DEFS）',
     '  顯示木棍＋醫療箱，各自根據職業幸運值抽取品質',
@@ -1263,13 +1284,18 @@ const EQUIP_SLOT_RULES = {
 
 // ── 波次商店格子布局 ─────────────────────────────────────
 // 每次刷新固定 1 格武器 + 3 格道具
-// slot 0 = 武器（品质由 EQUIP_REFRESH_WEIGHTS.rollQuality 决定）
+// slot 0 = 武器（从 WAVE_SHOP_WEAPON_POOL 随机抽取武器 id，品质由 EQUIP_REFRESH_WEIGHTS.rollQuality 决定）
 // slot 1~3 = 道具（从 SHOP_ITEMS 随机抽取）
 const WAVE_SHOP_LAYOUT = {
   totalSlots:   4,
   weaponSlots:  1,  // 固定第0格为武器
   itemSlots:    3,  // 固定后3格为道具
 };
+
+// ── 波次商店武器池 ────────────────────────────────────────
+// 每次刷新从此池随机抽取1种武器 id，再由 EQUIP_REFRESH_WEIGHTS.rollQuality(luck) 决定品质
+// 品质基础概率（幸运=0）：白95% / 蓝5% / 紫0% / 金0%（受幸运影响，见 EQUIP_REFRESH_WEIGHTS）
+const WAVE_SHOP_WEAPON_POOL = ['stick', 'medical_kit'];
 
 // ── 武器刷新品质概率表（受幸运值影响） ─────────────────
 // 权重顺序对应 EQUIP_QUALITY.order: [white, blue, purple, gold]
@@ -1342,10 +1368,10 @@ const EQUIP_WEAPON_DEFS = {
     attackType: 'arc_slash',  // 弧线挥砍（从上向下甩）
     desc:       '实际伤害 = 基础值 + 25%近战属性 + X%最大HP',
     qualities: {
-      white:  { name:'医疗箱', baseDmg:5,  meleePct:0.25, maxHpPct:0.80, atkSpd:2.00, critMult:2.0, critRate:0.0, range:100, knockback:0, lifesteal:1, healBonus:0.05, price:10,  dpsLabel:'2.5（+12.5%近战+40%最大HP）/秒'   },
-      blue:   { name:'医疗箱', baseDmg:7,  meleePct:0.25, maxHpPct:0.85, atkSpd:1.80, critMult:2.0, critRate:0.0, range:100, knockback:0, lifesteal:1, healBonus:0.10, price:21,  dpsLabel:'3.9（+13.9%近战+47.2%最大HP）/秒' },
-      purple: { name:'医疗箱', baseDmg:10, meleePct:0.25, maxHpPct:0.90, atkSpd:1.56, critMult:2.0, critRate:0.0, range:100, knockback:0, lifesteal:2, healBonus:0.15, price:40,  dpsLabel:'6.4（+16%近战+57.7%最大HP）/秒'   },
-      gold:   { name:'医疗箱', baseDmg:15, meleePct:0.25, maxHpPct:1.00, atkSpd:1.30, critMult:2.0, critRate:0.0, range:100, knockback:0, lifesteal:3, healBonus:0.20, price:89,  dpsLabel:'11.5（+19.2%近战+76.9%最大HP）/秒' },
+      white:  { name:'医疗箱', baseDmg:5,  meleePct:0.25, maxHpPct:0.80, atkSpd:2.00, critMult:2.0, critRate:0.0, range:50, knockback:0, lifesteal:1, healBonus:0.05, price:10,  dpsLabel:'2.5（+12.5%近战+40%最大HP）/秒'   },
+      blue:   { name:'医疗箱', baseDmg:7,  meleePct:0.25, maxHpPct:0.85, atkSpd:1.80, critMult:2.0, critRate:0.0, range:50, knockback:0, lifesteal:1, healBonus:0.10, price:21,  dpsLabel:'3.9（+13.9%近战+47.2%最大HP）/秒' },
+      purple: { name:'医疗箱', baseDmg:10, meleePct:0.25, maxHpPct:0.90, atkSpd:1.56, critMult:2.0, critRate:0.0, range:50, knockback:0, lifesteal:2, healBonus:0.15, price:40,  dpsLabel:'6.4（+16%近战+57.7%最大HP）/秒'   },
+      gold:   { name:'医疗箱', baseDmg:15, meleePct:0.25, maxHpPct:1.00, atkSpd:1.30, critMult:2.0, critRate:0.0, range:50, knockback:0, lifesteal:3, healBonus:0.20, price:89,  dpsLabel:'11.5（+19.2%近战+76.9%最大HP）/秒' },
     },
     special: null,
   },

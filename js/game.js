@@ -730,7 +730,7 @@ function _updateStick(w, qStats, p, stickSlots, dt) {
 
 // ── 醫療箱：揮砍命中判定 ──
 function _medboxHitCheck(w, qStats, p) {
-  const range      = qStats.range     || 100;
+  const range      = qStats.range     || 50;
   const baseDmg    = qStats.baseDmg   || 5;
   const meleePct   = qStats.meleePct  || 0.25;
   const maxHpPct   = qStats.maxHpPct  || 0.80;   // 百分比值，如 0.80 = 0.80%
@@ -770,12 +770,13 @@ function _updateMedbox(w, qStats, p, sideSlots, dt) {
 
   // 初始化
   if (w._mbInited === undefined) {
-    w._mbInited   = true;
-    w._state      = 'idle';
-    w._swingProg  = 0;
+    w._mbInited    = true;
+    w._state       = 'idle';
+    w._swingProg   = 0;
     w._swingCurAng = -Math.PI / 2;
-    w._hits       = new Set();
-    w.timer       = Math.random() * (1.0 / (qStats.atkSpd || 1.0));
+    w._hits        = new Set();
+    w._trailSegs   = [];   // 弧線拖尾殘影角度序列
+    w.timer        = Math.random() * (1.0 / (qStats.atkSpd || 1.0));
   }
 
   // 存入渲染用字段（每幀刷新）
@@ -793,17 +794,19 @@ function _updateMedbox(w, qStats, p, sideSlots, dt) {
   if (w._state === 'idle') {
     w.timer -= dt;
     if (w.timer <= 0) {
-      const range  = qStats.range || 100;
-      const target = _stickNearestEnemy(p, isLeft);
+      const range  = qStats.range || 50;
+      // 兩側都能攻擊 → 直接找全場最近敵人
+      const target = nearestEnemy(p.x, p.y);
       if (target) {
-        const tdx = target.x - (p.x + sideX);
-        const tdy = target.y - (p.y + yOff);
+        const tdx = target.x - p.x;
+        const tdy = target.y - p.y;
         if (tdx * tdx + tdy * tdy <= range * range) {
           const atkSpd = qStats.atkSpd || 1.0;
           w.timer      = (1.0 / atkSpd) * (p.cdMult || 1);
           w._state     = 'swinging';
           w._swingProg = 0;
           w._hits      = new Set();
+          w._trailSegs = [];
           SFX.play('swing');
         }
       }
@@ -814,10 +817,15 @@ function _updateMedbox(w, qStats, p, sideSlots, dt) {
     w._swingCurAng = isLeft
       ? (-Math.PI / 2 - w._swingProg * Math.PI)
       : (-Math.PI / 2 + w._swingProg * Math.PI);
+    // 記錄拖尾殘影角度（每幀追加，最多保留 14 幀）
+    if (!w._trailSegs) w._trailSegs = [];
+    w._trailSegs.push(w._swingCurAng);
+    if (w._trailSegs.length > 14) w._trailSegs.shift();
     _medboxHitCheck(w, qStats, p);
     if (w._swingProg >= 1) {
       w._swingProg  = 1;
       w._state      = 'idle';
+      w._trailSegs  = [];  // 揮砍結束清除殘影
     }
   }
 }
@@ -1104,6 +1112,9 @@ function hitEnemy(enemy, rawDmg, _noProc, _isCrit, wepCat) {
     const _txt = _isCritFinal ? '★' + String(Math.round(dmg)) : String(Math.round(dmg));
     const _ox = (Math.random()-0.5)*14;
     addFloatingText(_txt, enemy.x+_ox, enemy.y-10, _dc, _isCritFinal ? 0.85 : 0.65);
+    // 受擊白閃 + 音效
+    enemy._hitFlash = 0.1;
+    SFX.play('hit');
   }
   if (gs.talents.has('vampire') && dmg>0) healPlayer(dmg*0.06);
   if (settings.particles) spawnParticles(enemy.x, enemy.y, '#f84', 4, 80, 0.3, 2);
@@ -1605,6 +1616,8 @@ function updateEnemies(dt) {
   for (let i=0; i<alive.length; i++) {
     const e = alive[i];
 
+    // 受擊白閃計時
+    if ((e._hitFlash||0) > 0) e._hitFlash = Math.max(0, e._hitFlash - dt);
     // Slow debuff
     if (e.slowTimer>0) e.slowTimer -= dt;
     // Frost stacks → slow, at 10 freeze
@@ -3411,6 +3424,11 @@ function render() {
       ctx.fillStyle=`rgba(80,200,80,${Math.min(0.5,e.poisonStacks*0.05)})`;
       ctx.beginPath(); ctx.arc(sx2,sy2,e.radius+2,0,Math.PI*2); ctx.fill();
     }
+    // 受擊白閃
+    if ((e._hitFlash||0) > 0) {
+      ctx.fillStyle = `rgba(255,255,255,${Math.min(1, (e._hitFlash / 0.1) * 0.75)})`;
+      ctx.beginPath(); ctx.arc(sx2, sy2, e.radius + 2, 0, Math.PI * 2); ctx.fill();
+    }
     // Boss name
     if (e.isBoss && e.name) {
       ctx.fillStyle='#fd4'; ctx.font='7px monospace'; ctx.textAlign='center';
@@ -3743,16 +3761,32 @@ function render() {
       const cx = Math.floor(_mbWorldX - cam.x);
       const cy = Math.floor(_mbWorldY - cam.y);
 
-      // ── 揮砍弧線軌跡 ──
+      // ── 弧線拖尾殘影 ──
+      if ((w._trailSegs||[]).length > 0) {
+        const rx = Math.floor(p.x + _sideX - cam.x);
+        const ry = Math.floor(p.y + _yOff  - cam.y);
+        const segs = w._trailSegs;
+        for (let _ti = 0; _ti < segs.length; _ti++) {
+          const _tAlpha = ((_ti + 1) / segs.length) * 0.40;
+          ctx.save();
+          ctx.strokeStyle = _qcol;
+          ctx.lineWidth   = 2;
+          ctx.globalAlpha = _tAlpha;
+          ctx.beginPath();
+          ctx.arc(rx, ry, _range, -Math.PI / 2, segs[_ti], _isLeft);
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+      // ── 當前揮砍弧線（較亮） ──
       if (_swinging && _prog > 0.01) {
         const rx = Math.floor(p.x + _sideX - cam.x);
         const ry = Math.floor(p.y + _yOff  - cam.y);
         ctx.save();
         ctx.strokeStyle = _qcol;
-        ctx.lineWidth   = 2.5;
-        ctx.globalAlpha = 0.55 * (1 - _prog * 0.5);
+        ctx.lineWidth   = 3;
+        ctx.globalAlpha = 0.78;
         ctx.beginPath();
-        // 右側順時針（anticlockwise=false），左側逆時針（anticlockwise=true）
         ctx.arc(rx, ry, _range, -Math.PI / 2, _ang, _isLeft);
         ctx.stroke();
         ctx.restore();
