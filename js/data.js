@@ -56,6 +56,9 @@ const IMG_PROP_HEALTH_POTION = new Image(); IMG_PROP_HEALTH_POTION.src = 'photo/
 const IMG_PROP_BABY_GOBLIN   = new Image(); IMG_PROP_BABY_GOBLIN.src   = 'photo/props/Baby Goblin.png';
 
 // ── Equip weapon images ──
+const IMG_EQUIP_MEDICAL_KIT = new Image();
+IMG_EQUIP_MEDICAL_KIT.onerror = () => console.error('[IMG] 医疗箱图片加载失败: photo/weapon/Medical kit.png');
+IMG_EQUIP_MEDICAL_KIT.src = 'photo/weapon/Medical kit.png';
 const IMG_EQUIP_STICK = new Image();
 IMG_EQUIP_STICK.onerror = () => console.error('[IMG] 木棍圖片載入失敗: photo/weapon/stick.png');
 IMG_EQUIP_STICK.src = 'photo/weapon/stick.png';
@@ -145,28 +148,28 @@ const CLASSES = [
 ];
 
 const ENEMY_TYPES = {
-  slime:    { hp:38,  spd:50,  dmg:7,   xp:8,   radius:6,  sprite:'slime',    color:'#4f4', scale:2 },
-  goblin:   { hp:65,  spd:72,  dmg:13,  xp:12,  radius:7,  sprite:'goblin',   color:'#fa4', scale:2 },
-  skeleton: { hp:100, spd:54,  dmg:19,  xp:18,  radius:8,  sprite:'skeleton', color:'#ddd', scale:2 },
-  bat:      { hp:42,  spd:98,  dmg:11,  xp:14,  radius:5,  sprite:'bat',      color:'#a4f', scale:2 },
-  orc:      { hp:195, spd:43,  dmg:28,  xp:30,  radius:10, sprite:'orc',      color:'#f84', scale:2 },
-  wolf:     { hp:80,  spd:115, dmg:17,  xp:20,  radius:6,  sprite:'wolf',     color:'#bbb', scale:2 },
-  troll:    { hp:360, spd:36,  dmg:48,  xp:50,  radius:13, sprite:'troll',    color:'#8b5', scale:2 },
-  demon:    { hp:160, spd:80,  dmg:34,  xp:40,  radius:8,  sprite:'demon',    color:'#f4f', scale:2 },
-  archer:   { hp:70,  spd:52,  dmg:24,  xp:28,  radius:7,  sprite:'archer',   color:'#fc8', scale:2, ranged:true },
-  boss_10:  { hp:4500,  spd:40, dmg:40, xp:300,  radius:22, sprite:'dragon',  color:'#f44', scale:4, isBoss:true, bossName:'暗影龙王' },
-  boss_10_cat: { hp:5000, spd:52, dmg:28, xp:320, radius:22, sprite:'cat_boss', color:'#f84', scale:4, isBoss:true, bossName:'暴食猫王', bossType:'cat' },
-  boss_10_dog: { hp:5800, spd:58, dmg:58, xp:320, radius:24, sprite:'dog_boss', color:'#8b5e3c', scale:4, isBoss:true, bossName:'狂野犬王', bossType:'dog' },
-  boss_20:  { hp:14000, spd:44, dmg:75, xp:700,  radius:26, sprite:'orc',     color:'#f84', scale:5, isBoss:true, bossName:'熔岩霸主' },
-  boss_30:  { hp:38000, spd:48, dmg:130,xp:1500, radius:30, sprite:'dragon',  color:'#a4f', scale:6, isBoss:true, bossName:'虚空领主' },
+  slime:    { hp:27,   spd:50,  dmg:5,   xp:8,   radius:6,  sprite:'slime',    color:'#4f4', scale:2 },
+  goblin:   { hp:46,   spd:72,  dmg:9,   xp:12,  radius:7,  sprite:'goblin',   color:'#fa4', scale:2 },
+  skeleton: { hp:70,   spd:54,  dmg:13,  xp:18,  radius:8,  sprite:'skeleton', color:'#ddd', scale:2 },
+  bat:      { hp:29,   spd:98,  dmg:8,   xp:14,  radius:5,  sprite:'bat',      color:'#a4f', scale:2 },
+  orc:      { hp:137,  spd:43,  dmg:20,  xp:30,  radius:10, sprite:'orc',      color:'#f84', scale:2 },
+  wolf:     { hp:56,   spd:115, dmg:12,  xp:20,  radius:6,  sprite:'wolf',     color:'#bbb', scale:2 },
+  troll:    { hp:252,  spd:36,  dmg:34,  xp:50,  radius:13, sprite:'troll',    color:'#8b5', scale:2 },
+  demon:    { hp:112,  spd:80,  dmg:24,  xp:40,  radius:8,  sprite:'demon',    color:'#f4f', scale:2 },
+  archer:   { hp:49,   spd:52,  dmg:17,  xp:28,  radius:7,  sprite:'archer',   color:'#fc8', scale:2, ranged:true },
+  boss_10:  { hp:3150,  spd:40, dmg:28,  xp:300,  radius:22, sprite:'dragon',  color:'#f44', scale:4, isBoss:true, bossName:'暗影龙王' },
+  boss_10_cat: { hp:3500, spd:52, dmg:20, xp:320, radius:22, sprite:'cat_boss', color:'#f84', scale:4, isBoss:true, bossName:'暴食猫王', bossType:'cat' },
+  boss_10_dog: { hp:4060, spd:58, dmg:41, xp:320, radius:24, sprite:'dog_boss', color:'#8b5e3c', scale:4, isBoss:true, bossName:'狂野犬王', bossType:'dog' },
+  boss_20:  { hp:9800,  spd:44, dmg:53,  xp:700,  radius:26, sprite:'orc',     color:'#f84', scale:5, isBoss:true, bossName:'熔岩霸主' },
+  boss_30:  { hp:26600, spd:48, dmg:91,  xp:1500, radius:30, sprite:'dragon',  color:'#a4f', scale:6, isBoss:true, bossName:'虚空领主' },
   // ── Gem Monsters (7 qualities) ──────────────────────────────────────────
-  gem_common:    { hp:100,  spd:58, dmg:5,  xp:15,  radius:7,  sprite:'gem', color:'#ffffff', scale:2, isGemMonster:true, gemQuality:'common' },
-  gem_rare:      { hp:200,  spd:58, dmg:6,  xp:25,  radius:7,  sprite:'gem', color:'#55ff55', scale:2, isGemMonster:true, gemQuality:'rare' },
-  gem_uncommon:  { hp:400,  spd:58, dmg:7,  xp:40,  radius:8,  sprite:'gem', color:'#5599ff', scale:2, isGemMonster:true, gemQuality:'uncommon' },
-  gem_epic:      { hp:800,  spd:58, dmg:8,  xp:70,  radius:8,  sprite:'gem', color:'#aa55ff', scale:2, isGemMonster:true, gemQuality:'epic' },
-  gem_legendary: { hp:1500, spd:58, dmg:10, xp:120, radius:9,  sprite:'gem', color:'#ffff55', scale:2, isGemMonster:true, gemQuality:'legendary' },
-  gem_mythic:    { hp:3000, spd:58, dmg:12, xp:200, radius:9,  sprite:'gem', color:'#ff5555', scale:2, isGemMonster:true, gemQuality:'mythic' },
-  gem_pristine:  { hp:6000, spd:58, dmg:15, xp:400, radius:10, sprite:'gem', color:'#ff88ff', scale:2, isGemMonster:true, gemQuality:'pristine' },
+  gem_common:    { hp:70,   spd:58, dmg:4,  xp:15,  radius:7,  sprite:'gem', color:'#ffffff', scale:2, isGemMonster:true, gemQuality:'common' },
+  gem_rare:      { hp:140,  spd:58, dmg:4,  xp:25,  radius:7,  sprite:'gem', color:'#55ff55', scale:2, isGemMonster:true, gemQuality:'rare' },
+  gem_uncommon:  { hp:280,  spd:58, dmg:5,  xp:40,  radius:8,  sprite:'gem', color:'#5599ff', scale:2, isGemMonster:true, gemQuality:'uncommon' },
+  gem_epic:      { hp:560,  spd:58, dmg:6,  xp:70,  radius:8,  sprite:'gem', color:'#aa55ff', scale:2, isGemMonster:true, gemQuality:'epic' },
+  gem_legendary: { hp:1050, spd:58, dmg:7,  xp:120, radius:9,  sprite:'gem', color:'#ffff55', scale:2, isGemMonster:true, gemQuality:'legendary' },
+  gem_mythic:    { hp:2100, spd:58, dmg:8,  xp:200, radius:9,  sprite:'gem', color:'#ff5555', scale:2, isGemMonster:true, gemQuality:'mythic' },
+  gem_pristine:  { hp:4200, spd:58, dmg:11, xp:400, radius:10, sprite:'gem', color:'#ff88ff', scale:2, isGemMonster:true, gemQuality:'pristine' },
 };
 
 // 30-wave plan. boss_10/20/30 ignore scale factor.
@@ -214,9 +217,43 @@ function getWavePlan(n) {
 // ═══════════════════════════════════════════════════════
 // §0  版本号 & 更新公告  ← 每次更新只需修改这里
 // ═══════════════════════════════════════════════════════
-const GAME_VERSION = 'v1.2.2';
+const GAME_VERSION = 'v1.2.7';
 document.getElementById('load-version').textContent = GAME_VERSION;
 const CHANGELOG = [
+  { version:'v1.2.7', date:'2026-05-01', items:[
+    '醫療箱攻擊邏輯：弧線揮砍（0.30s，從正上掃至正下），右側順時針，左側逆時針',
+    '揮砍傷害：baseDmg + 25%近戰加成 + maxHpPct/100 × 目標最大HP；無暴擊',
+    '吸血：命中後依 lifesteal% 比例回復玩家HP；治療加成：healBonus 乘入所有 healPlayer() 呼叫',
+    '渲染：揮砍弧線軌跡（半透明品質色描邊）+ 圖示隨弧面朝外旋轉；備用十字紅框圖案',
+    '更新 updateEquipWeapons：側邊格子序號由 stick+medical_kit 共用（_sideSlots）',
+    '新增 #hud-equip-weapons-bar：顯示已裝備武器名稱/品質/DPS（隨 updateHUD 刷新）',
+    '商店卡片新增 DPS 行：當 item.dpsLabel 存在時顯示 ⚡ DPS',
+  ]},
+  { version:'v1.2.6', date:'2026-04-29', items:[
+    '新增装备武器：医疗箱（medical_kit）4品质，弧线挥砍，最大生命值伤害类型',
+    '医疗箱：实际伤害=基础值+25%近战+X%最大HP，含吸血/治疗效果加成，无暴击',
+    '医疗箱价格：白10/蓝21/紫40/金89贝壳',
+    '新增图片预载：IMG_EQUIP_MEDICAL_KIT → photo/weapon/Medical kit.png',
+    '所有装备武器品质新增 dpsLabel 字段：stick 4品质 + medical_kit 4品质',
+    'dpsLabel 格式：基础DPS（+百分比近战+百分比最大HP）/秒',
+  ]},
+  { version:'v1.2.5', date:'2026-04-29', items:[
+    '所有怪物血量×0.7：普通怪 slime/goblin/skeleton/bat/orc/wolf/troll/demon/archer，Boss×3，宝石怪×7，全部取整',
+    '所有怪物伤害×0.7：同上，取整',
+    '加特林全8级伤害×0.75：26/20/25/31/38/47/56/56 → 20/15/19/23/29/35/42/42',
+  ]},
+  { version:'v1.2.4', date:'2026-04-30', items:[
+    '木棍行為修正：CD 就緒後不再立即刺出，必須等敵人進入 range（100px）才觸發刺擊',
+    '無敵人在範圍內時，木棍靜止旋轉朝向最近敵人；敵人一進入範圍立即刺出（timer保持≤0）',
+  ]},
+  { version:'v1.2.3', date:'2026-04-30', items:[
+    '開局選擇介面改回選擇技能（isSkill:true），移除裝備武器選項',
+    '  標題改為「✨ 选择起始技能」',
+    '  每次從全技能池（10個）隨機顯示3個，免費贈送1個',
+    '  新增「🔄 刷新」按鈕：重新隨機抽3個技能，免費無限次',
+    '  預覽改為顯示 describe(1) 技能說明文字',
+    '  確認後以 addWeapon(id) 贈送技能',
+  ]},
   { version:'v1.2.2', date:'2026-04-29', items:[
     '新增 WAVE_SHOP_LAYOUT：波次商店固定4格，slot0=武器，slot1~3=道具',
     '武器不再混入道具池随机出现，每次刷新必定有1把武器',
@@ -760,14 +797,14 @@ const WEAPON_DEFS = {
     name:'加特林', icon:'🔴', maxLv:8, type:'normal', wepCat:'gun', dmgType:'远程', isSkill:true, fire: (...a)=>fireGatling(...a),
     startDesc: '8连发弹幕后短暂休息',
     levels: [
-      {dmg:26, cd:900},
-      {dmg:20, cd:880},
-      {dmg:25, cd:860},
-      {dmg:31, cd:840},
-      {dmg:38, cd:820},
-      {dmg:47, cd:800},
-      {dmg:56, cd:780},
-      {dmg:56, cd:780}, // Lv8: dual fire
+      {dmg:20, cd:900},
+      {dmg:15, cd:880},
+      {dmg:19, cd:860},
+      {dmg:23, cd:840},
+      {dmg:29, cd:820},
+      {dmg:35, cd:800},
+      {dmg:42, cd:780},
+      {dmg:42, cd:780}, // Lv8: dual fire
     ],
     describe: lv => {
       const s = WEAPON_DEFS.gatling.levels[lv-1];
@@ -1279,12 +1316,29 @@ const EQUIP_WEAPON_DEFS = {
     dmgType: '近战',
     desc:    '实际伤害 = 基础值 + 玩家近战伤害数值',
     qualities: {
-      white:  { name:'木棍', baseDmg:10, critMult:2.0, critRate:0.01, atkSpd:1.30, knockback:1, range:100, pierce:0, price:7   },
-      blue:   { name:'木棍', baseDmg:13, critMult:2.2, critRate:0.03, atkSpd:1.25, knockback:2, range:100, pierce:1, price:30  },
-      purple: { name:'木棍', baseDmg:15, critMult:2.4, critRate:0.03, atkSpd:1.19, knockback:2, range:100, pierce:2, price:70  },
-      gold:   { name:'木棍', baseDmg:20, critMult:2.6, critRate:0.05, atkSpd:1.11, knockback:2, range:100, pierce:3, price:108 },
+      white:  { name:'木棍', baseDmg:10, critMult:2.0, critRate:0.01, atkSpd:1.30, knockback:1, range:100, pierce:0, price:7,   dpsLabel:'7.7（+近战值）/秒'  },
+      blue:   { name:'木棍', baseDmg:13, critMult:2.2, critRate:0.03, atkSpd:1.25, knockback:2, range:100, pierce:1, price:30,  dpsLabel:'10.4（+近战值）/秒' },
+      purple: { name:'木棍', baseDmg:15, critMult:2.4, critRate:0.03, atkSpd:1.19, knockback:2, range:100, pierce:2, price:70,  dpsLabel:'12.6（+近战值）/秒' },
+      gold:   { name:'木棍', baseDmg:20, critMult:2.6, critRate:0.05, atkSpd:1.11, knockback:2, range:100, pierce:3, price:108, dpsLabel:'18.0（+近战值）/秒' },
     },
     // 无特殊效果
+    special: null,
+  },
+
+  medical_kit: {
+    id:         'medical_kit',
+    isSkill:    false,
+    name:       '医疗箱',
+    img:        IMG_EQUIP_MEDICAL_KIT,
+    dmgType:    '最大生命值伤害',
+    attackType: 'arc_slash',  // 弧线挥砍（从上向下甩）
+    desc:       '实际伤害 = 基础值 + 25%近战属性 + X%最大HP',
+    qualities: {
+      white:  { name:'医疗箱', baseDmg:5,  meleePct:0.25, maxHpPct:0.80, atkSpd:2.00, critMult:2.0, critRate:0.0, range:100, knockback:0, lifesteal:1, healBonus:0.05, price:10,  dpsLabel:'2.5（+12.5%近战+40%最大HP）/秒'   },
+      blue:   { name:'医疗箱', baseDmg:7,  meleePct:0.25, maxHpPct:0.85, atkSpd:1.80, critMult:2.0, critRate:0.0, range:100, knockback:0, lifesteal:1, healBonus:0.10, price:21,  dpsLabel:'3.9（+13.9%近战+47.2%最大HP）/秒' },
+      purple: { name:'医疗箱', baseDmg:10, meleePct:0.25, maxHpPct:0.90, atkSpd:1.56, critMult:2.0, critRate:0.0, range:100, knockback:0, lifesteal:2, healBonus:0.15, price:40,  dpsLabel:'6.4（+16%近战+57.7%最大HP）/秒'   },
+      gold:   { name:'医疗箱', baseDmg:15, meleePct:0.25, maxHpPct:1.00, atkSpd:1.30, critMult:2.0, critRate:0.0, range:100, knockback:0, lifesteal:3, healBonus:0.20, price:89,  dpsLabel:'11.5（+19.2%近战+76.9%最大HP）/秒' },
+    },
     special: null,
   },
 

@@ -544,6 +544,12 @@ const _STICK_HALF_LEN   = 16;    // 圖示半尺寸（px），用於刺尖碰撞
 const _STICK_IMG_SIZE   = 32;    // 渲染邊長（px）；圖片為 500×500 正方形
 // 圖片預設朝向：尖端朝上（angle=-π/2），旋轉公式：ang + Math.PI/2
 
+// ── 醫療箱弧線揮砍常數 ──
+const _MEDBOX_ARC_DUR  = 0.30;   // 弧線揮砍持續時間（秒）
+const _MEDBOX_HIT_R    = 20;     // 揮砍命中半徑（px）
+const _MEDBOX_IMG_SIZE = 32;     // 渲染邊長（px）
+// 揮砍弧度：從正上方（-π/2）掃到正下方（±π/2），右側順時針，左側逆時針
+
 /**
  * 嘗試購買裝備武器。
  * - 格未滿：直接佔格
@@ -584,15 +590,15 @@ function tryBuyEquipWeapon(id, quality) {
 function updateEquipWeapons(dt) {
   if (!gs.equipWeapons || !gs.equipWeapons.length) return;
   const p = gs.player;
-  const _stickSlots = gs.equipWeapons.filter(w => w.id === 'stick');
+  // 側邊武器（木棍 + 醫療箱）共用左右格子序號
+  const _sideSlots = gs.equipWeapons.filter(w => w.id === 'stick' || w.id === 'medical_kit');
   for (const w of gs.equipWeapons) {
     const def = (typeof EQUIP_WEAPON_DEFS !== 'undefined') ? EQUIP_WEAPON_DEFS[w.id] : null;
     if (!def) continue;
     const qStats = def.qualities?.[w.quality];
     if (!qStats) continue;
-    // 木棍使用獨立動畫狀態機
-    if (w.id === 'stick') { _updateStick(w, qStats, p, _stickSlots, dt); continue; }
-    // 其他裝備武器：通用 CD 邏輯（留空備用）
+    if (w.id === 'stick')       { _updateStick(w, qStats, p, _sideSlots, dt); continue; }
+    if (w.id === 'medical_kit') { _updateMedbox(w, qStats, p, _sideSlots, dt); continue; }
   }
 }
 
@@ -687,22 +693,29 @@ function _updateStick(w, qStats, p, stickSlots, dt) {
   const target = _stickNearestEnemy(p, isLeft);
 
   if (w._state === 'idle') {
-    // 更新朝向角（跟隨最近敵人）
+    // 更新朝向角（跟隨最近敵人，無距離限制）
     if (target) {
       w._angle = Math.atan2(target.y - (p.y + yOff), target.x - (p.x + sideX));
     }
     // CD 倒數
     w.timer -= dt;
     if (w.timer <= 0 && target) {
-      const atkSpd = qStats.atkSpd || 1.0;
-      w.timer = (1.0 / atkSpd) * (p.cdMult || 1);
-      w._state     = 'forward';
-      w._thrust    = 0;
-      w._thrustAng = w._angle;
-      w._hits      = new Set();
-      w._fwdCount  = 0;
-      w._retCount  = 0;
-      SFX.play('swing');
+      // 只有敵人進入攻擊範圍（qStats.range）才發動刺擊
+      const _range = qStats.range || 100;
+      const _tdx = target.x - (p.x + sideX);
+      const _tdy = target.y - (p.y + yOff);
+      if (_tdx * _tdx + _tdy * _tdy <= _range * _range) {
+        const atkSpd = qStats.atkSpd || 1.0;
+        w.timer = (1.0 / atkSpd) * (p.cdMult || 1);
+        w._state     = 'forward';
+        w._thrust    = 0;
+        w._thrustAng = w._angle;
+        w._hits      = new Set();
+        w._fwdCount  = 0;
+        w._retCount  = 0;
+        SFX.play('swing');
+      }
+      // 敵人不在範圍內：timer 保持 ≤0，下幀繼續等待，等敵人靠近立即刺出
     }
   } else if (w._state === 'forward') {
     w._thrust += dt / _STICK_THRUST_DUR;
@@ -712,6 +725,100 @@ function _updateStick(w, qStats, p, stickSlots, dt) {
     w._thrust -= dt / _STICK_RETURN_DUR;
     if (w._thrust <= 0) { w._thrust = 0; w._state = 'idle'; }
     _stickHitCheck(w, qStats, p, true);
+  }
+}
+
+// ── 醫療箱：揮砍命中判定 ──
+function _medboxHitCheck(w, qStats, p) {
+  const range      = qStats.range     || 100;
+  const baseDmg    = qStats.baseDmg   || 5;
+  const meleePct   = qStats.meleePct  || 0.25;
+  const maxHpPct   = qStats.maxHpPct  || 0.80;   // 百分比值，如 0.80 = 0.80%
+  const lifesteal  = qStats.lifesteal || 0;       // 吸血%
+  const r2 = _MEDBOX_HIT_R * _MEDBOX_HIT_R;
+
+  // 計算本幀揮砍位置（世界坐標）
+  const ang = w._swingCurAng ?? -Math.PI / 2;
+  const mbX = p.x + (w._sideX ?? 30) + Math.cos(ang) * range;
+  const mbY = p.y + (w._yOff  ?? 0)  + Math.sin(ang) * range;
+
+  for (const e of gs.enemies) {
+    if (e.dead || w._hits.has(e)) continue;
+    const dx = e.x - mbX, dy = e.y - mbY;
+    if (dx * dx + dy * dy > r2) continue;
+    // 命中：傷害 = 基礎 + 25%近戰加成 + X%目標最大HP
+    w._hits.add(e);
+    const hpBonus  = (e.maxHp || 0) * (maxHpPct / 100);
+    const meleeBonus = (p.meleeDmgBonus || 0) * meleePct;
+    const finalDmg = baseDmg + meleeBonus + hpBonus;
+    hitEnemy(e, finalDmg, false, false, 'melee');
+    // 吸血回血
+    if (lifesteal > 0 && finalDmg > 0) {
+      healPlayer(finalDmg * (lifesteal / 100));
+    }
+  }
+}
+
+// ── 醫療箱：弧線揮砍狀態機 ──
+function _updateMedbox(w, qStats, p, sideSlots, dt) {
+  // 確定此醫療箱在側邊武器中的序號（決定左右側與 Y 偏移）
+  const si    = sideSlots.indexOf(w);
+  const isLeft = (si % 2 === 0);
+  const yOffs = [0, -16, 16];
+  const yOff  = yOffs[Math.floor(si / 2)] || 0;
+  const sideX = isLeft ? -_STICK_REST_X : _STICK_REST_X;
+
+  // 初始化
+  if (w._mbInited === undefined) {
+    w._mbInited   = true;
+    w._state      = 'idle';
+    w._swingProg  = 0;
+    w._swingCurAng = -Math.PI / 2;
+    w._hits       = new Set();
+    w.timer       = Math.random() * (1.0 / (qStats.atkSpd || 1.0));
+  }
+
+  // 存入渲染用字段（每幀刷新）
+  w._sideX  = sideX;
+  w._yOff   = yOff;
+  w._isLeft = isLeft;
+
+  // 計算當前弧度角（供碰撞和渲染共用）
+  // 右側：從 -π/2（上）順時針掃到 π/2（下），角度遞增
+  // 左側：從 -π/2（上）逆時針掃到 -3π/2 ≡ π/2（下），角度遞減
+  w._swingCurAng = isLeft
+    ? (-Math.PI / 2 - w._swingProg * Math.PI)
+    : (-Math.PI / 2 + w._swingProg * Math.PI);
+
+  if (w._state === 'idle') {
+    w.timer -= dt;
+    if (w.timer <= 0) {
+      const range  = qStats.range || 100;
+      const target = _stickNearestEnemy(p, isLeft);
+      if (target) {
+        const tdx = target.x - (p.x + sideX);
+        const tdy = target.y - (p.y + yOff);
+        if (tdx * tdx + tdy * tdy <= range * range) {
+          const atkSpd = qStats.atkSpd || 1.0;
+          w.timer      = (1.0 / atkSpd) * (p.cdMult || 1);
+          w._state     = 'swinging';
+          w._swingProg = 0;
+          w._hits      = new Set();
+          SFX.play('swing');
+        }
+      }
+    }
+  } else if (w._state === 'swinging') {
+    w._swingProg += dt / _MEDBOX_ARC_DUR;
+    // 重新計算揮砍角（prog 已更新）
+    w._swingCurAng = isLeft
+      ? (-Math.PI / 2 - w._swingProg * Math.PI)
+      : (-Math.PI / 2 + w._swingProg * Math.PI);
+    _medboxHitCheck(w, qStats, p);
+    if (w._swingProg >= 1) {
+      w._swingProg  = 1;
+      w._state      = 'idle';
+    }
   }
 }
 
@@ -1237,6 +1344,14 @@ function tryGrantRandomTalent(p) {
 
 function healPlayer(amount) {
   const p = gs.player;
+  // 醫療箱治療加成：每件裝備的醫療箱提供 healBonus 加成
+  if (amount > 0 && gs?.equipWeapons?.length && typeof EQUIP_WEAPON_DEFS !== 'undefined') {
+    const _bonus = gs.equipWeapons.reduce((sum, ew) => {
+      if (ew.id !== 'medical_kit') return sum;
+      return sum + (EQUIP_WEAPON_DEFS.medical_kit?.qualities?.[ew.quality]?.healBonus || 0);
+    }, 0);
+    if (_bonus > 0) amount *= (1 + _bonus);
+  }
   const before = p.hp;
   p.hp = Math.min(p.maxHp, p.hp + amount);
   const actual = p.hp - before;
@@ -3603,6 +3718,78 @@ function render() {
     });
     ctx.lineWidth = 1; ctx.globalAlpha = 1;
     ctx.imageSmoothingEnabled = false;  // 恢復像素風設定
+  }
+
+  // ── 醫療箱渲染 ──
+  if (gs.equipWeapons && typeof EQUIP_WEAPON_DEFS !== 'undefined' && typeof IMG_EQUIP_MEDICAL_KIT !== 'undefined') {
+    const _mbSlots = gs.equipWeapons.filter(w => w.id === 'medical_kit');
+    const _mbHalf  = _MEDBOX_IMG_SIZE / 2;
+
+    _mbSlots.forEach(w => {
+      const qStats  = EQUIP_WEAPON_DEFS.medical_kit?.qualities?.[w.quality];
+      if (!qStats) return;
+      const _qcol   = EQUIP_QUALITY.defs?.[w.quality]?.color || '#4f8';
+      const _range  = qStats.range || 100;
+      const _sideX  = w._sideX ?? 30;
+      const _yOff   = w._yOff  ?? 0;
+      const _isLeft = w._isLeft ?? false;
+      const _prog   = w._swingProg ?? 0;
+      const _ang    = w._swingCurAng ?? -Math.PI / 2;
+
+      // 揮砍中心（靜止時固定在 sideX，揮砍時在弧線上）
+      const _swinging = w._state === 'swinging';
+      const _mbWorldX = p.x + _sideX + (_swinging ? Math.cos(_ang) * _range : 0);
+      const _mbWorldY = p.y + _yOff  + (_swinging ? Math.sin(_ang) * _range : 0);
+      const cx = Math.floor(_mbWorldX - cam.x);
+      const cy = Math.floor(_mbWorldY - cam.y);
+
+      // ── 揮砍弧線軌跡 ──
+      if (_swinging && _prog > 0.01) {
+        const rx = Math.floor(p.x + _sideX - cam.x);
+        const ry = Math.floor(p.y + _yOff  - cam.y);
+        ctx.save();
+        ctx.strokeStyle = _qcol;
+        ctx.lineWidth   = 2.5;
+        ctx.globalAlpha = 0.55 * (1 - _prog * 0.5);
+        ctx.beginPath();
+        // 右側順時針（anticlockwise=false），左側逆時針（anticlockwise=true）
+        ctx.arc(rx, ry, _range, -Math.PI / 2, _ang, _isLeft);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // ── 圖示本體 ──
+      ctx.save();
+      ctx.translate(cx, cy);
+      // 揮砍中圖示沿弧面朝外旋轉，靜止直立（-π/2=朝上）
+      ctx.rotate(_swinging ? (_ang + Math.PI / 2) : -Math.PI / 2);
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+
+      if (IMG_EQUIP_MEDICAL_KIT.complete && IMG_EQUIP_MEDICAL_KIT.naturalWidth) {
+        ctx.drawImage(IMG_EQUIP_MEDICAL_KIT, -_mbHalf, -_mbHalf, _MEDBOX_IMG_SIZE, _MEDBOX_IMG_SIZE);
+        if (w.quality !== 'white') {
+          ctx.globalAlpha = 0.4;
+          ctx.strokeStyle = _qcol;
+          ctx.lineWidth   = 1.5;
+          ctx.strokeRect(-_mbHalf, -_mbHalf, _MEDBOX_IMG_SIZE, _MEDBOX_IMG_SIZE);
+          ctx.globalAlpha = 1;
+        }
+      } else {
+        // 備用：十字圖案代表醫療箱
+        ctx.fillStyle   = '#f44';
+        ctx.strokeStyle = _qcol;
+        ctx.lineWidth   = 1;
+        ctx.fillRect(-_mbHalf, -_mbHalf, _MEDBOX_IMG_SIZE, _MEDBOX_IMG_SIZE);
+        ctx.fillStyle = '#fff';
+        const _s = _mbHalf * 0.5;
+        ctx.fillRect(-_s * 0.35, -_s, _s * 0.7, _s * 2);  // 垂直
+        ctx.fillRect(-_s, -_s * 0.35, _s * 2, _s * 0.7);  // 水平
+      }
+      ctx.restore();
+    });
+    ctx.lineWidth = 1; ctx.globalAlpha = 1;
+    ctx.imageSmoothingEnabled = false;
   }
 
   // Particles
