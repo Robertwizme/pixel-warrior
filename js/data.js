@@ -217,9 +217,17 @@ function getWavePlan(n) {
 // ═══════════════════════════════════════════════════════
 // §0  版本号 & 更新公告  ← 每次更新只需修改这里
 // ═══════════════════════════════════════════════════════
-const GAME_VERSION = 'v1.3.0';
+const GAME_VERSION = 'v1.3.1';
 document.getElementById('load-version').textContent = GAME_VERSION;
 const CHANGELOG = [
+  { version:'v1.3.1', date:'2026-05-02', items:[
+    '医疗箱攻击彻底重设计：弃用弧线挥砍，改为直线冲刺（朝最近敌人方向）',
+    '  蓄力0.08s（后仰 pullback=12px）→ 挥砍0.25s（easeOutCubic 快进慢出）',
+    '  伤害判定：玩家中心半径50px内所有敌人（不再是武器尖端触碰）',
+    '  拖尾残影：快速段（t<0.3）alpha最高，收尾自然淡出；strike时显示50px范围圈',
+    '  图示始终朝向 aimAng，idle时跟踪最近敌人，strike触发时锁定方向',
+    '  移除 _MEDBOX_ARC_DUR / _MEDBOX_HIT_R，新增 _MEDBOX_WINDUP_DUR/STRIKE_DUR/PULLBACK/STRIKE_DIST',
+  ]},
   { version:'v1.3.0', date:'2026-04-30', items:[
     'chat.js 圖鑑「武器」Tab 新增醫療箱 4 個品質條目',
     '  名稱：醫療箱 / 類型：最大生命值傷害',
