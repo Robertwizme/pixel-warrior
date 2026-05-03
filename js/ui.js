@@ -2073,7 +2073,9 @@ document.getElementById('btn-confirm').addEventListener('click', ()=>{
     alert(`「${cls.name}」尚未解锁！\n请前往商城购买或完成解锁条件。`);
     return;
   }
-  showWeapSelScreen(); // 進入選武器步驟
+  // TODO: 武器選擇畫面暫時隱藏，待確認後恢復（改回 showWeapSelScreen()）
+  showGameScreen();
+  initGame(selectedClassIdx);
 });
 
 // ═══════════════════════════════════════════════════════
@@ -2096,13 +2098,10 @@ function _getClassBaseLuck(clsIdx) {
 
 function showWeapSelScreen() {
   const equipDefs = (typeof EQUIP_WEAPON_DEFS !== 'undefined') ? EQUIP_WEAPON_DEFS : {};
-  const luck      = _getClassBaseLuck(selectedClassIdx);
 
-  // 每把武器各自抽一個品質
+  // 品質固定為白色（普通）
   _weapSelItems = Object.entries(equipDefs).map(([id, def]) => {
-    const quality = (typeof EQUIP_REFRESH_WEIGHTS !== 'undefined')
-      ? EQUIP_REFRESH_WEIGHTS.rollQuality(luck)
-      : 'white';
+    const quality = 'white';
     const qDef = def.qualities?.[quality] || {};
     return { id, def, quality, qDef };
   });

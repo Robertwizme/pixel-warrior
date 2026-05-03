@@ -730,24 +730,20 @@ function _updateStick(w, qStats, p, stickSlots, dt) {
   }
 }
 
-// ── 醫療箱：弧尖掃過敵人時觸發傷害 ──
+// ── 醫療箱：以玩家為中心，range（50px）範圍內所有敵人受傷 ──
 function _medboxHitCheck(w, qStats, p) {
-  const arcR      = qStats.range     || 50;   // 臂長（弧線半徑，px）
+  const range     = qStats.range     || 50;   // 傷害判定半徑（以玩家為圓心，px）
   const baseDmg   = qStats.baseDmg   || 5;
   const meleePct  = qStats.meleePct  || 0.25;
   const maxHpPct  = qStats.maxHpPct  || 0.80;
   const lifesteal = qStats.lifesteal || 0;
-  const r2 = _MEDBOX_HIT_R * _MEDBOX_HIT_R;
-
-  // 弧尖世界坐標（由弧樞 + 臂長沿 curAng 延伸）
-  const ang  = w._curAng ?? -Math.PI / 2;
-  const tipX = p.x + (w._sideX ?? _STICK_REST_X) + Math.cos(ang) * arcR;
-  const tipY = p.y + (w._yOff  ?? 0)              + Math.sin(ang) * arcR;
+  const r2 = range * range;
 
   for (const e of gs.enemies) {
     if (e.dead || w._hits.has(e)) continue;
-    const dx = e.x - tipX, dy = e.y - tipY;
+    const dx = e.x - p.x, dy = e.y - p.y;
     if (dx * dx + dy * dy > r2) continue;
+    // 範圍內：命中！
     w._hits.add(e);
     const hpBonus    = (e.maxHp || 0) * (maxHpPct / 100);
     const meleeBonus = (p.meleeDmgBonus || 0) * meleePct;
@@ -3649,7 +3645,9 @@ function render() {
                 : null;
   let pw, ph;
   if (_imgSpr) {
-    ph = 28;
+    // 真實圖片（photo/hero/*.png）用較大尺寸；base64 像素圖維持較小
+    const _isPhoto = (_clsId2 === 'doctor' || _clsId2 === 'berserker' || _clsId2 === 'santa');
+    ph = _isPhoto ? 44 : 28;
     pw = Math.round(_imgSpr.naturalWidth / _imgSpr.naturalHeight * ph);
   } else {
     const prows = SPRITES[spr];
@@ -3659,8 +3657,11 @@ function render() {
 
   if (p.invincible<=0||(Math.floor(p.invincible*12)%2===0)) {
     if (_imgSpr) {
-      ctx.imageSmoothingEnabled = false;
+      const _isPhoto2 = (_clsId2 === 'doctor' || _clsId2 === 'berserker' || _clsId2 === 'santa');
+      ctx.imageSmoothingEnabled = _isPhoto2;
+      if (_isPhoto2) ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(_imgSpr, Math.floor(p.x-cam.x-pw/2), Math.floor(p.y-cam.y-ph/2), pw, ph);
+      ctx.imageSmoothingEnabled = false;
     } else {
       drawSprite(spr, Math.floor(p.x-cam.x-pw/2), Math.floor(p.y-cam.y-ph/2), 2);
     }
