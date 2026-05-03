@@ -544,14 +544,13 @@ const _STICK_HALF_LEN   = 16;    // 圖示半尺寸（px），用於刺尖碰撞
 const _STICK_IMG_SIZE   = 32;    // 渲染邊長（px）；圖片為 500×500 正方形
 // 圖片預設朝向：尖端朝上（angle=-π/2），旋轉公式：ang + Math.PI/2
 
-// ── 醫療箱揮砍常數 ──
+// ── 醫療箱弧線揮砍常數 ──
 const _MEDBOX_WINDUP_DUR  = 0.08;   // 蓄力（後仰）時間（秒）
-const _MEDBOX_STRIKE_DUR  = 0.25;   // 揮砍時間（秒，easeOutCubic）
-const _MEDBOX_REST_OFF    = 8;      // 靜止時沿朝向的基礎偏移（px）
-const _MEDBOX_PULLBACK    = 12;     // 蓄力後退距離（px）
-const _MEDBOX_STRIKE_DIST = 28;     // 揮砍最大前進距離（px，視覺）
+const _MEDBOX_SWING_DUR   = 0.28;   // 揮砍弧線時間（秒，easeOutCubic）
+const _MEDBOX_WINDUP_ANG  = 0.35;   // 蓄力向後仰的額外角度（弧度）
+const _MEDBOX_HIT_R       = 22;     // 弧尖命中半徑（px）
 const _MEDBOX_IMG_SIZE    = 32;     // 渲染邊長（px）
-// 傷害判定：以玩家為圓心，半徑 = qStats.range（50px），不等於視覺移動距離
+// 弧線半徑（臂長）= qStats.range（50px），弧尖掃過敵人時造成傷害
 
 /**
  * 嘗試購買裝備武器。
@@ -731,18 +730,23 @@ function _updateStick(w, qStats, p, stickSlots, dt) {
   }
 }
 
-// ── 醫療箱：傷害判定（以玩家為圓心，半徑 = range） ──
+// ── 醫療箱：弧尖掃過敵人時觸發傷害 ──
 function _medboxHitCheck(w, qStats, p) {
-  const range      = qStats.range    || 50;   // 傷害半徑（玩家中心，px）
-  const baseDmg    = qStats.baseDmg  || 5;
-  const meleePct   = qStats.meleePct || 0.25;
-  const maxHpPct   = qStats.maxHpPct || 0.80;
-  const lifesteal  = qStats.lifesteal || 0;
-  const r2 = range * range;
+  const arcR      = qStats.range     || 50;   // 臂長（弧線半徑，px）
+  const baseDmg   = qStats.baseDmg   || 5;
+  const meleePct  = qStats.meleePct  || 0.25;
+  const maxHpPct  = qStats.maxHpPct  || 0.80;
+  const lifesteal = qStats.lifesteal || 0;
+  const r2 = _MEDBOX_HIT_R * _MEDBOX_HIT_R;
+
+  // 弧尖世界坐標（由弧樞 + 臂長沿 curAng 延伸）
+  const ang  = w._curAng ?? -Math.PI / 2;
+  const tipX = p.x + (w._sideX ?? _STICK_REST_X) + Math.cos(ang) * arcR;
+  const tipY = p.y + (w._yOff  ?? 0)              + Math.sin(ang) * arcR;
 
   for (const e of gs.enemies) {
     if (e.dead || w._hits.has(e)) continue;
-    const dx = e.x - p.x, dy = e.y - p.y;
+    const dx = e.x - tipX, dy = e.y - tipY;
     if (dx * dx + dy * dy > r2) continue;
     w._hits.add(e);
     const hpBonus    = (e.maxHp || 0) * (maxHpPct / 100);
@@ -753,91 +757,93 @@ function _medboxHitCheck(w, qStats, p) {
   }
 }
 
-// ── 醫療箱：直線衝刺揮砍狀態機（蓄力→揮砍，easeOutCubic）──
+// ── 醫療箱：弧線揮砍狀態機（待機→蓄力→揮砍，easeOutCubic 重量感）──
 function _updateMedbox(w, qStats, p, sideSlots, dt) {
   const si     = sideSlots.indexOf(w);
   const isLeft = (si % 2 === 0);
   const yOffs  = [0, -16, 16];
   const yOff   = yOffs[Math.floor(si / 2)] || 0;
-  const sideX  = isLeft ? -_STICK_REST_X : _STICK_REST_X;
+  const sideX  = isLeft ? -_STICK_REST_X : _STICK_REST_X;  // 弧樞偏移
 
   // ── 初始化 ──
   if (w._mbInited === undefined) {
-    w._mbInited    = true;
-    w._state       = 'idle';
-    w._aimAng      = isLeft ? Math.PI : 0;   // 初始朝向
-    w._animOff     = _MEDBOX_REST_OFF;        // 沿 aimAng 的偏移（px）
-    w._windupProg  = 0;
-    w._strikeProg  = 0;
-    w._hits        = new Set();
-    w._trailSegs   = [];
-    w.timer        = Math.random() * (1.0 / (qStats.atkSpd || 1.0));
+    w._mbInited   = true;
+    w._state      = 'idle';
+    w._curAng     = -Math.PI / 2;  // 當前顯示角度（從弧樞出發，-π/2=朝上）
+    w._windupProg = 0;
+    w._swingProg  = 0;
+    w._hits       = new Set();
+    w._trailSegs  = [];
+    w.timer       = Math.random() * (1.0 / (qStats.atkSpd || 1.0));
   }
 
-  // 存入渲染用字段
+  // 存入渲染用字段（每幀刷新）
   w._sideX  = sideX;
   w._yOff   = yOff;
   w._isLeft = isLeft;
 
-  // 持續追蹤最近敵人（idle 時更新朝向，其他狀態保持鎖定）
-  const target = nearestEnemy(p.x, p.y);
-  if (target && w._state === 'idle') {
-    w._aimAng = Math.atan2(target.y - p.y, target.x - p.x);
-  }
+  // 蓄力後仰角：右側往後退 (CCW)，左側往後退 (CW)
+  const _windupStartAng = isLeft
+    ? (-Math.PI / 2 + _MEDBOX_WINDUP_ANG)   // 左側：略向右退
+    : (-Math.PI / 2 - _MEDBOX_WINDUP_ANG);  // 右側：略向左退
+  // 揮砍終點：右側順時針到 π/2（朝下），左側逆時針到 -3π/2（朝下）
+  const _swingEndAng = isLeft ? (-Math.PI / 2 - Math.PI) : (-Math.PI / 2 + Math.PI);
 
   // ── 狀態機 ──
   if (w._state === 'idle') {
-    w._animOff   = _MEDBOX_REST_OFF;
+    w._curAng    = -Math.PI / 2;  // 靜止位置：醫療箱朝上
     w._trailSegs = [];
     w.timer -= dt;
-    if (w.timer <= 0 && target) {
-      const range = qStats.range || 50;
-      const tdx   = target.x - p.x, tdy = target.y - p.y;
-      if (tdx * tdx + tdy * tdy <= range * range) {
-        // 鎖定朝向，進入蓄力
-        w._aimAng     = Math.atan2(tdy, tdx);
-        w._state      = 'windup';
-        w._windupProg = 0;
-        w._hits       = new Set();
-        w._trailSegs  = [];
-        SFX.play('swing');
+    if (w.timer <= 0) {
+      const arcR   = qStats.range || 50;
+      const target = nearestEnemy(p.x, p.y);
+      if (target) {
+        // 觸發條件：目標在弧樞半徑範圍內
+        const tdx = target.x - (p.x + sideX);
+        const tdy = target.y - (p.y + yOff);
+        if (tdx * tdx + tdy * tdy <= arcR * arcR) {
+          w._state      = 'windup';
+          w._windupProg = 0;
+          w._hits       = new Set();
+          w._trailSegs  = [];
+          SFX.play('swing');
+        }
       }
     }
 
   } else if (w._state === 'windup') {
-    // 向後仰：animOff 從 REST_OFF → REST_OFF - PULLBACK
+    // 向後仰：curAng 從 -π/2 插值到 windupStartAng
     w._windupProg += dt / _MEDBOX_WINDUP_DUR;
-    const wp       = Math.min(1, w._windupProg);
-    w._animOff     = _MEDBOX_REST_OFF - _MEDBOX_PULLBACK * wp;
+    const wp      = Math.min(1, w._windupProg);
+    w._curAng     = -Math.PI / 2 + (_windupStartAng - (-Math.PI / 2)) * wp;
     if (w._windupProg >= 1) {
-      w._state      = 'strike';
-      w._strikeProg = 0;
+      w._state     = 'swinging';
+      w._swingProg = 0;
     }
 
-  } else if (w._state === 'strike') {
-    w._strikeProg += dt / _MEDBOX_STRIKE_DUR;
-    const t        = Math.min(1, w._strikeProg);
-    // easeOutCubic：快速出擊後緩減速
-    const eased    = 1 - Math.pow(1 - t, 3);
-    const startOff = _MEDBOX_REST_OFF - _MEDBOX_PULLBACK;
-    const endOff   = _MEDBOX_REST_OFF + _MEDBOX_STRIKE_DIST;
-    w._animOff     = startOff + (endOff - startOff) * eased;
+  } else if (w._state === 'swinging') {
+    w._swingProg += dt / _MEDBOX_SWING_DUR;
+    const t      = Math.min(1, w._swingProg);
+    const eased  = 1 - Math.pow(1 - t, 3);  // easeOutCubic：快速揮出、緩慢收尾
+    // windupStartAng → swingEndAng
+    w._curAng = _windupStartAng + (_swingEndAng - _windupStartAng) * eased;
 
-    // 拖尾：記錄醫療箱世界坐標（快速段位移大，殘影明顯；慢段位移小，自然淡出）
+    // 拖尾：記錄弧尖世界坐標（快速段位移大→明顯殘影；慢段位移小→自然淡出）
+    const arcR = qStats.range || 50;
     if (!w._trailSegs) w._trailSegs = [];
     w._trailSegs.push({
-      x: p.x + sideX + Math.cos(w._aimAng) * w._animOff,
-      y: p.y + yOff  + Math.sin(w._aimAng) * w._animOff,
+      x: p.x + sideX + Math.cos(w._curAng) * arcR,
+      y: p.y + yOff  + Math.sin(w._curAng) * arcR,
       t,
     });
-    if (w._trailSegs.length > 14) w._trailSegs.shift();
+    if (w._trailSegs.length > 16) w._trailSegs.shift();
 
-    // 命中判定（以玩家為圓心，整個 strike 期間持續，但 _hits 防重複）
+    // 命中判定（弧尖接觸敵人，_hits 防止對同一敵人多次傷害）
     _medboxHitCheck(w, qStats, p);
 
-    if (w._strikeProg >= 1) {
+    if (w._swingProg >= 1) {
       w._state     = 'idle';
-      w._animOff   = _MEDBOX_REST_OFF;
+      w._curAng    = -Math.PI / 2;
       w._trailSegs = [];
       const atkSpd = qStats.atkSpd || 1.0;
       w.timer      = (1.0 / atkSpd) * (p.cdMult || 1);
@@ -3759,60 +3765,62 @@ function render() {
     const _mbHalf  = _MEDBOX_IMG_SIZE / 2;
 
     _mbSlots.forEach(w => {
-      const qStats   = EQUIP_WEAPON_DEFS.medical_kit?.qualities?.[w.quality];
+      const qStats    = EQUIP_WEAPON_DEFS.medical_kit?.qualities?.[w.quality];
       if (!qStats) return;
-      const _qcol   = EQUIP_QUALITY.defs?.[w.quality]?.color || '#4f8';
-      const _sideX  = w._sideX  ?? _STICK_REST_X;
-      const _yOff   = w._yOff   ?? 0;
-      const _aimAng = w._aimAng ?? 0;
-      const _animOff = w._animOff ?? _MEDBOX_REST_OFF;
-      const _striking = w._state === 'strike';
-      const _inAnim   = w._state === 'windup' || _striking;
+      const _qcol    = EQUIP_QUALITY.defs?.[w.quality]?.color || '#4f8';
+      const _sideX   = w._sideX  ?? _STICK_REST_X;
+      const _yOff    = w._yOff   ?? 0;
+      const _isLeft  = w._isLeft ?? false;
+      const _curAng  = w._curAng ?? -Math.PI / 2;
+      const _arcR    = qStats.range || 50;
+      const _swinging = w._state === 'swinging';
 
-      // 醫療箱當前世界坐標
-      const _mbWorldX = p.x + _sideX + Math.cos(_aimAng) * _animOff;
-      const _mbWorldY = p.y + _yOff  + Math.sin(_aimAng) * _animOff;
-      const cx = Math.floor(_mbWorldX - cam.x);
-      const cy = Math.floor(_mbWorldY - cam.y);
+      // 弧樞（旋轉中心）螢幕坐標
+      const _pivX = Math.floor(p.x + _sideX - cam.x);
+      const _pivY = Math.floor(p.y + _yOff  - cam.y);
 
-      // ── 拖尾殘影（strike 快速段留下的座標點） ──
+      // 弧尖（醫療箱圖示位置）螢幕坐標
+      const cx = Math.floor(p.x + _sideX + Math.cos(_curAng) * _arcR - cam.x);
+      const cy = Math.floor(p.y + _yOff  + Math.sin(_curAng) * _arcR - cam.y);
+
+      // ── 弧尖拖尾殘影（坐標點，快速段明顯，收尾自然淡出） ──
       const segs = w._trailSegs || [];
       if (segs.length > 1) {
         for (let _ti = 0; _ti < segs.length - 1; _ti++) {
-          const seg   = segs[_ti];
-          // 快速段（t<0.3）alpha 最高；slow段（t>0.6）快速衰退
-          const _age  = (_ti + 1) / segs.length;          // 0=舊 1=新
-          const _fade = Math.max(0, 1 - seg.t * 1.4);     // 越接近收尾越透明
-          const _tAlpha = _age * _fade * 0.55;
+          const seg      = segs[_ti];
+          const _age     = (_ti + 1) / segs.length;          // 0=舊→1=新
+          const _fade    = Math.max(0, 1 - seg.t * 1.5);     // 收尾快速衰退
+          const _tAlpha  = _age * _fade * 0.55;
           if (_tAlpha < 0.02) continue;
-          const scx = Math.floor(seg.x - cam.x);
-          const scy = Math.floor(seg.y - cam.y);
           ctx.globalAlpha = _tAlpha;
           ctx.fillStyle   = _qcol;
           ctx.beginPath();
-          ctx.arc(scx, scy, _mbHalf * 0.55, 0, Math.PI * 2);
+          ctx.arc(Math.floor(seg.x - cam.x), Math.floor(seg.y - cam.y), _mbHalf * 0.5, 0, Math.PI * 2);
           ctx.fill();
         }
         ctx.globalAlpha = 1;
       }
 
-      // ── 傷害範圍圈（strike 中，玩家中心） ──
-      if (_striking) {
-        const _dmgR = qStats.range || 50;
-        const pcx   = Math.floor(p.x - cam.x);
-        const pcy   = Math.floor(p.y - cam.y);
-        ctx.globalAlpha = 0.15;
+      // ── 揮砍弧線（從蓄力起點掃到當前角度） ──
+      if (_swinging && w._swingProg > 0.01) {
+        const _windupStartAng = _isLeft
+          ? (-Math.PI / 2 + _MEDBOX_WINDUP_ANG)
+          : (-Math.PI / 2 - _MEDBOX_WINDUP_ANG);
+        ctx.save();
         ctx.strokeStyle = _qcol;
-        ctx.lineWidth   = 1;
-        ctx.beginPath(); ctx.arc(pcx, pcy, _dmgR, 0, Math.PI * 2); ctx.stroke();
-        ctx.globalAlpha = 1;
+        ctx.lineWidth   = 2.5;
+        ctx.globalAlpha = 0.65 * (1 - w._swingProg * 0.4);  // 收尾漸隱
+        ctx.beginPath();
+        // 右側順時針（anticlockwise=false），左側逆時針（anticlockwise=true）
+        ctx.arc(_pivX, _pivY, _arcR, _windupStartAng, _curAng, _isLeft);
+        ctx.stroke();
+        ctx.restore();
       }
 
-      // ── 圖示本體 ──
+      // ── 圖示本體（弧尖位置，朝弧線前進方向旋轉）──
       ctx.save();
       ctx.translate(cx, cy);
-      // 圖示朝向 aimAng（揮砍方向），靜止時面向最近敵人
-      ctx.rotate(_aimAng + Math.PI / 2);
+      ctx.rotate(_curAng + Math.PI / 2);  // +π/2 使圖示「握把端朝向弧樞」
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
 

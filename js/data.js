@@ -53,7 +53,8 @@ const IMG_GEM_MONSTERS  = {
 // ── Shop prop images ──
 const IMG_PROP_GOLD_INGOT    = new Image(); IMG_PROP_GOLD_INGOT.src    = 'photo/props/Gold ingot.png';
 const IMG_PROP_HEALTH_POTION = new Image(); IMG_PROP_HEALTH_POTION.src = 'photo/props/Health Potion.png';
-const IMG_PROP_BABY_GOBLIN   = new Image(); IMG_PROP_BABY_GOBLIN.src   = 'photo/props/Baby Goblin.png';
+const IMG_PROP_BABY_GOBLIN    = new Image(); IMG_PROP_BABY_GOBLIN.src    = 'photo/props/Baby Goblin.png';
+const IMG_PROP_VAMPIRE_FANGS  = new Image(); IMG_PROP_VAMPIRE_FANGS.src  = 'photo/props/Vampire Fangs.png';
 
 // ── Equip weapon images ──
 const IMG_EQUIP_MEDICAL_KIT = new Image();
@@ -217,16 +218,25 @@ function getWavePlan(n) {
 // ═══════════════════════════════════════════════════════
 // §0  版本号 & 更新公告  ← 每次更新只需修改这里
 // ═══════════════════════════════════════════════════════
-const GAME_VERSION = 'v1.3.1';
+const GAME_VERSION = 'v1.3.3';
 document.getElementById('load-version').textContent = GAME_VERSION;
 const CHANGELOG = [
+  { version:'v1.3.3', date:'2026-05-03', items:[
+    '新增商店道具：吸血鬼牙齿（relatively_rare·31贝壳·上限5）：生命吸取+5%（lifestealPct+0.05）',
+    '新增图片预载：IMG_PROP_VAMPIRE_FANGS → photo/props/Vampire Fangs.png',
+  ]},
+  { version:'v1.3.2', date:'2026-05-03', items:[
+    '醫療箱攻擊動畫修復：正確還原為弧線揮砍（從上往下甩），並非直線突刺',
+    '  狀態機：idle → windup(0.08s) → swinging(0.28s, easeOutCubic) → idle',
+    '  蓄力(windup)：curAng 從 -π/2 後仰到 windupStartAng（右側後退CCW，左側後退CW）',
+    '  揮砍(swinging)：easeOutCubic 快速掃出、緩慢收尾；弧尖掃過敵人時觸發傷害(r=22px)',
+    '  弧樞固定在玩家左/右側(sideX)，臂長=qStats.range(50px)，圖示始終朝弧線前進方向旋轉',
+    '  拖尾：弧尖座標點記錄(最多16幀)，快速段明顯、收尾自然淡出',
+    '  揮砍弧線：ctx.arc(樞,arcR,windupStartAng,curAng,isLeft)，收尾漸隱',
+    '  常數：_MEDBOX_WINDUP_DUR=0.08 / _MEDBOX_SWING_DUR=0.28 / _MEDBOX_WINDUP_ANG=0.35 / _MEDBOX_HIT_R=22',
+  ]},
   { version:'v1.3.1', date:'2026-05-02', items:[
-    '医疗箱攻击彻底重设计：弃用弧线挥砍，改为直线冲刺（朝最近敌人方向）',
-    '  蓄力0.08s（后仰 pullback=12px）→ 挥砍0.25s（easeOutCubic 快进慢出）',
-    '  伤害判定：玩家中心半径50px内所有敌人（不再是武器尖端触碰）',
-    '  拖尾残影：快速段（t<0.3）alpha最高，收尾自然淡出；strike时显示50px范围圈',
-    '  图示始终朝向 aimAng，idle时跟踪最近敌人，strike触发时锁定方向',
-    '  移除 _MEDBOX_ARC_DUR / _MEDBOX_HIT_R，新增 _MEDBOX_WINDUP_DUR/STRIKE_DUR/PULLBACK/STRIKE_DIST',
+    '(已廢棄) 醫療箱誤改為直線突刺（本版還原）',
   ]},
   { version:'v1.3.0', date:'2026-04-30', items:[
     'chat.js 圖鑑「武器」Tab 新增醫療箱 4 個品質條目',
@@ -1252,6 +1262,18 @@ const SHOP_ITEMS = [
     desc:     '哥布林出现数量+25%',
     apply(p) {
       p.goblinCountMult = (p.goblinCountMult || 1) * 1.25;
+    },
+  },
+  {
+    id:       'vampire_fangs',
+    img:      IMG_PROP_VAMPIRE_FANGS,
+    name:     '吸血鬼牙齿',
+    rarity:   'relatively_rare',
+    price:    31,
+    maxCount: 5,
+    desc:     '生命吸取+5%',
+    apply(p) {
+      p.lifestealPct = (p.lifestealPct || 0) + 0.05;
     },
   },
 ];
