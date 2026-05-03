@@ -663,4 +663,60 @@ input[type=range]{width:120px;accent-color:#48f}
 .shp-btn-blue{background:#070718;border:2px solid #4af;color:#4af;font-weight:700}
 .shp-btn-blue:hover{background:#0e1428;box-shadow:0 0 10px #4af4}
 .shp-btn-dim{background:#111;border:2px solid #333;color:#444;cursor:default}
+
+/* ── 商店卡片鎖頭 ── */
+.shp-lock-btn{
+  position:absolute;top:4px;left:4px;
+  font-size:13px;line-height:1;cursor:pointer;
+  opacity:.28;transition:opacity .15s,transform .1s;z-index:2;
+}
+.shp-lock-btn:hover{opacity:1;transform:scale(1.25)}
+.shp-lock-btn.locked{opacity:1}
+
+/* ── 商店底部武器管理區 ── */
+.shp-equip-section{
+  border-top:1px solid #1a1a2e;
+  padding:8px 16px 6px;flex-shrink:0;
+}
+.shp-equip-row{
+  display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:4px 0 2px;
+}
+.shp-eslot{
+  width:72px;min-height:88px;
+  background:#111827;border:2px solid #334;border-radius:6px;
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:center;padding:6px 4px 4px;
+  cursor:grab;user-select:none;text-align:center;
+  transition:border-color .15s,box-shadow .15s,transform .12s;
+}
+.shp-eslot:not(.shp-eslot-empty):hover{
+  border-color:#556 !important;box-shadow:0 0 8px #fff2;
+}
+.shp-eslot.drag-over{
+  box-shadow:0 0 14px #fd4a;border-color:#fd4 !important;transform:scale(1.07);
+}
+.shp-eslot-empty{
+  cursor:default;border-style:dashed;border-color:#222 !important;
+  opacity:.45;
+}
+.shp-eslot-empty.drag-over{
+  opacity:1;border-color:#4df !important;box-shadow:0 0 10px #4df4;transform:scale(1.05);
+}
+.shp-eslot-name{font-size:10px;font-weight:700;color:#ddd;margin-top:3px}
+.shp-eslot-ql{font-size:8px;font-weight:700;margin-top:1px}
+
+/* ── 拖拽賣出垃圾桶 ── */
+#shop-trash-can{
+  display:none;position:fixed;bottom:20px;right:20px;z-index:9500;
+  width:62px;height:62px;
+  background:#1a0808;border:2px solid #633;border-radius:14px;
+  flex-direction:column;align-items:center;justify-content:center;gap:1px;
+  font-size:26px;transition:background .15s,border-color .15s,box-shadow .15s;
+  pointer-events:auto;
+}
+#shop-trash-can span{font-size:9px;color:#833;letter-spacing:.3px}
+#shop-trash-can.hot{
+  background:#3a0a0a;border-color:#f44;box-shadow:0 0 22px #f446;
+}
+#shop-trash-can.hot span{color:#f88}
 </style>

@@ -831,7 +831,7 @@ function _buildShopItems(count) {
 
 function showShopScreen() {
   const _luck = gs?.player?.luck || 0;
-  _shopState  = { items: [], refreshCost: 10, purchased: new Set(), ownedCounts: new Map() };
+  _shopState  = { items: [], refreshCost: 10, purchased: new Set(), ownedCounts: new Map(), locked: new Set() };
   const _wep  = _buildWeaponShopEntry(_luck);
   _shopState.items = _wep ? [_wep, ..._buildShopItems(3)] : _buildShopItems(4);
   _renderShopOverlay();
@@ -901,44 +901,60 @@ function _shopItemIcon(item, size = 38) {
 
 // ── 道具卡片 ──
 function _buildShopCard(item, idx, p) {
-  const col    = _SHOP_RARITY_COLORS[item.rarity] || '#ddd';
-  const lbl    = _SHOP_RARITY_LABELS[item.rarity] || '';
-  const bought = _shopState.purchased.has(idx);
-  const maxC   = item.maxCount ?? 99;
-  const ownedC = _shopState.ownedCounts.get(item.id) || 0;
-  const atMax  = ownedC >= maxC;
-  const afford = (p.shells||0) >= item.price;
-  const locked = bought || atMax;
+  const col      = _SHOP_RARITY_COLORS[item.rarity] || '#ddd';
+  const lbl      = _SHOP_RARITY_LABELS[item.rarity] || '';
+  const bought   = _shopState.purchased.has(idx);
+  const maxC     = item.maxCount ?? 99;
+  const ownedC   = _shopState.ownedCounts.get(item.id) || 0;
+  const atMax    = ownedC >= maxC;
+  const afford   = (p.shells||0) >= item.price;
+  const isPurchased = bought || atMax;
+  const isPinned = _shopState.locked?.has(idx) || false;  // 鎖定狀態
 
-  const bdrCol = locked ? '#1e1e1e' : (!afford ? '#2a1400' : col);
-  const op     = locked ? 0.3 : (!afford ? 0.6 : 1);
+  const bdrCol = isPurchased ? '#1e1e1e' : (!afford ? '#2a1400' : col);
+  const op     = isPurchased ? 0.3 : (!afford ? 0.6 : 1);
 
   const card = document.createElement('div');
   card.className = 'shp-card';
-  card.style.cssText = `border-color:${bdrCol};opacity:${op};cursor:${locked||!afford?'default':'pointer'}`;
+  card.style.cssText = `border-color:${bdrCol};opacity:${op};cursor:${isPurchased||!afford?'default':'pointer'}`;
 
   // 數量徽章（右上角）
   const badge = maxC < 99
     ? `<div class="shp-badge" style="color:${ownedC>0?col:'#444'};border-color:${ownedC>0?col:'#222'}">${ownedC}/${maxC}</div>`
     : (ownedC > 0 ? `<div class="shp-badge" style="color:#4df;border-color:#1a3a4a">×${ownedC}</div>` : '');
 
+  // 鎖頭按鈕（左上角）
+  const lockHtml = !isPurchased
+    ? `<div class="shp-lock-btn${isPinned ? ' locked' : ''}" data-lock-idx="${idx}">${isPinned ? '🔒' : '🔓'}</div>`
+    : '';
+
   const _dpsLine = item.dpsLabel
     ? `<div style="color:#4df;font-size:9px;margin:2px 0 0;letter-spacing:.3px">⚡ ${item.dpsLabel}</div>`
     : '';
   card.innerHTML =
-    badge +
+    badge + lockHtml +
     `<div class="shp-card-icon">${_shopItemIcon(item, 38)}</div>` +
     `<div class="shp-card-name" style="color:${col}">${item.name}</div>` +
     `<div class="shp-card-desc">${_shopColorDesc(item.desc)}</div>` +
     _dpsLine +
-    `<div class="shp-card-price" style="color:${afford&&!locked?'#4df':'#3a3a3a'}">🐚 ${item.price}</div>`;
+    `<div class="shp-card-price" style="color:${afford&&!isPurchased?'#4df':'#3a3a3a'}">🐚 ${item.price}</div>`;
 
-  if (!locked) {
+  // 鎖頭點擊切換
+  card.querySelector('.shp-lock-btn')?.addEventListener('click', e => {
+    e.stopPropagation();
+    if (!_shopState.locked) _shopState.locked = new Set();
+    if (_shopState.locked.has(idx)) _shopState.locked.delete(idx);
+    else _shopState.locked.add(idx);
+    _renderShopOverlay();
+  });
+
+  if (!isPurchased) {
     if (afford) {
       card.addEventListener('mouseenter', () => { card.style.transform='translateY(-5px) scale(1.03)'; });
       card.addEventListener('mouseleave', () => { card.style.transform=''; });
     }
-    card.addEventListener('click', () => {
+    card.addEventListener('click', e => {
+      if (e.target.closest('.shp-lock-btn')) return; // 鎖頭點擊不觸發購買
       if (_shopState.purchased.has(idx)) return;
       if ((p.shells||0) < item.price) {
         const disp = document.getElementById('shop-shell-disp');
@@ -962,6 +978,7 @@ function _buildShopCard(item, idx, p) {
       }
       p.shells -= item.price;
       _shopState.purchased.add(idx);
+      _shopState.locked?.delete(idx); // 購買後自動解鎖
       _shopState.ownedCounts.set(item.id, ((_shopState.ownedCounts.get(item.id))||0) + 1);
       if (typeof item.apply === 'function') item.apply(p);
       if (typeof addFloatingText === 'function')
@@ -972,6 +989,171 @@ function _buildShopCard(item, idx, p) {
   return card;
 }
 
+// ═══════════════════════════════════════════════════════
+// §  商店武器管理（底部格子 + 拖拽）
+// ═══════════════════════════════════════════════════════
+let _dragSrcSlotIdx = -1;
+
+function _showTrashCan(show) {
+  let el = document.getElementById('shop-trash-can');
+  if (!show) { if (el) el.style.display = 'none'; return; }
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'shop-trash-can';
+    el.innerHTML = '🗑<span>卖出</span>';
+    el.addEventListener('dragover',  e => { e.preventDefault(); el.classList.add('hot'); });
+    el.addEventListener('dragleave', ()  => el.classList.remove('hot'));
+    el.addEventListener('drop', e => {
+      e.preventDefault();
+      el.classList.remove('hot');
+      const src = _dragSrcSlotIdx;
+      _dragSrcSlotIdx = -1;
+      _showTrashCan(false);
+      if (src < 0) return;
+      const p = gs?.player; if (!p) return;
+      const slots = gs.equipWeapons;
+      const w = slots?.[src]; if (!w) return;
+      const def = (typeof EQUIP_WEAPON_DEFS !== 'undefined') ? EQUIP_WEAPON_DEFS[w.id] : null;
+      const sellPrice = Math.floor((def?.qualities?.[w.quality]?.price || 0) * 0.75);
+      slots.splice(src, 1);
+      p.shells = (p.shells || 0) + sellPrice;
+      if (typeof addFloatingText === 'function')
+        addFloatingText(`🐚+${sellPrice}`, p.x, p.y - 28, '#4df', 1.3);
+      if (typeof SFX !== 'undefined') SFX.play('buy');
+      _renderShopOverlay();
+    });
+    document.body.appendChild(el);
+  }
+  el.style.display = 'flex';
+}
+
+function _buildEquipSlotsSection(p) {
+  const section  = document.createElement('div');
+  section.className = 'shp-equip-section';
+
+  const hd = document.createElement('div');
+  hd.className = 'shp-sec-hd';
+  hd.style.cssText = 'text-align:center;margin-bottom:8px';
+  hd.innerHTML = '⚔ 装备武器 <span style="color:#444;font-size:9px">拖拽互换/融合 · 拖至🗑卖75%</span>';
+  section.appendChild(hd);
+
+  const row = document.createElement('div');
+  row.className = 'shp-equip-row';
+  section.appendChild(row);
+
+  const slots    = gs?.equipWeapons || [];
+  const maxSlots = p.maxEquipSlots || 6;
+  const qualDefs = (typeof EQUIP_QUALITY !== 'undefined') ? EQUIP_QUALITY.defs : {};
+
+  for (let i = 0; i < maxSlots; i++) {
+    const w    = slots[i];
+    const slot = document.createElement('div');
+    slot.className = 'shp-eslot' + (w ? '' : ' shp-eslot-empty');
+    slot.dataset.slotIdx = i;
+
+    if (w) {
+      const def = (typeof EQUIP_WEAPON_DEFS !== 'undefined') ? EQUIP_WEAPON_DEFS[w.id] : null;
+      const qd  = qualDefs[w.quality] || {};
+      const col = qd.color || '#aaa';
+      slot.style.borderColor = col;
+
+      // 圖示
+      const imgDiv = document.createElement('div');
+      if (def?.img?.src) {
+        imgDiv.innerHTML = `<img src="${def.img.src}" style="width:32px;height:32px;object-fit:contain;display:block;margin:0 auto;image-rendering:pixelated">`;
+      } else {
+        imgDiv.innerHTML = `<span style="font-size:26px;line-height:1">${def?.icon || '⚔'}</span>`;
+      }
+      slot.appendChild(imgDiv);
+
+      // 名稱
+      const nm = document.createElement('div');
+      nm.className = 'shp-eslot-name';
+      nm.style.color = col;
+      nm.textContent = def?.name || w.id;
+      slot.appendChild(nm);
+
+      // 品質
+      const ql = document.createElement('div');
+      ql.className = 'shp-eslot-ql';
+      ql.style.color = col;
+      ql.textContent = qd.label || w.quality;
+      slot.appendChild(ql);
+
+      // 可融合提示
+      if (typeof EQUIP_QUALITY !== 'undefined' && EQUIP_QUALITY.canFuse(w.quality)) {
+        const sameCount = slots.filter(s => s.id === w.id && s.quality === w.quality).length;
+        if (sameCount >= 2) {
+          const hint = document.createElement('div');
+          hint.style.cssText = 'font-size:8px;color:#fd4;margin-top:2px';
+          hint.textContent = '✨ 可融合';
+          slot.appendChild(hint);
+        }
+      }
+
+      slot.setAttribute('draggable', 'true');
+      slot.addEventListener('dragstart', e => {
+        _dragSrcSlotIdx = i;
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', String(i));
+        setTimeout(() => slot.style.opacity = '0.35', 0);
+        _showTrashCan(true);
+      });
+      slot.addEventListener('dragend', () => {
+        slot.style.opacity = '';
+        _dragSrcSlotIdx = -1;
+        _showTrashCan(false);
+        document.querySelectorAll('.shp-eslot').forEach(s => s.classList.remove('drag-over'));
+      });
+    }
+
+    // 所有格子都接受 drop
+    slot.addEventListener('dragover',  e => { e.preventDefault(); slot.classList.add('drag-over'); });
+    slot.addEventListener('dragleave', ()  => slot.classList.remove('drag-over'));
+    slot.addEventListener('drop', e => {
+      e.preventDefault();
+      slot.classList.remove('drag-over');
+      const src = _dragSrcSlotIdx, dst = i;
+      if (src < 0 || src === dst) return;
+      const s    = gs.equipWeapons;
+      const wSrc = s[src], wDst = s[dst];
+      if (!wSrc) return;
+
+      if (!wDst) {
+        // 移動到空格：重新排列（splice + insert）
+        s.splice(src, 1);
+        s.splice(Math.min(dst, s.length), 0, wSrc);
+        if (typeof SFX !== 'undefined') SFX.play('click');
+      } else if (
+        wSrc.id === wDst.id && wSrc.quality === wDst.quality &&
+        typeof EQUIP_QUALITY !== 'undefined' && EQUIP_QUALITY.canFuse(wSrc.quality)
+      ) {
+        // 融合
+        const nextQ = EQUIP_QUALITY.nextQuality(wSrc.quality);
+        if (nextQ) {
+          const lo = Math.min(src, dst), hi = Math.max(src, dst);
+          s[lo] = { id: wSrc.id, quality: nextQ, timer: 0, _flashTimer: 0 };
+          s.splice(hi, 1);
+          if (typeof SFX !== 'undefined') SFX.play('levelup');
+          if (typeof addFloatingText === 'function' && gs?.player)
+            addFloatingText('✨ 融合! +1品质', gs.player.x, gs.player.y - 32, '#fd4', 1.5);
+        }
+      } else {
+        // 互換位置
+        [s[src], s[dst]] = [s[dst], s[src]];
+        if (typeof SFX !== 'undefined') SFX.play('click');
+      }
+      _dragSrcSlotIdx = -1;
+      _showTrashCan(false);
+      _renderShopOverlay();
+    });
+
+    row.appendChild(slot);
+  }
+  return section;
+}
+
+// ═══════════════════════════════════════════════════════
 function _renderShopOverlay() {
   document.getElementById('shop-overlay')?.remove();
   if (!gs || !_shopState) return;
@@ -1015,6 +1197,9 @@ function _renderShopOverlay() {
   rightCol.innerHTML = _shopOwnedList();
   body.appendChild(rightCol);
 
+  // ── 武器格子管理區 ──
+  ov.appendChild(_buildEquipSlotsSection(p));
+
   // ── 底部按鈕列 ──
   const botBar = document.createElement('div');
   botBar.className = 'shp-botbar';
@@ -1029,10 +1214,18 @@ function _renderShopOverlay() {
     if ((p.shells||0) < _shopState.refreshCost) return;
     p.shells -= _shopState.refreshCost;
     _shopState.refreshCost = Math.ceil(_shopState.refreshCost * 1.5);
-    const _luck2 = p.luck || 0;
-    const _wep2  = _buildWeaponShopEntry(_luck2);
-    _shopState.items     = _wep2 ? [_wep2, ..._buildShopItems(3)] : _buildShopItems(4);
+    const _luck2    = p.luck || 0;
+    const _wep2     = _buildWeaponShopEntry(_luck2);
+    // 生成全新卡片（與原數量相同）
+    const _allFresh = _wep2 ? [_wep2, ..._buildShopItems(3)] : _buildShopItems(4);
+    const _locked   = _shopState.locked || new Set();
+    // 鎖定的卡片保留原位，其餘替換為新卡片
+    let _fi = 0;
+    _shopState.items = _shopState.items.map((old, i) =>
+      _locked.has(i) ? old : (_allFresh[_fi++] ?? old)
+    );
     _shopState.purchased = new Set();
+    // locked 集合維持不變，位置對應不動
     _renderShopOverlay();
   });
   botBar.appendChild(refreshBtn);
@@ -2073,150 +2266,10 @@ document.getElementById('btn-confirm').addEventListener('click', ()=>{
     alert(`「${cls.name}」尚未解锁！\n请前往商城购买或完成解锁条件。`);
     return;
   }
-  // TODO: 武器選擇畫面暫時隱藏，待確認後恢復（改回 showWeapSelScreen()）
   showGameScreen();
   initGame(selectedClassIdx);
 });
 
-// ═══════════════════════════════════════════════════════
-// §  起始武器選擇畫面
-// ═══════════════════════════════════════════════════════
-// 武器池：EQUIP_WEAPON_DEFS（木棍、醫療箱…）
-// 品質由職業基礎幸運值決定：chosen=20, santa=5, 其他=0
-
-let _weapSelItems = []; // [{ id, def, quality, qDef }]
-let _weapSelIdx   = 0;
-
-// 根據職業索引取得基礎幸運值
-function _getClassBaseLuck(clsIdx) {
-  const cls = (typeof CLASSES !== 'undefined') ? CLASSES[clsIdx] : null;
-  if (!cls) return 0;
-  if (cls.id === 'chosen') return 20;
-  if (cls.id === 'santa')  return 5;
-  return 0;
-}
-
-function showWeapSelScreen() {
-  const equipDefs = (typeof EQUIP_WEAPON_DEFS !== 'undefined') ? EQUIP_WEAPON_DEFS : {};
-
-  // 品質固定為白色（普通）
-  _weapSelItems = Object.entries(equipDefs).map(([id, def]) => {
-    const quality = 'white';
-    const qDef = def.qualities?.[quality] || {};
-    return { id, def, quality, qDef };
-  });
-  _weapSelIdx = 0;
-  _renderWeapGrid();
-  _updateWeapPreview(0);
-  showOverlay('o-weapsel');
-}
-
-function _renderWeapGrid() {
-  const grid     = document.getElementById('wep-grid');
-  if (!grid) return;
-  const qualDefs = (typeof EQUIP_QUALITY !== 'undefined') ? EQUIP_QUALITY.defs : {};
-
-  grid.innerHTML = _weapSelItems.map((w, i) => {
-    const qd  = qualDefs[w.quality] || {};
-    const col = qd.color || '#aaa';
-    const sel = i === _weapSelIdx;
-    const imgHtml = w.def.img?.src
-      ? `<img src="${w.def.img.src}" style="width:32px;height:32px;object-fit:contain;display:block;margin:0 auto">`
-      : `<span style="font-size:26px;line-height:1">${w.def.icon || '?'}</span>`;
-    return `<div class="wep-dot${sel ? ' sel' : ''}" data-idx="${i}"
-      style="border-color:${col};${sel ? `box-shadow:0 0 16px ${col}55` : ''}">
-      ${imgHtml}
-      <div class="wep-dot-name">${w.def.name}</div>
-      <div class="wep-dot-qlabel" style="color:${col}">${qd.label || w.quality}</div>
-    </div>`;
-  }).join('');
-
-  grid.querySelectorAll('.wep-dot').forEach(dot => {
-    dot.addEventListener('click', () => {
-      _weapSelIdx = parseInt(dot.dataset.idx);
-      _renderWeapGrid();
-      _updateWeapPreview(_weapSelIdx);
-      if (typeof SFX !== 'undefined') SFX.play('click');
-    });
-  });
-}
-
-function _updateWeapPreview(idx) {
-  const w = _weapSelItems[idx]; if (!w) return;
-  const qualDefs = (typeof EQUIP_QUALITY !== 'undefined') ? EQUIP_QUALITY.defs : {};
-  const qd  = qualDefs[w.quality] || {};
-  const col = qd.color || '#aaa';
-  const q   = w.qDef;
-
-  // 大圖示
-  const imgEl = document.getElementById('wep-prev-img');
-  if (imgEl) {
-    imgEl.innerHTML = w.def.img?.src
-      ? `<img src="${w.def.img.src}" style="width:56px;height:56px;object-fit:contain;` +
-        `filter:drop-shadow(0 0 10px ${col});display:block;margin:0 auto">`
-      : `<span style="font-size:52px;line-height:1;filter:drop-shadow(0 0 10px ${col})">${w.def.icon || '?'}</span>`;
-  }
-
-  // 名稱
-  const nameEl = document.getElementById('wep-prev-name');
-  if (nameEl) { nameEl.textContent = w.def.name; nameEl.style.color = col; }
-
-  // 品質徽章
-  const qualEl = document.getElementById('wep-prev-quality');
-  if (qualEl) qualEl.innerHTML =
-    `<span style="color:${col};border:1px solid ${col}55;background:${col}18;` +
-    `border-radius:3px;padding:1px 12px;font-size:10px;font-weight:700">${qd.label || w.quality}</span>`;
-
-  // 屬性（動態，只顯示有值的欄位）
-  const statEl = document.getElementById('wep-prev-stat');
-  if (statEl) {
-    const f0  = v => v != null ? String(Math.round(+v)) : null;
-    const f1  = v => v != null ? (+v).toFixed(1) : null;
-    const f2  = v => v != null ? (+v).toFixed(2) : null;
-    const pct = v => (v != null && +v > 0) ? (+v * 100).toFixed(1) + '%' : null;
-    const b   = v => `<b style="color:${col}">${v}</b>`;
-    const rows = [
-      ['⚔ 伤害',   b(f0(q.baseDmg))],
-      q.maxHpPct > 0  ? ['❤ HP伤',   b(pct(q.maxHpPct))]         : null,
-      q.critRate > 0  ? ['🎯 暴击率', b(pct(q.critRate))]         : null,
-      q.critMult > 1  ? ['💥 暴击倍', b(f1(q.critMult) + '×')]   : null,
-      ['⚡ 攻速',   b(f2(q.atkSpd) + 's')],
-      q.knockback > 0 ? ['💨 击退',   b(f0(q.knockback))]         : null,
-      q.lifesteal > 0 ? ['🩸 吸血',   b(f0(q.lifesteal))]         : null,
-      q.healBonus > 0 ? ['💊 治疗+',  b(pct(q.healBonus))]        : null,
-    ].filter(Boolean);
-    const half = Math.ceil(rows.length / 2);
-    const left = rows.slice(0, half), right = rows.slice(half);
-    const maxR = Math.max(left.length, right.length);
-    let html = `<table style="width:100%;font-size:10px;border-collapse:collapse;margin-top:4px">`;
-    for (let r = 0; r < maxR; r++) {
-      const a = left[r], bRow = right[r];
-      html += `<tr>
-        <td style="padding:1px 6px 1px 0;white-space:nowrap">${a    ? a[0]+' '+a[1]    : ''}</td>
-        <td style="padding:1px 0 1px 6px;white-space:nowrap">${bRow ? bRow[0]+' '+bRow[1] : ''}</td>
-      </tr>`;
-    }
-    html += `</table>`;
-    if (q.dpsLabel) {
-      html += `<div style="color:#555;margin-top:3px;font-size:8.5px">DPS: ${q.dpsLabel}</div>`;
-    }
-    statEl.innerHTML = html;
-  }
-}
-
-document.getElementById('btn-wep-confirm').addEventListener('click', () => {
-  const w = _weapSelItems[_weapSelIdx]; if (!w) return;
-  showGameScreen();
-  initGame(selectedClassIdx);
-  // 免費贈送起始裝備武器
-  if (typeof gs !== 'undefined' && gs.equipWeapons) {
-    gs.equipWeapons.push({ id: w.id, quality: w.quality, timer: 0, _flashTimer: 0 });
-  }
-});
-
-document.getElementById('btn-wep-back').addEventListener('click', () => {
-  showOverlay('o-class');
-});
 
 // Christmas check: show Santa dot only on December 25
 (function() {
